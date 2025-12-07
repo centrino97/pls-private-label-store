@@ -79,36 +79,53 @@ final class PLS_Widget_Configurator extends Widget_Base {
             return;
         }
 
-        // In Phase 1, we rely on WooCommerce variable-product mechanism.
-        // Your team will replace the UI below with:
-        // - pack tier selector wired to variation attribute pa_pack-tier
-        // - attribute swatches wired to variation attributes
+        if ( ! $product->is_type( 'variable' ) ) {
+            echo '<div class="pls-note">' . esc_html__( 'PLS Configurator requires a variable product with pack tiers.', 'pls-private-label-store' ) . '</div>';
+            return;
+        }
+
+        $variation_attributes = $product->get_variation_attributes();
+        $pack_tiers           = isset( $variation_attributes['pa_pack-tier'] ) ? (array) $variation_attributes['pa_pack-tier'] : array();
+
+        if ( empty( $pack_tiers ) ) {
+            echo '<div class="pls-note">' . esc_html__( 'No pack tiers found on this product.', 'pls-private-label-store' ) . '</div>';
+            return;
+        }
+
         ?>
         <div class="pls-configurator" data-product-id="<?php echo esc_attr( $product->get_id() ); ?>">
             <div class="pls-configurator__title"><?php echo esc_html__( 'Configure your pack', 'pls-private-label-store' ); ?></div>
 
             <div class="pls-configurator__block">
-                <strong><?php echo esc_html__( 'Pack tiers (stub UI)', 'pls-private-label-store' ); ?></strong>
+                <strong><?php echo esc_html__( 'Pack tiers', 'pls-private-label-store' ); ?></strong>
                 <div class="pls-chips">
-                    <button type="button" class="pls-chip" data-tier="trial">Trial</button>
-                    <button type="button" class="pls-chip" data-tier="starter">Starter</button>
-                    <button type="button" class="pls-chip" data-tier="brand_entry">Brand Entry</button>
-                    <button type="button" class="pls-chip" data-tier="growth">Growth</button>
-                    <button type="button" class="pls-chip" data-tier="wholesale">Wholesale</button>
+                    <?php foreach ( $pack_tiers as $slug ) :
+                        $term = get_term_by( 'slug', $slug, 'pa_pack-tier' );
+                        $label = $term ? $term->name : $slug;
+                        ?>
+                        <button type="button" class="pls-chip pls-tier-button" data-term="<?php echo esc_attr( $slug ); ?>"><?php echo esc_html( $label ); ?></button>
+                    <?php endforeach; ?>
                 </div>
-                <p class="pls-muted"><?php echo esc_html__( 'Wire these buttons to the Woo variation form (attribute pa_pack-tier) so Woo price/stock updates work natively.', 'pls-private-label-store' ); ?></p>
-            </div>
-
-            <div class="pls-configurator__block">
-                <strong><?php echo esc_html__( 'Swatches (stub)', 'pls-private-label-store' ); ?></strong>
-                <div class="pls-chips">
-                    <span class="pls-swatch pls-swatch--color" style="background:#111;" title="Example"></span>
-                    <span class="pls-swatch pls-swatch--color" style="background:#999;" title="Example"></span>
-                    <span class="pls-swatch pls-swatch--label">Label</span>
-                </div>
-                <p class="pls-muted"><?php echo esc_html__( 'Implement swatch rendering using PLS attribute tables + Woo term mapping.', 'pls-private-label-store' ); ?></p>
+                <p class="pls-muted"><?php echo esc_html__( 'Selecting a tier updates the WooCommerce variation form.', 'pls-private-label-store' ); ?></p>
             </div>
         </div>
         <?php
+        wc_enqueue_js(
+            "jQuery(function($){\n" .
+            "  $('.pls-configurator').on('click', '.pls-tier-button', function(){\n" .
+            "    var btn = $(this);\n" .
+            "    var slug = btn.data('term');\n" .
+            "    var wrap = btn.closest('.product, .pls-configurator');\n" .
+            "    var form = wrap.find('form.variations_form, form.cart').first();\n" .
+            "    var select = form.find('select[name="attribute_pa_pack-tier"]');\n" .
+            "    if(!select.length){return;}\n" .
+            "    select.val(slug).trigger('change');\n" .
+            "    form.find('input.variation_id').trigger('change');\n" .
+            "    form.trigger('woocommerce_variation_has_changed');\n" .
+            "    btn.closest('.pls-chips').find('.pls-tier-button').removeClass('is-active');\n" .
+            "    btn.addClass('is-active');\n" .
+            "  });\n" .
+            "});"
+        );
     }
 }

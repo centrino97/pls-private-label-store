@@ -58,6 +58,9 @@ final class PLS_Plugin {
         require_once PLS_PLS_DIR . 'includes/admin/class-pls-admin-menu.php';
 
         require_once PLS_PLS_DIR . 'includes/data/class-pls-repositories.php';
+        require_once PLS_PLS_DIR . 'includes/data/repo-base-product.php';
+        require_once PLS_PLS_DIR . 'includes/data/repo-pack-tier.php';
+        require_once PLS_PLS_DIR . 'includes/data/repo-attributes.php';
         require_once PLS_PLS_DIR . 'includes/wc/class-pls-wc-sync.php';
 
         require_once PLS_PLS_DIR . 'includes/frontend/class-pls-ajax.php';
