@@ -20,6 +20,21 @@ define( 'PLS_PLS_FILE', __FILE__ );
 define( 'PLS_PLS_DIR', plugin_dir_path( __FILE__ ) );
 define( 'PLS_PLS_URL', plugin_dir_url( __FILE__ ) );
 
+// UUPD: Self-hosted updates from GitHub.
+if ( ! class_exists( '\UUPD\V1\UUPD_Updater_V1' ) ) {
+    require_once PLS_PLS_DIR . 'includes/updater.php';
+}
+
+add_action( 'plugins_loaded', function() {
+    \UUPD\V1\UUPD_Updater_V1::register( [
+        'plugin_file' => plugin_basename( PLS_PLS_FILE ),
+        'slug'        => 'pls-private-label-store',
+        'name'        => 'PLS – Private Label Store Manager (Woo + Elementor)',
+        'version'     => PLS_PLS_VERSION,
+        'server'      => 'https://raw.githubusercontent.com/centrino97/pls-private-label-store/main/uupd/',
+    ] );
+}, 20 );
+
 require_once PLS_PLS_DIR . 'includes/class-pls-plugin.php';
 
 register_activation_hook( __FILE__, array( 'PLS_Plugin', 'activate' ) );
