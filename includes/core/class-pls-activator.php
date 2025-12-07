@@ -1,0 +1,141 @@
+<?php
+/**
+ * Activation handler: creates DB tables via dbDelta.
+ *
+ * @package PLS_Private_Label_Store
+ */
+
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
+
+final class PLS_Activator {
+
+    public static function activate() {
+        self::maybe_create_tables();
+        update_option( 'pls_pls_version', PLS_PLS_VERSION );
+    }
+
+    private static function maybe_create_tables() {
+        global $wpdb;
+
+        require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+
+        $charset_collate = $wpdb->get_charset_collate();
+        $p = $wpdb->prefix;
+
+        $tables = [];
+
+        $tables[] = "CREATE TABLE {$p}pls_base_product (
+            id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            wc_product_id BIGINT(20) UNSIGNED NULL,
+            slug VARCHAR(200) NOT NULL,
+            name VARCHAR(255) NOT NULL,
+            category_path TEXT NULL,
+            status VARCHAR(20) NOT NULL DEFAULT 'draft',
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            UNIQUE KEY slug (slug),
+            KEY wc_product_id (wc_product_id),
+            KEY status (status)
+        ) $charset_collate;";
+
+        $tables[] = "CREATE TABLE {$p}pls_pack_tier (
+            id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            base_product_id BIGINT(20) UNSIGNED NOT NULL,
+            tier_key VARCHAR(50) NOT NULL,
+            units INT(11) NOT NULL DEFAULT 1,
+            price DECIMAL(18,2) NOT NULL DEFAULT 0.00,
+            currency VARCHAR(10) NULL,
+            is_enabled TINYINT(1) NOT NULL DEFAULT 1,
+            wc_variation_id BIGINT(20) UNSIGNED NULL,
+            sort_order INT(11) NOT NULL DEFAULT 0,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY base_tier (base_product_id, tier_key),
+            KEY base_product_id (base_product_id),
+            KEY wc_variation_id (wc_variation_id),
+            KEY tier_key (tier_key)
+        ) $charset_collate;";
+
+        $tables[] = "CREATE TABLE {$p}pls_bundle (
+            id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            wc_product_id BIGINT(20) UNSIGNED NULL,
+            bundle_key VARCHAR(50) NOT NULL,
+            slug VARCHAR(200) NOT NULL,
+            name VARCHAR(255) NOT NULL,
+            base_price DECIMAL(18,2) NULL,
+            pricing_mode VARCHAR(30) NOT NULL DEFAULT 'fixed', /* fixed|sum_discount */
+            discount_amount DECIMAL(18,2) NULL,
+            status VARCHAR(20) NOT NULL DEFAULT 'draft',
+            offer_rules_json LONGTEXT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY bundle_key (bundle_key),
+            UNIQUE KEY slug (slug),
+            KEY wc_product_id (wc_product_id),
+            KEY status (status)
+        ) $charset_collate;";
+
+        $tables[] = "CREATE TABLE {$p}pls_bundle_item (
+            id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            bundle_id BIGINT(20) UNSIGNED NOT NULL,
+            base_product_id BIGINT(20) UNSIGNED NOT NULL,
+            tier_key VARCHAR(50) NOT NULL,
+            units_override INT(11) NULL,
+            qty INT(11) NOT NULL DEFAULT 1,
+            sort_order INT(11) NOT NULL DEFAULT 0,
+            PRIMARY KEY (id),
+            KEY bundle_id (bundle_id),
+            KEY base_product_id (base_product_id),
+            KEY tier_key (tier_key)
+        ) $charset_collate;";
+
+        $tables[] = "CREATE TABLE {$p}pls_attribute (
+            id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            wc_attribute_id BIGINT(20) UNSIGNED NULL,
+            attr_key VARCHAR(100) NOT NULL,
+            label VARCHAR(255) NOT NULL,
+            is_variation TINYINT(1) NOT NULL DEFAULT 0,
+            sort_order INT(11) NOT NULL DEFAULT 0,
+            PRIMARY KEY (id),
+            UNIQUE KEY attr_key (attr_key),
+            KEY wc_attribute_id (wc_attribute_id),
+            KEY is_variation (is_variation)
+        ) $charset_collate;";
+
+        $tables[] = "CREATE TABLE {$p}pls_attribute_value (
+            id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            attribute_id BIGINT(20) UNSIGNED NOT NULL,
+            term_id BIGINT(20) UNSIGNED NULL,
+            value_key VARCHAR(100) NOT NULL,
+            label VARCHAR(255) NOT NULL,
+            seo_slug VARCHAR(200) NULL,
+            seo_title VARCHAR(255) NULL,
+            seo_description TEXT NULL,
+            sort_order INT(11) NOT NULL DEFAULT 0,
+            PRIMARY KEY (id),
+            UNIQUE KEY attr_value (attribute_id, value_key),
+            KEY attribute_id (attribute_id),
+            KEY term_id (term_id)
+        ) $charset_collate;";
+
+        $tables[] = "CREATE TABLE {$p}pls_swatch (
+            id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            attribute_value_id BIGINT(20) UNSIGNED NOT NULL,
+            swatch_type VARCHAR(20) NOT NULL DEFAULT 'label', /* label|color|icon|image */
+            swatch_value VARCHAR(255) NULL,
+            display_hint_json TEXT NULL,
+            PRIMARY KEY (id),
+            UNIQUE KEY attr_value (attribute_value_id),
+            KEY swatch_type (swatch_type)
+        ) $charset_collate;";
+
+        foreach ( $tables as $sql ) {
+            dbDelta( $sql );
+        }
+    }
+}

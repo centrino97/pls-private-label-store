@@ -1,0 +1,5 @@
+.pls-wrap .pls-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:16px}
+.pls-wrap .pls-card{background:#fff;border:1px solid #dcdcde;border-radius:10px;padding:16px}
+.pls-wrap .pls-card h2{margin-top:0}
+.pls-muted{opacity:.75}
+.pls-note{padding:10px;border:1px dashed #bbb;border-radius:8px}

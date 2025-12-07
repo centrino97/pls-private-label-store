@@ -1,0 +1,11 @@
+.pls-configurator,.pls-offer{border:1px solid rgba(0,0,0,.12);border-radius:12px;padding:16px}
+.pls-configurator__title{font-weight:600;margin-bottom:10px}
+.pls-configurator__block{margin-top:14px}
+.pls-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.pls-chip{border:1px solid rgba(0,0,0,.18);padding:8px 10px;border-radius:999px;background:transparent;cursor:pointer}
+.pls-swatch{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:999px;border:1px solid rgba(0,0,0,.15)}
+.pls-swatch--label{width:auto;padding:0 10px;border-radius:999px;font-size:12px}
+.pls-offer__header{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.pls-offer__title{font-weight:600}
+.pls-offer__btn{margin-top:12px;border:1px solid rgba(0,0,0,.18);border-radius:10px;padding:10px 14px;background:transparent;cursor:pointer}
+.pls-offer__list{margin-top:12px}
