@@ -1,0 +1,32 @@
+name: Build plugin ZIP and attach to release
+
+on:
+  push:
+    tags:
+      - 'v*'   # runs when you push a tag like v0.1.1
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed to upload release asset
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build plugin ZIP
+        run: |
+          PLUGIN_SLUG="pls-private-label-store"
+
+          # Create build directory and copy only plugin files
+          mkdir -p build/"$PLUGIN_SLUG"
+          cp -R assets docs includes uupd pls-private-label-store.php readme.txt build/"$PLUGIN_SLUG"/
+
+          cd build
+          zip -r "../${PLUGIN_SLUG}.zip" "$PLUGIN_SLUG"
+
+      - name: Upload ZIP to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: pls-private-label-store.zip
