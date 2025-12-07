@@ -30,7 +30,36 @@ final class PLS_DTag_Pack_Units extends Tag {
     }
 
     public function render() {
-        // TODO: Wire to selected variation/meta.
-        echo esc_html__( '—', 'pls-private-label-store' );
+        if ( ! function_exists( 'wc_get_product' ) ) {
+            echo esc_html__( '—', 'pls-private-label-store' );
+            return;
+        }
+
+        global $product;
+        $variation_id = 0;
+
+        if ( $product instanceof \WC_Product_Variation ) {
+            $variation_id = $product->get_id();
+        } elseif ( $product instanceof \WC_Product && $product->is_type( 'variable' ) ) {
+            $defaults = $product->get_default_attributes();
+            if ( ! empty( $defaults ) ) {
+                $variation_id = wc_get_product_variation_id_by_attributes( $product, $defaults );
+            }
+
+            if ( ! $variation_id ) {
+                $children = $product->get_children();
+                if ( ! empty( $children ) ) {
+                    $variation_id = (int) current( $children );
+                }
+            }
+        }
+
+        $units = $variation_id ? get_post_meta( $variation_id, '_pls_units', true ) : '';
+        if ( '' === $units ) {
+            echo esc_html__( '—', 'pls-private-label-store' );
+            return;
+        }
+
+        echo esc_html( $units );
     }
 }
