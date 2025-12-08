@@ -2,7 +2,7 @@
 /**
  * Plugin Name: PLS – Private Label Store Manager (Woo + Elementor)
  * Description: Internal data model + WooCommerce sync + Elementor widgets for pack tiers, swatches, and bundles (Hello Elementor ready).
- * Version: 0.1.4
+ * Version: 0.1.5
  * Author: Z2HB team
  * Author URI: https://zerotoherobusiness.com
  * Requires at least: 6.5
@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'PLS_PLS_VERSION', '0.1.4' );
+define( 'PLS_PLS_VERSION', '0.1.5' );
 define( 'PLS_PLS_FILE', __FILE__ );
 define( 'PLS_PLS_DIR', plugin_dir_path( __FILE__ ) );
 define( 'PLS_PLS_URL', plugin_dir_url( __FILE__ ) );
