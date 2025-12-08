@@ -34,6 +34,15 @@ This policy keeps `main` deploy-ready while enabling parallel feature and bugfix
    - Prefer **squash merge** to keep history clean.
    - Delete branch after merge.
 
+## Deleting branches safely
+- It is safe to delete a feature/hotfix branch locally and on the remote **after** it has been merged to `main` (or the current release branch) and the branch tip is fully contained there.
+- If GitHub shows the branch as "behind" or with open conflicts, do **not** delete it until you rebase/merge and push the resolved branch; otherwise you will lose those changes.
+- To confirm a branch is merged before deleting:
+  - `git checkout main && git pull` to ensure you have the latest `main`.
+  - `git branch --merged main` will list branches already merged into `main`.
+  - Only delete branches that appear in that list: `git branch -d <branch>` locally and `git push origin --delete <branch>` remotely.
+- Keeping `main` stable relies on this flow: short-lived feature branches → PR → merge → delete branch. Avoid long-lived branches that diverge far from `main`.
+
 ## Handling conflicts
 - Always resolve conflicts on your branch via `git rebase origin/main` (avoid merging `main` into feature unless necessary).
 - After resolving conflicts, rerun tests and force-push the rebased branch: `git push -f origin feature/<slug>`.
