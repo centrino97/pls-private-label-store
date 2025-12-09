@@ -143,6 +143,96 @@ if ( isset( $_POST['pls_product_modal_save'] ) && check_admin_referer( 'pls_prod
         PLS_Repo_Product_Profile::upsert( $base_id, $profile_data );
     }
 
+    $gallery_raw = isset( $_POST['gallery_ids'] ) ? sanitize_text_field( wp_unslash( $_POST['gallery_ids'] ) ) : '';
+    $gallery_ids = $gallery_raw ? array_map( 'absint', explode( ',', $gallery_raw ) ) : array();
+
+    $selected_ingredients = isset( $_POST['ingredient_ids'] ) && is_array( $_POST['ingredient_ids'] ) ? array_map( 'absint', $_POST['ingredient_ids'] ) : array();
+    $key_ingredients      = isset( $_POST['key_ingredient_ids'] ) && is_array( $_POST['key_ingredient_ids'] ) ? array_map( 'absint', $_POST['key_ingredient_ids'] ) : array();
+    $new_ingredients_raw  = isset( $_POST['new_ingredients_tokens'] ) ? sanitize_text_field( wp_unslash( $_POST['new_ingredients_tokens'] ) ) : '';
+
+    if ( $new_ingredients_raw ) {
+        $tokens = array_filter( array_map( 'trim', explode( ',', $new_ingredients_raw ) ) );
+        foreach ( $tokens as $token ) {
+            $slug  = sanitize_title( $token );
+            $maybe = term_exists( $slug, 'pls_ingredient' );
+            if ( ! $maybe ) {
+                $created = wp_insert_term( $token, 'pls_ingredient', array( 'slug' => $slug ) );
+                if ( ! is_wp_error( $created ) ) {
+                    $selected_ingredients[] = $created['term_id'];
+                }
+            } elseif ( is_array( $maybe ) && isset( $maybe['term_id'] ) ) {
+                $selected_ingredients[] = absint( $maybe['term_id'] );
+            } elseif ( is_object( $maybe ) && isset( $maybe->term_id ) ) {
+                $selected_ingredients[] = absint( $maybe->term_id );
+            }
+        }
+    }
+
+    $selected_ingredients = array_unique( array_filter( $selected_ingredients ) );
+    $key_ingredients      = array_unique( array_filter( $key_ingredients ) );
+
+    $key_ingredients_json = array();
+    $ingredient_names     = array();
+
+    foreach ( $selected_ingredients as $term_id ) {
+        $term = get_term( $term_id );
+        if ( $term && ! is_wp_error( $term ) ) {
+            $ingredient_names[] = $term->name;
+        }
+    }
+
+    foreach ( $key_ingredients as $term_id ) {
+        $term = get_term( $term_id );
+        if ( $term && ! is_wp_error( $term ) ) {
+            $key_ingredients_json[] = array(
+                'label' => $term->name,
+                'icon'  => PLS_Taxonomies::icon_for_term( $term_id ),
+                'term_id' => $term_id,
+            );
+        }
+    }
+
+    $benefits_text = isset( $_POST['benefits_text'] ) ? wp_unslash( $_POST['benefits_text'] ) : '';
+    $benefit_rows  = array();
+    foreach ( preg_split( '/\r\n|\r|\n/', $benefits_text ) as $benefit_line ) {
+        $clean = sanitize_text_field( $benefit_line );
+        if ( '' !== $clean ) {
+            $benefit_rows[] = array(
+                'label' => $clean,
+                'icon'  => '',
+            );
+        }
+    }
+
+    $skin_selected = isset( $_POST['skin_types'] ) && is_array( $_POST['skin_types'] ) ? array_map( 'sanitize_text_field', wp_unslash( $_POST['skin_types'] ) ) : array();
+    $skin_rows     = array();
+    foreach ( $skin_selected as $skin_label ) {
+        $skin_rows[] = array(
+            'label' => $skin_label,
+            'icon'  => '',
+        );
+    }
+
+    $profile_data = array(
+        'short_description'    => isset( $_POST['short_description'] ) ? sanitize_textarea_field( wp_unslash( $_POST['short_description'] ) ) : '',
+        'long_description'     => isset( $_POST['long_description'] ) ? wp_kses_post( wp_unslash( $_POST['long_description'] ) ) : '',
+        'featured_image_id'    => isset( $_POST['featured_image_id'] ) ? absint( $_POST['featured_image_id'] ) : 0,
+        'gallery_ids'          => $gallery_ids,
+        'directions_text'      => isset( $_POST['directions_text'] ) ? sanitize_textarea_field( wp_unslash( $_POST['directions_text'] ) ) : '',
+        'ingredients_list'     => $selected_ingredients ? implode( ',', $selected_ingredients ) : '',
+        'label_enabled'        => isset( $_POST['label_enabled'] ) ? 1 : 0,
+        'label_price_per_unit' => isset( $_POST['label_price_per_unit'] ) ? floatval( $_POST['label_price_per_unit'] ) : 0,
+        'label_requires_file'  => isset( $_POST['label_requires_file'] ) ? 1 : 0,
+        'label_helper_text'    => isset( $_POST['label_helper_text'] ) ? sanitize_textarea_field( wp_unslash( $_POST['label_helper_text'] ) ) : '',
+        'label_guide_url'      => isset( $_POST['label_guide_url'] ) ? esc_url_raw( wp_unslash( $_POST['label_guide_url'] ) ) : '',
+        'basics_json'          => array(),
+        'skin_types_json'      => $skin_rows,
+        'benefits_json'        => $benefit_rows,
+        'key_ingredients_json' => $key_ingredients_json,
+    );
+
+    PLS_Repo_Product_Profile::upsert( $base_id, $profile_data );
+
     wp_safe_redirect( admin_url( 'admin.php?page=pls-products&message=saved' ) );
     exit;
 }
