@@ -21,14 +21,26 @@ final class PLS_WC_Sync {
         );
     }
 
+    /**
+     * Ensure global pack-tier attribute + terms exist.
+     *
+     * @return array|null { attribute_id, taxonomy, term_ids } or null on failure.
+     */
     private static function ensure_pack_tier_attribute() {
         if ( ! function_exists( 'wc_get_attribute_taxonomies' ) ) {
             return null;
         }
 
-        $slug      = 'pack-tier';
-        $attribute = null;
+        if ( ! function_exists( 'wc_create_attribute' ) ) {
+            return null;
+        }
+
+        $slug       = 'pack-tier';
+        $attribute  = null;
         $taxonomies = wc_get_attribute_taxonomies();
+        if ( ! is_array( $taxonomies ) ) {
+            $taxonomies = array();
+        }
 
         foreach ( $taxonomies as $tax ) {
             if ( $slug === $tax->attribute_name ) {
@@ -54,6 +66,10 @@ final class PLS_WC_Sync {
 
             delete_transient( 'wc_attribute_taxonomies' );
             $taxonomies = wc_get_attribute_taxonomies();
+            if ( ! is_array( $taxonomies ) ) {
+                $taxonomies = array();
+            }
+
             foreach ( $taxonomies as $tax ) {
                 if ( $slug === $tax->attribute_name ) {
                     $attribute = $tax;
@@ -88,9 +104,16 @@ final class PLS_WC_Sync {
         );
     }
 
+    /**
+     * Sync one base product into Woo (variable + variations).
+     */
     public static function sync_base_product_to_wc( $base_product_id ) {
         if ( ! class_exists( 'WooCommerce' ) ) {
             return __( 'WooCommerce not active; sync skipped.', 'pls-private-label-store' );
+        }
+
+        if ( ! function_exists( 'wc_get_product' ) ) {
+            return __( 'WooCommerce product functions unavailable; sync skipped.', 'pls-private-label-store' );
         }
 
         $base = PLS_Repo_Base_Product::get( $base_product_id );
@@ -98,7 +121,7 @@ final class PLS_WC_Sync {
             return __( 'Base product not found.', 'pls-private-label-store' );
         }
 
-        $status = ( 'live' === $base->status ) ? 'publish' : 'draft';
+        $status  = ( 'live' === $base->status ) ? 'publish' : 'draft';
         $product = null;
         $created = false;
 
@@ -138,6 +161,7 @@ final class PLS_WC_Sync {
             $product->set_type( 'variable' );
         }
 
+        // Categories from PLS (comma-separated IDs in category_path).
         if ( ! empty( $base->category_path ) ) {
             $ids = array_map( 'absint', explode( ',', $base->category_path ) );
             $ids = array_filter( $ids );
@@ -161,8 +185,9 @@ final class PLS_WC_Sync {
         $product->set_attributes( array( $pack_attr['taxonomy'] => $wc_attribute ) );
         $product->save();
 
-        $tiers = PLS_Repo_Pack_Tier::for_base( $base_product_id );
-        $created_variations = 0;
+        // Variations from PLS pack tiers.
+        $tiers               = PLS_Repo_Pack_Tier::for_base( $base_product_id );
+        $created_variations  = 0;
 
         foreach ( $tiers as $tier ) {
             if ( (int) $tier->is_enabled !== 1 ) {
@@ -190,12 +215,23 @@ final class PLS_WC_Sync {
         }
 
         if ( $created ) {
-            return sprintf( __( 'Created WooCommerce product #%d with %d variations.', 'pls-private-label-store' ), $product->get_id(), $created_variations );
+            return sprintf(
+                __( 'Created WooCommerce product #%d with %d variations.', 'pls-private-label-store' ),
+                $product->get_id(),
+                $created_variations
+            );
         }
 
-        return sprintf( __( 'Synced WooCommerce product #%d with %d variations.', 'pls-private-label-store' ), $product->get_id(), $created_variations );
+        return sprintf(
+            __( 'Synced WooCommerce product #%d with %d variations.', 'pls-private-label-store' ),
+            $product->get_id(),
+            $created_variations
+        );
     }
 
+    /**
+     * Sync all base products.
+     */
     public static function sync_all_base_products() {
         $bases = PLS_Repo_Base_Product::all();
         if ( empty( $bases ) ) {
@@ -210,17 +246,28 @@ final class PLS_WC_Sync {
         return implode( ' ', $messages );
     }
 
+    /**
+     * Sync attributes/values/swatches from PLS tables into Woo global attributes + terms.
+     */
     public static function sync_attributes_from_pls() {
         if ( ! class_exists( 'WooCommerce' ) ) {
             return __( 'WooCommerce not active; attribute sync skipped.', 'pls-private-label-store' );
         }
 
+        if ( ! function_exists( 'wc_get_attribute_taxonomies' ) || ! function_exists( 'wc_create_attribute' ) ) {
+            return __( 'WooCommerce attribute functions unavailable; sync skipped.', 'pls-private-label-store' );
+        }
+
         $attributes = PLS_Repo_Attributes::attrs_all();
         $taxonomies = wc_get_attribute_taxonomies();
+        if ( ! is_array( $taxonomies ) ) {
+            $taxonomies = array();
+        }
 
         foreach ( $attributes as $attr ) {
-            $slug = sanitize_title( $attr->attr_key );
+            $slug  = sanitize_title( $attr->attr_key );
             $match = null;
+
             foreach ( $taxonomies as $tax ) {
                 if ( $slug === $tax->attribute_name ) {
                     $match = $tax;
@@ -245,6 +292,10 @@ final class PLS_WC_Sync {
 
                 delete_transient( 'wc_attribute_taxonomies' );
                 $taxonomies = wc_get_attribute_taxonomies();
+                if ( ! is_array( $taxonomies ) ) {
+                    $taxonomies = array();
+                }
+
                 foreach ( $taxonomies as $tax ) {
                     if ( $slug === $tax->attribute_name ) {
                         $match = $tax;
@@ -263,7 +314,13 @@ final class PLS_WC_Sync {
             foreach ( $values as $value ) {
                 $term = get_term_by( 'slug', $value->value_key, $taxonomy );
                 if ( ! $term ) {
-                    $inserted = wp_insert_term( $value->label, $taxonomy, array( 'slug' => $value->value_key ) );
+                    $inserted = wp_insert_term(
+                        $value->label,
+                        $taxonomy,
+                        array(
+                            'slug' => $value->value_key,
+                        )
+                    );
                     if ( is_wp_error( $inserted ) ) {
                         continue;
                     }

@@ -49,8 +49,8 @@ final class PLS_Widget_Configurator extends Widget_Base {
         $this->add_control(
             'show_pack_tiers',
             array(
-                'label' => __( 'Show pack tiers', 'pls-private-label-store' ),
-                'type'  => Controls_Manager::SWITCHER,
+                'label'   => __( 'Show pack tiers', 'pls-private-label-store' ),
+                'type'    => Controls_Manager::SWITCHER,
                 'default' => 'yes',
             )
         );
@@ -58,8 +58,8 @@ final class PLS_Widget_Configurator extends Widget_Base {
         $this->add_control(
             'show_swatches',
             array(
-                'label' => __( 'Show swatches', 'pls-private-label-store' ),
-                'type'  => Controls_Manager::SWITCHER,
+                'label'   => __( 'Show swatches', 'pls-private-label-store' ),
+                'type'    => Controls_Manager::SWITCHER,
                 'default' => 'yes',
             )
         );
@@ -100,7 +100,7 @@ final class PLS_Widget_Configurator extends Widget_Base {
                 <strong><?php echo esc_html__( 'Pack tiers', 'pls-private-label-store' ); ?></strong>
                 <div class="pls-chips">
                     <?php foreach ( $pack_tiers as $slug ) :
-                        $term = get_term_by( 'slug', $slug, 'pa_pack-tier' );
+                        $term  = get_term_by( 'slug', $slug, 'pa_pack-tier' );
                         $label = $term ? $term->name : $slug;
                         ?>
                         <button type="button" class="pls-chip pls-tier-button" data-term="<?php echo esc_attr( $slug ); ?>"><?php echo esc_html( $label ); ?></button>
@@ -110,22 +110,24 @@ final class PLS_Widget_Configurator extends Widget_Base {
             </div>
         </div>
         <?php
-        wc_enqueue_js(
-            "jQuery(function($){\n" .
-            "  $('.pls-configurator').on('click', '.pls-tier-button', function(){\n" .
-            "    var btn = $(this);\n" .
-            "    var slug = btn.data('term');\n" .
-            "    var wrap = btn.closest('.product, .pls-configurator');\n" .
-            "    var form = wrap.find('form.variations_form, form.cart').first();\n" .
-            "    var select = form.find('select[name="attribute_pa_pack-tier"]');\n" .
-            "    if(!select.length){return;}\n" .
-            "    select.val(slug).trigger('change');\n" .
-            "    form.find('input.variation_id').trigger('change');\n" .
-            "    form.trigger('woocommerce_variation_has_changed');\n" .
-            "    btn.closest('.pls-chips').find('.pls-tier-button').removeClass('is-active');\n" .
-            "    btn.addClass('is-active');\n" .
-            "  });\n" .
-            "});"
-        );
+        $script = <<<'JS'
+jQuery(function($){
+  $('.pls-configurator').on('click', '.pls-tier-button', function(){
+    var btn = $(this);
+    var slug = btn.data('term');
+    var wrap = btn.closest('.product, .pls-configurator');
+    var form = wrap.find('form.variations_form, form.cart').first();
+    var select = form.find('select[name="attribute_pa_pack-tier"]');
+    if(!select.length){return;}
+    select.val(slug).trigger('change');
+    form.find('input.variation_id').trigger('change');
+    form.trigger('woocommerce_variation_has_changed');
+    btn.closest('.pls-chips').find('.pls-tier-button').removeClass('is-active');
+    btn.addClass('is-active');
+  });
+});
+JS;
+
+        wc_enqueue_js( $script );
     }
 }
