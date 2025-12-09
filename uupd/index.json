@@ -1,7 +1,7 @@
 {
   "slug": "pls-private-label-store",
   "name": "PLS \u2013 Private Label Store Manager (Woo + Elementor)",
-  "version": "0.4.3",
+  "version": "0.5.0",
   "author": "Z2HB team",
   "author_homepage": "https://zerotoherobusiness.com",
   "requires_php": "7.4",
@@ -10,7 +10,7 @@
   "sections": {
     "description": "Private label store manager for WooCommerce + Elementor.",
     "installation": "Upload the plugin ZIP via Plugins > Add New and activate.",
-    "changelog": "#### 0.4.3\n\n* Hardens the PLS product screen to prevent critical errors and simplifies attribute creation to label-only.\n* Keeps WooCommerce untouched while the modal editor handles packs, media, ingredients, and label options.\n\n#### 0.4.1\n\n* Conflict-free branch with updated release metadata for packaging.\n\n#### 0.4.0\n\n* Modern modal-first product builder with instant packs, media, and label options.\n* Ingredients and categories can be created directly inside PLS without Woo sync."
+    "changelog": "#### 0.5.0\n\n* Refreshes the product wizard with separate panels for descriptions, directions, skin types, and benefits plus softer styling.\n* Rebuilds attribute selection to toggle between existing options or new entries with price impacts tied to chosen values.\n* Streamlines label customization with design callouts, enforced label-guide defaults, and clearer upload expectations.\n\n#### 0.4.3\n\n* Hardens the PLS product screen to prevent critical errors and simplifies attribute creation to label-only.\n* Keeps WooCommerce untouched while the modal editor handles packs, media, ingredients, and label options.\n\n#### 0.4.1\n\n* Conflict-free branch with updated release metadata for packaging.\n\n#### 0.4.0\n\n* Modern modal-first product builder with instant packs, media, and label options.\n* Ingredients and categories can be created directly inside PLS without Woo sync."
   },
   "last_updated": "2026-01-10 10:00:00",
   "download_url": "https://github.com/centrino97/pls-private-label-store/releases/latest/download/pls-private-label-store.zip",

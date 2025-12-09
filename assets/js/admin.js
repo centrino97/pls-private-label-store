@@ -8,6 +8,7 @@
 
   $(function(){
     var stepOrder = ['general','data','ingredients','attributes','packs','label'];
+    var defaultLabelGuide = 'https://bodocibiophysics.com/label-guide/';
     var currentStep = 0;
 
     function updateStepControls(){
@@ -89,6 +90,7 @@
       $('#pls-ingredient-chips .pls-chip-row').remove();
       $('#pls-status').val('draft');
       $('#pls-attribute-rows').empty();
+      $('#pls-label-guide').val(defaultLabelGuide);
       goToStep('general');
       // reset pack grid
       $('#pls-pack-grid .pls-pack-row').each(function(idx){
@@ -113,14 +115,25 @@
         $(this).attr('name', 'attr_options['+index+']['+name+']');
       });
 
+      populateValueSelect(template.find('.pls-attr-select'));
+
       if (data.attribute_id){
         template.find('.pls-attr-select').val(data.attribute_id);
         populateValueSelect(template.find('.pls-attr-select'));
         template.find('.pls-attr-value').val(data.value_id || '');
+      } else if (data.attribute_label){
+        template.find('.pls-attr-select').val('__new__');
+        template.find('.pls-attr-new').val(data.attribute_label);
       }
-      if (data.attribute_label){ template.find('.pls-attr-new').val(data.attribute_label); }
-      if (data.value_label){ template.find('.pls-attr-value-new').val(data.value_label); }
+
+      if (data.value_label){
+        template.find('.pls-attr-value').val('__new__');
+        template.find('.pls-attr-value-new').val(data.value_label);
+      }
       if (typeof data.price !== 'undefined'){ template.find('.pls-attr-price').val(data.price); }
+
+      syncAttributeChoice(template);
+      syncValueState(template);
 
       $('#pls-attribute-rows').append(template);
     }
@@ -135,6 +148,43 @@
           valueSelect.append('<option value="'+val.id+'">'+val.label+'</option>');
         });
       }
+      valueSelect.append('<option value="__new__">Create new value</option>');
+    }
+
+    function syncAttributeChoice(row){
+      var attrSelect = row.find('.pls-attr-select');
+      var isNewAttr = attrSelect.val() === '__new__';
+      row.toggleClass('pls-attribute-row--new', isNewAttr);
+      row.find('.pls-attr-new-wrap').toggle(isNewAttr);
+      row.find('.pls-attr-value').prop('disabled', isNewAttr);
+      if (isNewAttr){
+        row.find('.pls-attr-value').val('');
+        row.find('.pls-attr-value-new-wrap').show();
+      } else {
+        populateValueSelect(attrSelect);
+      }
+      setPriceAvailability(row);
+    }
+
+    function syncValueState(row){
+      var valueSelect = row.find('.pls-attr-value');
+      var newValueWrap = row.find('.pls-attr-value-new-wrap');
+      var attrSelect = row.find('.pls-attr-select');
+      var isNewAttr = attrSelect.val() === '__new__';
+      if (isNewAttr){
+        valueSelect.val('').prop('disabled', true);
+        newValueWrap.show();
+      } else {
+        valueSelect.prop('disabled', false);
+        newValueWrap.toggle(valueSelect.val() === '__new__');
+      }
+      setPriceAvailability(row);
+    }
+
+    function setPriceAvailability(row){
+      var newLabel = row.find('.pls-attr-value-new').val() || '';
+      var hasValue = !!row.find('.pls-attr-value').val() || !!newLabel.trim();
+      row.find('.pls-attr-price').prop('disabled', !hasValue);
     }
 
     function populateModal(data){
@@ -201,8 +251,7 @@
       $('#pls-label-enabled').prop('checked', !!parseInt(data.label_enabled));
       $('#pls-label-price').val(data.label_price_per_unit || '');
       $('#pls-label-file').prop('checked', !!parseInt(data.label_requires_file));
-      $('#pls-label-helper').val(data.label_helper_text || '');
-      $('#pls-label-guide').val(data.label_guide_url || '');
+      $('#pls-label-guide').val(data.label_guide_url || defaultLabelGuide);
 
       if (Array.isArray(data.attributes)){
         data.attributes.forEach(function(row){ buildAttributeRow(row); });
@@ -265,7 +314,17 @@
     });
 
     $(document).on('change', '.pls-attr-select', function(){
-      populateValueSelect($(this));
+      var row = $(this).closest('.pls-attribute-row');
+      syncAttributeChoice(row);
+    });
+
+    $(document).on('change', '.pls-attr-value', function(){
+      var row = $(this).closest('.pls-attribute-row');
+      syncValueState(row);
+    });
+
+    $(document).on('input', '.pls-attr-value-new', function(){
+      setPriceAvailability($(this).closest('.pls-attribute-row'));
     });
 
     $(document).on('click', '.pls-attribute-remove', function(e){
