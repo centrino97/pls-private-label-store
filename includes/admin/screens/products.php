@@ -559,22 +559,15 @@ wp_localize_script(
                     <span class="pls-field-hint"><?php esc_html_e( 'Use Name | Short description. Entries are created instantly and appear above for selection.', 'pls-private-label-store' ); ?></span>
                   </label>
                   <p><button type="button" class="button" id="pls-push-new-ingredients" data-label="<?php esc_attr_e( 'Create missing in Ingredients base', 'pls-private-label-store' ); ?>" data-busy-label="<?php esc_attr_e( 'Creating…', 'pls-private-label-store' ); ?>"><?php esc_html_e( 'Create missing in Ingredients base', 'pls-private-label-store' ); ?></button></p>
-                  <div class="pls-key-ingredients">
-                    <div class="pls-section-heading">
-                      <p class="pls-label"><?php esc_html_e( 'Spotlight picks', 'pls-private-label-store' ); ?></p>
-                      <h4><?php esc_html_e( 'Key ingredients', 'pls-private-label-store' ); ?></h4>
-                      <p class="pls-subtle" id="pls-key-ingredients-hint"><?php esc_html_e( 'Select ingredients above to unlock the featured list.', 'pls-private-label-store' ); ?></p>
-                    </div>
-                    <div class="pls-chip-group" id="pls-key-ingredients"></div>
-                  </div>
                 </div>
                 <div class="pls-modal__section">
                   <div class="pls-section-heading">
-                    <p class="pls-label"><?php esc_html_e( 'Icon tips', 'pls-private-label-store' ); ?></p>
-                    <h3><?php esc_html_e( 'Ingredient previews', 'pls-private-label-store' ); ?></h3>
-                    <p class="pls-subtle"><?php esc_html_e( 'Upload ingredient icons from the Ingredients base screen for better previews.', 'pls-private-label-store' ); ?></p>
+                    <p class="pls-label"><?php esc_html_e( 'Spotlight picks', 'pls-private-label-store' ); ?></p>
+                    <h3><?php esc_html_e( 'Key ingredients', 'pls-private-label-store' ); ?></h3>
+                    <p class="pls-subtle" id="pls-key-ingredients-hint" data-ready-text="<?php esc_attr_e( 'Choose which ingredients to spotlight with icons.', 'pls-private-label-store' ); ?>"><?php esc_html_e( 'Select ingredients on the left to spotlight them here.', 'pls-private-label-store' ); ?></p>
                   </div>
-                  <p class="pls-subtle"><?php esc_html_e( 'Key ingredients can only be chosen from the items you select on the left to avoid mismatches.', 'pls-private-label-store' ); ?></p>
+                  <p class="pls-subtle"><?php esc_html_e( 'Pick your hero ingredients and keep their icons aligned with the base list.', 'pls-private-label-store' ); ?></p>
+                  <div class="pls-chip-group" id="pls-key-ingredients"></div>
                 </div>
               </div>
             </div>
@@ -593,6 +586,11 @@ wp_localize_script(
                     <div class="pls-attribute-row__grid">
                       <div class="pls-attribute-card">
                         <p class="pls-micro"><?php esc_html_e( 'Attribute', 'pls-private-label-store' ); ?></p>
+                        <label class="pls-field-stack">
+                          <span class="screen-reader-text"><?php esc_html_e( 'Search existing attributes', 'pls-private-label-store' ); ?></span>
+                          <input type="search" class="pls-attr-search" placeholder="<?php esc_attr_e( 'Search existing attributes', 'pls-private-label-store' ); ?>" />
+                          <span class="pls-field-hint"><?php esc_html_e( 'Start typing to jump to the attribute you already set up.', 'pls-private-label-store' ); ?></span>
+                        </label>
                         <select class="pls-attr-select" name="">
                           <option value=""><?php esc_html_e( 'Select attribute', 'pls-private-label-store' ); ?></option>
                           <option value="__new__"><?php esc_html_e( 'Create new attribute', 'pls-private-label-store' ); ?></option>
