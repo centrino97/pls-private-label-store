@@ -87,6 +87,9 @@ final class PLS_Admin_Menu {
             return;
         }
 
+        // Ensure media frames exist for featured/gallery pickers and icons.
+        wp_enqueue_media();
+
         wp_enqueue_style(
             'pls-admin',
             PLS_PLS_URL . 'assets/css/admin.css',

@@ -43,6 +43,19 @@ final class PLS_Taxonomies {
             $icon = get_term_meta( $term_id, 'pls_ingredient_icon', true );
         }
 
+        if ( ! $icon ) {
+            $icon = self::default_icon();
+        }
+
         return $icon ? esc_url_raw( $icon ) : '';
+    }
+
+    /**
+     * Default fallback icon for ingredients when no custom media is set.
+     *
+     * @return string
+     */
+    public static function default_icon() {
+        return PLS_PLS_URL . 'assets/img/ingredient-placeholder.svg';
     }
 }

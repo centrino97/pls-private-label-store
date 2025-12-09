@@ -69,9 +69,78 @@
           ingredientMap[key] = term;
         });
       }
+      var defaultIngredientIcon = (window.PLS_ProductAdmin && PLS_ProductAdmin.defaultIngredientIcon) || ($('#pls-ingredient-chips').data('default-icon') || '');
+
+      function renderIngredientLabel(term, inputName, isChecked){
+        var label = $('<label class="pls-chip-select pls-chip-select--rich"></label>');
+        var input = $('<input type="checkbox" />').attr('name', inputName || '').val(term.id);
+        if (isChecked) { input.prop('checked', true); }
+        var iconSrc = term.icon || defaultIngredientIcon;
+        var media = $('<span class="pls-chip-media"></span>');
+        if (iconSrc) {
+          media.append($('<img/>').attr('src', iconSrc).attr('alt', ''));
+        }
+        var copy = $('<span class="pls-chip-copy"></span>');
+        copy.append($('<strong></strong>').text(term.name || term.label || ('#'+term.id)));
+        if (term.short_description) {
+          copy.append($('<small></small>').text(term.short_description));
+        }
+        label.append(input).append(media).append(copy);
+        return label;
+      }
+
+      function renderIngredientList(list, selectedIds, keySelected){
+        var wrap = $('#pls-ingredient-chips');
+        if (!wrap.length) { return; }
+        var preserved = Array.isArray(selectedIds) ? selectedIds.map(function(id){ return parseInt(id,10); }) : wrap.find('input:checked').map(function(){ return parseInt($(this).val(), 10); }).get();
+        var preservedKey = Array.isArray(keySelected) ? keySelected.map(function(id){ return parseInt(id,10); }) : $('#pls-key-ingredients input:checked').map(function(){ return parseInt($(this).val(), 10); }).get();
+        wrap.empty();
+        list.forEach(function(term){
+          var normId = parseInt(term.term_id || term.id, 10);
+          if (!normId) { return; }
+          term.id = normId;
+          ingredientMap[normId] = term;
+          var chip = renderIngredientLabel(term, 'ingredient_ids[]', preserved.indexOf(normId) !== -1);
+          wrap.append(chip);
+        });
+        updateKeyIngredients(preservedKey);
+      }
+
+      function parseIngredientInput(raw){
+        var items = [];
+        if (!raw) { return items; }
+        raw.split(/\n|,/).forEach(function(line){
+          var piece = line.trim();
+          if (!piece) { return; }
+          var parts = piece.split('|');
+          var name = (parts.shift() || '').trim();
+          var short = parts.join('|').trim();
+          if (name) {
+            items.push({ name: name, short_description: short });
+          }
+        });
+        return items;
+      }
+
+      function formatPrice(val){
+        var num = parseFloat(val);
+        if (isNaN(num)) { return ''; }
+        return num.toFixed(2);
+      }
+
+      function setLabelState(enabled){
+        var isEnabled = !!enabled;
+        $('#pls-label-enabled').prop('checked', isEnabled);
+        $('#pls-label-price, #pls-label-file').prop('disabled', !isEnabled);
+        $('.pls-label-price').toggleClass('is-disabled', !isEnabled);
+      }
 
       var keyHintDefault = $('#pls-key-ingredients-hint').text();
       var keyHintReady = $('#pls-key-ingredients-hint').data('readyText') || 'Choose which ingredients to spotlight with icons.';
+
+      if (Object.keys(ingredientMap).length){
+        renderIngredientList(Object.values(ingredientMap));
+      }
 
       function resetModal(){
         var form = $('#pls-product-form');
@@ -87,7 +156,7 @@
         $('#pls-label-guide').val(defaultLabelGuide);
         $('#pls-label-price').val('');
         $('#pls-label-file').prop('checked', false);
-        $('#pls-label-enabled').val('1');
+        setLabelState(true);
         $('#pls-product-errors').hide().find('ul').empty();
         goToStep('general');
         updateKeyIngredients();
@@ -112,12 +181,8 @@
         }
         hint.text(keyHintReady);
         selectedIngredients.forEach(function(id){
-          var term = ingredientMap[id] || {};
-          var label = $('<label class="pls-chip-select"></label>');
-          var input = $('<input type="checkbox" name="key_ingredient_ids[]" />').val(id);
-          if (preserved.indexOf(id) !== -1){ input.prop('checked', true); }
-          label.append(input).append(' ' + (term.name || term.label || ('#'+id)));
-          wrap.append(label);
+          var term = ingredientMap[id] || { id: id, name: '#'+id, icon: defaultIngredientIcon };
+          wrap.append(renderIngredientLabel(term, 'key_ingredient_ids[]', preserved.indexOf(id) !== -1));
         });
       }
 
@@ -166,6 +231,21 @@
         });
       }
 
+      function hydrateAttributeValues(attrRow){
+        var attrId = parseInt(attrRow.find('.pls-attr-select').val(), 10);
+        if (!attrId) { return; }
+        var valuesWrap = attrRow.find('.pls-attribute-values');
+        valuesWrap.empty();
+        var presets = (attrMap[attrId] && Array.isArray(attrMap[attrId].values)) ? attrMap[attrId].values : [];
+        if (!presets.length){
+          addValueRow(attrRow, {});
+          return;
+        }
+        presets.forEach(function(val){
+          addValueRow(attrRow, { value_id: val.id, price: formatPrice(val.price || 0) });
+        });
+      }
+
       function addValueRow(attrRow, data){
         data = data || {};
         var template = attrRow.find('.pls-attribute-value-template .pls-attribute-value-row').first().clone();
@@ -178,15 +258,18 @@
           template.find('.pls-attr-value').val('__new__');
           template.find('.pls-attr-value-new').val(data.value_label);
         }
-        if (typeof data.price !== 'undefined'){ template.find('.pls-attr-price').val(data.price); }
+        if (typeof data.price !== 'undefined'){ template.find('.pls-attr-price').val(formatPrice(data.price)); }
         syncValueRow(template);
       }
 
-      function syncAttributeRow(attrRow){
+      function syncAttributeRow(attrRow, forceHydrate){
         var attrSelect = attrRow.find('.pls-attr-select');
         var isNewAttr = attrSelect.val() === '__new__';
         attrRow.toggleClass('pls-attribute-row--new', isNewAttr);
         attrRow.find('.pls-attr-new-wrap').toggle(isNewAttr);
+        if (!isNewAttr && (forceHydrate || !attrRow.find('.pls-attribute-value-row').length)){
+          hydrateAttributeValues(attrRow);
+        }
         attrRow.find('.pls-attribute-value-row').each(function(){ syncValueRow($(this)); });
       }
 
@@ -203,8 +286,6 @@
           template.find('.pls-attr-new').val(data.attribute_label);
         }
 
-        syncAttributeRow(template);
-
         var values = Array.isArray(data.values) ? data.values : [];
         if (!values.length && (data.value_id || data.value_label)){
           values = [{ value_id: data.value_id, value_label: data.value_label, price: data.price }];
@@ -212,6 +293,8 @@
         if (!values.length){ values.push({}); }
 
         values.forEach(function(row){ addValueRow(template, row); });
+
+        syncAttributeRow(template, false);
       }
 
       function populateModal(data){
@@ -236,7 +319,7 @@
             var row = data.pack_tiers[idx];
             if (!row) { return; }
             $(this).find('input[name*="[units]"]').val(row.units || '');
-            $(this).find('input[name*="[price]"]').val(row.price || '');
+            $(this).find('input[name*="[price]"]').val(formatPrice(row.price || ''));
             $(this).find('input[name*="[enabled]"]').prop('checked', !!parseInt(row.is_enabled || row.enabled || 0));
           });
         }
@@ -282,7 +365,8 @@
           $('#pls-gallery-preview').html(wrap);
         }
 
-        $('#pls-label-price').val(data.label_price_per_unit || '');
+        setLabelState(!!parseInt(data.label_enabled));
+        $('#pls-label-price').val(formatPrice(data.label_price_per_unit || ''));
         $('#pls-label-file').prop('checked', !!parseInt(data.label_requires_file));
         $('#pls-label-guide').val(data.label_guide_url || defaultLabelGuide);
 
@@ -334,6 +418,10 @@
       }
     });
 
+    $('#pls-label-enabled').on('change', function(){
+      setLabelState($(this).is(':checked'));
+    });
+
       $('#pls-add-attribute-row').on('click', function(e){
         e.preventDefault();
         buildAttributeRow();
@@ -341,7 +429,7 @@
 
       $(document).on('change', '.pls-attr-select', function(){
         var row = $(this).closest('.pls-attribute-row');
-        syncAttributeRow(row);
+        syncAttributeRow(row, true);
         renumberAttributeRows();
       });
 
@@ -390,9 +478,9 @@
       });
 
       $(document).on('blur', '.pls-price-input', function(){
-        var val = parseFloat($(this).val());
-        if (!isNaN(val)){
-          $(this).val(val.toFixed(2));
+        var formatted = formatPrice($(this).val());
+        if (formatted){
+          $(this).val(formatted);
         }
       });
 
@@ -471,6 +559,10 @@
       }
 
     function pickImage(callback, multiple){
+      if (typeof wp === 'undefined' || typeof wp.media !== 'function') {
+        console.error('wp.media is not available.');
+        return;
+      }
       var frame = wp.media({
         title: 'Select media',
         multiple: !!multiple
@@ -502,22 +594,32 @@
       }, true);
     });
 
-      $('#pls-push-new-ingredients').on('click', function(e){
-        e.preventDefault();
-        var raw = $('#pls-ingredients-input').val();
-        $('#pls-new-ingredients').val(raw);
-        if (raw){
-        var pills = raw.split(',').map(function(i){ return i.trim(); }).filter(Boolean);
-          if (pills.length){
-            var chipRow = $('<div class="pls-chip-row"></div>');
-            pills.forEach(function(p){ chipRow.append('<span class="pls-chip">'+p+'</span>'); });
-            $('#pls-ingredient-chips').append(chipRow);
-          }
+    $('#pls-push-new-ingredients').on('click', function(e){
+      e.preventDefault();
+      var raw = $('#pls-ingredients-input').val();
+      var parsed = parseIngredientInput(raw);
+      var button = $(this);
+      if (!parsed.length){ return; }
+      button.prop('disabled', true).text(button.data('busy-label') || 'Creating...');
+      $.post(ajaxurl, { action: 'pls_create_ingredients', nonce: (window.PLS_Admin ? PLS_Admin.nonce : ''), ingredients: parsed }, function(resp){
+        button.prop('disabled', false).text(button.data('label') || 'Create missing in Ingredients base');
+        if (!resp || !resp.success || !resp.data || !Array.isArray(resp.data.ingredients)){
+          alert((resp && resp.data && resp.data.message) ? resp.data.message : 'Could not create ingredients.');
+          return;
         }
+        if (resp.data.default_icon){
+          defaultIngredientIcon = resp.data.default_icon;
+        }
+        renderIngredientList(resp.data.ingredients);
+        $('#pls-ingredients-input').val('');
+      }).fail(function(){
+        button.prop('disabled', false).text(button.data('label') || 'Create missing in Ingredients base');
+        alert('Could not create ingredients.');
       });
+    });
 
-      $('#pls-product-form').on('submit', function(e){
-        $('#pls-new-ingredients').val($('#pls-ingredients-input').val());
+    $('#pls-product-form').on('submit', function(e){
+        $('#pls-new-ingredients').val('');
         var errors = validateProductForm();
         if (errors.length){
           e.preventDefault();
