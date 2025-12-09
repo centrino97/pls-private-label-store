@@ -14,9 +14,10 @@ if ( isset( $_POST['pls_ingredient_edit'] ) && check_admin_referer( 'pls_ingredi
             continue;
         }
 
-        $new_name = isset( $row['name'] ) ? sanitize_text_field( wp_unslash( $row['name'] ) ) : '';
-        $icon_id  = isset( $row['icon_id'] ) ? absint( $row['icon_id'] ) : 0;
-        $icon_url = $icon_id ? wp_get_attachment_url( $icon_id ) : '';
+        $new_name    = isset( $row['name'] ) ? sanitize_text_field( wp_unslash( $row['name'] ) ) : '';
+        $icon_id     = isset( $row['icon_id'] ) ? absint( $row['icon_id'] ) : 0;
+        $icon_url    = $icon_id ? wp_get_attachment_url( $icon_id ) : '';
+        $short_descr = isset( $row['short_desc'] ) ? sanitize_text_field( wp_unslash( $row['short_desc'] ) ) : '';
 
         if ( $new_name ) {
             wp_update_term( $term_id, 'pls_ingredient', array( 'name' => $new_name ) );
@@ -24,15 +25,17 @@ if ( isset( $_POST['pls_ingredient_edit'] ) && check_admin_referer( 'pls_ingredi
 
         update_term_meta( $term_id, 'pls_ingredient_icon_id', $icon_id );
         update_term_meta( $term_id, 'pls_ingredient_icon', $icon_url );
+        update_term_meta( $term_id, 'pls_ingredient_short_desc', $short_descr );
     }
 
     $notice = __( 'Ingredients updated.', 'pls-private-label-store' );
 }
 
 if ( isset( $_POST['pls_ingredient_add'] ) && check_admin_referer( 'pls_ingredient_add' ) ) {
-    $name    = isset( $_POST['ingredient_name'] ) ? sanitize_text_field( wp_unslash( $_POST['ingredient_name'] ) ) : '';
-    $icon_id = isset( $_POST['ingredient_icon_id'] ) ? absint( $_POST['ingredient_icon_id'] ) : 0;
-    $icon    = $icon_id ? wp_get_attachment_url( $icon_id ) : '';
+    $name        = isset( $_POST['ingredient_name'] ) ? sanitize_text_field( wp_unslash( $_POST['ingredient_name'] ) ) : '';
+    $icon_id     = isset( $_POST['ingredient_icon_id'] ) ? absint( $_POST['ingredient_icon_id'] ) : 0;
+    $icon        = $icon_id ? wp_get_attachment_url( $icon_id ) : '';
+    $short_descr = isset( $_POST['ingredient_short_desc'] ) ? sanitize_text_field( wp_unslash( $_POST['ingredient_short_desc'] ) ) : '';
 
     if ( $name ) {
         $slug  = sanitize_title( $name );
@@ -42,6 +45,7 @@ if ( isset( $_POST['pls_ingredient_add'] ) && check_admin_referer( 'pls_ingredie
             if ( ! is_wp_error( $result ) ) {
                 update_term_meta( $result['term_id'], 'pls_ingredient_icon_id', $icon_id );
                 update_term_meta( $result['term_id'], 'pls_ingredient_icon', $icon );
+                update_term_meta( $result['term_id'], 'pls_ingredient_short_desc', $short_descr );
                 $notice = __( 'Ingredient saved.', 'pls-private-label-store' );
                 $created_any = true;
             } else {
@@ -104,6 +108,10 @@ if ( is_wp_error( $ingredients ) ) {
         <input type="text" name="ingredient_name" class="regular-text" placeholder="Hyaluronic Acid" required />
       </div>
       <div class="pls-field-row">
+        <label><?php esc_html_e( 'Short description (optional)', 'pls-private-label-store' ); ?></label>
+        <input type="text" name="ingredient_short_desc" class="regular-text" placeholder="Instantly plumps skin with moisture" />
+      </div>
+      <div class="pls-field-row">
         <label><?php esc_html_e( 'Icon (optional)', 'pls-private-label-store' ); ?></label>
         <div class="pls-icon-picker" data-target="ingredient_icon_id">
           <div class="pls-icon-preview" id="ingredient_icon_preview"></div>
@@ -142,6 +150,7 @@ if ( is_wp_error( $ingredients ) ) {
               <tr>
                 <th><?php esc_html_e( 'Name', 'pls-private-label-store' ); ?></th>
                 <th><?php esc_html_e( 'Slug', 'pls-private-label-store' ); ?></th>
+                <th><?php esc_html_e( 'Short description', 'pls-private-label-store' ); ?></th>
                 <th><?php esc_html_e( 'Icon', 'pls-private-label-store' ); ?></th>
                 <th><?php esc_html_e( 'Preview', 'pls-private-label-store' ); ?></th>
               </tr>
@@ -151,10 +160,12 @@ if ( is_wp_error( $ingredients ) ) {
                   <?php
                   $icon    = PLS_Taxonomies::icon_for_term( $ingredient->term_id );
                   $icon_id = absint( get_term_meta( $ingredient->term_id, 'pls_ingredient_icon_id', true ) );
+                  $short   = get_term_meta( $ingredient->term_id, 'pls_ingredient_short_desc', true );
                   ?>
                   <tr>
                     <td><input type="text" name="ingredient_edit[<?php echo esc_attr( $ingredient->term_id ); ?>][name]" value="<?php echo esc_attr( $ingredient->name ); ?>" class="regular-text" /></td>
                     <td><code><?php echo esc_html( $ingredient->slug ); ?></code></td>
+                    <td><input type="text" name="ingredient_edit[<?php echo esc_attr( $ingredient->term_id ); ?>][short_desc]" value="<?php echo esc_attr( $short ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'Why it matters', 'pls-private-label-store' ); ?>" /></td>
                     <td>
                       <div class="pls-icon-picker" data-target="ingredient_edit_<?php echo esc_attr( $ingredient->term_id ); ?>">
                         <input type="hidden" name="ingredient_edit[<?php echo esc_attr( $ingredient->term_id ); ?>][icon_id]" id="ingredient_edit_<?php echo esc_attr( $ingredient->term_id ); ?>" value="<?php echo esc_attr( $icon_id ); ?>" />
@@ -164,8 +175,9 @@ if ( is_wp_error( $ingredients ) ) {
                     </td>
                     <td>
                       <div class="pls-icon-preview" <?php echo $icon ? '' : 'style="min-height:24px"'; ?> data-default="<?php echo esc_attr( $icon ); ?>">
-                        <?php if ( $icon ) : ?>
-                            <img src="<?php echo esc_url( $icon ); ?>" alt="" style="max-height:32px;" />
+                        <img src="<?php echo esc_url( $icon ); ?>" alt="" style="max-height:32px;" />
+                        <?php if ( $short ) : ?>
+                            <p class="description" style="margin:4px 0 0;"><?php echo esc_html( $short ); ?></p>
                         <?php endif; ?>
                       </div>
                     </td>

@@ -93,6 +93,7 @@ if ( isset( $_POST['pls_product_modal_save'] ) && check_admin_referer( 'pls_prod
                 'label'   => $term->name,
                 'icon'    => PLS_Taxonomies::icon_for_term( $term_id ),
                 'term_id' => $term_id,
+                'short_description' => sanitize_text_field( (string) get_term_meta( $term_id, 'pls_ingredient_short_desc', true ) ),
             );
         }
     }
@@ -182,9 +183,9 @@ if ( isset( $_POST['pls_product_modal_save'] ) && check_admin_referer( 'pls_prod
             'gallery_ids'          => $gallery_ids,
             'directions_text'      => isset( $_POST['directions_text'] ) ? sanitize_textarea_field( wp_unslash( $_POST['directions_text'] ) ) : '',
             'ingredients_list'     => $selected_ingredients ? implode( ',', $selected_ingredients ) : '',
-            'label_enabled'        => 1,
+            'label_enabled'        => isset( $_POST['label_enabled'] ) ? 1 : 0,
             'label_price_per_unit' => isset( $_POST['label_price_per_unit'] ) ? round( floatval( $_POST['label_price_per_unit'] ), 2 ) : 0,
-            'label_requires_file'  => isset( $_POST['label_requires_file'] ) ? 1 : 0,
+            'label_requires_file'  => ( isset( $_POST['label_enabled'] ) && isset( $_POST['label_requires_file'] ) ) ? 1 : 0,
             'label_helper_text'    => '',
             'label_guide_url'      => $label_guide_constant,
             'basics_json'          => $attr_rows,
@@ -219,15 +220,7 @@ $categories = array_filter(
     }
 );
 
-$ingredient_terms = get_terms(
-    array(
-        'taxonomy'   => 'pls_ingredient',
-        'hide_empty' => false,
-    )
-);
-if ( is_wp_error( $ingredient_terms ) ) {
-    $ingredient_terms = array();
-}
+$ingredient_terms = PLS_Admin_Ajax::ingredient_payload();
 
 $attr_terms   = PLS_Repo_Attributes::attrs_all();
 $attr_payload = array();
@@ -372,6 +365,7 @@ wp_localize_script(
         'skinOptions'  => $skin_options,
         'ingredients'  => $ingredient_terms,
         'attributes'   => $attr_payload,
+        'defaultIngredientIcon' => PLS_Taxonomies::default_icon(),
     )
 );
 ?>
@@ -502,11 +496,11 @@ wp_localize_script(
                     <p class="pls-subtle"><?php esc_html_e( 'Set the tone with a crisp overview and a thoughtful long-form note.', 'pls-private-label-store' ); ?></p>
                   </div>
                   <label><?php esc_html_e( 'Short description', 'pls-private-label-store' ); ?>
-                    <textarea name="short_description" id="pls-short-description" rows="3" placeholder="<?php esc_attr_e( 'E.g., A brightening daily serum that firms, hydrates, and boosts glow.', 'pls-private-label-store' ); ?>"></textarea>
+                    <textarea name="short_description" id="pls-short-description" class="pls-rich-textarea" rows="3" placeholder="<?php esc_attr_e( 'E.g., A brightening daily serum that firms, hydrates, and boosts glow.', 'pls-private-label-store' ); ?>"></textarea>
                     <span class="pls-field-hint"><?php esc_html_e( 'Keep this to 1-2 punchy sentences for cards and list views.', 'pls-private-label-store' ); ?></span>
                   </label>
                   <label><?php esc_html_e( 'Long description', 'pls-private-label-store' ); ?>
-                    <textarea name="long_description" id="pls-long-description" rows="8" placeholder="<?php esc_attr_e( "Tell the full story: formula philosophy, skin feel, routine placement, and standout results.", 'pls-private-label-store' ); ?>"></textarea>
+                    <textarea name="long_description" id="pls-long-description" class="pls-rich-textarea" rows="8" placeholder="<?php esc_attr_e( "Tell the full story: formula philosophy, skin feel, routine placement, and standout results.", 'pls-private-label-store' ); ?>"></textarea>
                     <span class="pls-field-hint"><?php esc_html_e( 'Use paragraphs, bullet points, or line breaks for richer storytelling.', 'pls-private-label-store' ); ?></span>
                   </label>
                 </div>
@@ -516,7 +510,7 @@ wp_localize_script(
                     <h3><?php esc_html_e( 'Directions for use', 'pls-private-label-store' ); ?></h3>
                     <p class="pls-subtle"><?php esc_html_e( 'Keep directions standalone so customers can spot them instantly.', 'pls-private-label-store' ); ?></p>
                   </div>
-                  <textarea name="directions_text" id="pls-directions" rows="5" placeholder="Apply to cleansed skin and press gently until absorbed."></textarea>
+                  <textarea name="directions_text" id="pls-directions" class="pls-rich-textarea" rows="5" placeholder="Apply to cleansed skin and press gently until absorbed."></textarea>
                 </div>
               </div>
               <div class="pls-modal__grid pls-bento-grid">
@@ -537,7 +531,7 @@ wp_localize_script(
                     <h3><?php esc_html_e( 'Benefits', 'pls-private-label-store' ); ?></h3>
                     <p class="pls-subtle"><?php esc_html_e( 'One per line keeps bullets sharp and readable.', 'pls-private-label-store' ); ?></p>
                   </div>
-                  <textarea name="benefits_text" id="pls-benefits" rows="5" placeholder="Hydrates instantly&#10;Boosts elasticity"></textarea>
+                  <textarea name="benefits_text" id="pls-benefits" class="pls-rich-textarea" rows="5" placeholder="Hydrates instantly&#10;Boosts elasticity"></textarea>
                 </div>
               </div>
             </div>
@@ -546,15 +540,25 @@ wp_localize_script(
               <div class="pls-modal__grid">
                 <div class="pls-modal__section">
                   <h3><?php esc_html_e( 'Ingredients', 'pls-private-label-store' ); ?></h3>
-                  <div class="pls-chip-group" id="pls-ingredient-chips">
+                  <div class="pls-chip-group pls-ingredient-list" id="pls-ingredient-chips" data-default-icon="<?php echo esc_attr( PLS_Taxonomies::default_icon() ); ?>">
                     <?php foreach ( $ingredient_terms as $term ) : ?>
-                        <label class="pls-chip-select"><input type="checkbox" name="ingredient_ids[]" value="<?php echo esc_attr( $term->term_id ); ?>" /> <?php echo esc_html( $term->name ); ?></label>
+                        <label class="pls-chip-select pls-chip-select--rich" data-ingredient-id="<?php echo esc_attr( $term['id'] ); ?>">
+                          <input type="checkbox" name="ingredient_ids[]" value="<?php echo esc_attr( $term['id'] ); ?>" />
+                          <span class="pls-chip-media"><?php if ( ! empty( $term['icon'] ) ) : ?><img src="<?php echo esc_url( $term['icon'] ); ?>" alt="" /><?php endif; ?></span>
+                          <span class="pls-chip-copy">
+                            <strong><?php echo esc_html( $term['name'] ); ?></strong>
+                            <?php if ( ! empty( $term['short_description'] ) ) : ?>
+                                <small><?php echo esc_html( $term['short_description'] ); ?></small>
+                            <?php endif; ?>
+                          </span>
+                        </label>
                     <?php endforeach; ?>
                   </div>
-                  <label><?php esc_html_e( 'Add new ingredients (comma to separate)', 'pls-private-label-store' ); ?>
-                    <input type="text" id="pls-ingredients-input" placeholder="Vitamin C, Retinol" />
+                  <label class="pls-field-stack"><?php esc_html_e( 'Add new ingredients (one per line)', 'pls-private-label-store' ); ?>
+                    <textarea id="pls-ingredients-input" class="pls-rich-textarea" rows="3" placeholder="Vitamin C | Antioxidant brightener&#10;Sea Moss | Mineral-rich hydrator"></textarea>
+                    <span class="pls-field-hint"><?php esc_html_e( 'Use Name | Short description. Entries are created instantly and appear above for selection.', 'pls-private-label-store' ); ?></span>
                   </label>
-                  <p><button type="button" class="button" id="pls-push-new-ingredients"><?php esc_html_e( 'Create missing in Ingredients base', 'pls-private-label-store' ); ?></button></p>
+                  <p><button type="button" class="button" id="pls-push-new-ingredients" data-label="<?php esc_attr_e( 'Create missing in Ingredients base', 'pls-private-label-store' ); ?>" data-busy-label="<?php esc_attr_e( 'Creating…', 'pls-private-label-store' ); ?>"><?php esc_html_e( 'Create missing in Ingredients base', 'pls-private-label-store' ); ?></button></p>
                   <div class="pls-key-ingredients">
                     <div class="pls-section-heading">
                       <p class="pls-label"><?php esc_html_e( 'Spotlight picks', 'pls-private-label-store' ); ?></p>
@@ -665,13 +669,13 @@ wp_localize_script(
                   <p class="pls-subtle"><?php esc_html_e( 'Decide how labels are applied, priced, and when artwork is collected.', 'pls-private-label-store' ); ?></p>
                 </div>
                 <div class="pls-label-flex">
-                  <input type="hidden" name="label_enabled" id="pls-label-enabled" value="1" />
-                  <div class="pls-toggle-card pls-toggle-card--locked">
+                  <label class="pls-toggle-card pls-toggle-card--switch">
+                    <input type="checkbox" name="label_enabled" id="pls-label-enabled" value="1" checked />
                     <div>
-                      <strong><?php esc_html_e( 'Label application is always offered', 'pls-private-label-store' ); ?></strong>
-                      <p class="pls-subtle"><?php esc_html_e( 'Every product created here can include label application during checkout.', 'pls-private-label-store' ); ?></p>
+                      <strong><?php esc_html_e( 'Offer label application for this product', 'pls-private-label-store' ); ?></strong>
+                      <p class="pls-subtle"><?php esc_html_e( 'Turn this off when labels are not available so the option stays hidden.', 'pls-private-label-store' ); ?></p>
                     </div>
-                  </div>
+                  </label>
                   <div class="pls-label-price">
                     <label><?php esc_html_e( 'Price per unit for application', 'pls-private-label-store' ); ?>
                       <input type="number" step="0.01" class="pls-price-input" name="label_price_per_unit" id="pls-label-price" placeholder="0.00" />

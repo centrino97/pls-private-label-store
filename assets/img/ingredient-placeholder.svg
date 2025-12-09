@@ -1,0 +1,14 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ingredient placeholder">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e0e7ff"/>
+      <stop offset="100%" stop-color="#c7d2fe"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="56" height="56" rx="14" fill="url(#g)"/>
+  <path d="M32 18c-7.18 0-13 4.86-13 10.86 0 3.36 1.87 6.4 4.93 8.38-.26 1.53-1.12 3.22-2.46 5.02-.43.58-.25 1.4.38 1.76.46.26 1.06.21 1.47-.13 1.98-1.59 3.55-3.35 4.67-5.14 1.32.3 2.68.46 4.01.46 7.18 0 13-4.86 13-10.86C45 22.86 39.18 18 32 18z" fill="#1e3a8a" opacity="0.3"/>
+  <path d="M32 24c-4.71 0-8.5 2.98-8.5 6.64 0 1.64.73 3.15 1.96 4.34l1.11 1.07-.4 1.53c-.13.49.05 1.01.45 1.31.39.3.93.33 1.36.08l2.06-1.21 1.66.26c.79.12 1.6.19 2.4.19 4.71 0 8.5-2.98 8.5-6.64C42 26.98 36.71 24 32 24z" fill="#1d4ed8"/>
+  <circle cx="27" cy="31" r="1.6" fill="#e0f2fe"/>
+  <circle cx="32" cy="31" r="1.6" fill="#e0f2fe"/>
+  <circle cx="37" cy="31" r="1.6" fill="#e0f2fe"/>
+</svg>
