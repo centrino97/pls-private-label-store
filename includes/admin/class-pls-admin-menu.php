@@ -17,49 +17,65 @@ final class PLS_Admin_Menu {
     }
 
     public static function register_menu() {
-        if ( ! class_exists( 'WooCommerce' ) ) {
-            // Still allow configuration pages, but place under Tools if Woo absent.
-            add_management_page(
-                'Private Label (PLS)',
-                'Private Label (PLS)',
-                'manage_options',
-                'pls-private-label',
-                array( __CLASS__, 'render_dashboard' )
-            );
-            return;
-        }
+        add_menu_page(
+            __( 'Private Label Store', 'pls-private-label-store' ),
+            __( 'PLS', 'pls-private-label-store' ),
+            'manage_woocommerce',
+            'pls-dashboard',
+            array( __CLASS__, 'render_dashboard' ),
+            'dashicons-products',
+            55
+        );
 
         add_submenu_page(
-            'woocommerce',
-            'Private Label (PLS)',
-            'Private Label (PLS)',
+            'pls-dashboard',
+            __( 'PLS Dashboard', 'pls-private-label-store' ),
+            __( 'Dashboard', 'pls-private-label-store' ),
             'manage_woocommerce',
-            'pls-private-label',
+            'pls-dashboard',
             array( __CLASS__, 'render_dashboard' )
         );
 
         add_submenu_page(
-            'woocommerce',
-            'PLS – Products & Packs',
-            'PLS – Products & Packs',
+            'pls-dashboard',
+            __( 'PLS – Products & Packs', 'pls-private-label-store' ),
+            __( 'Products', 'pls-private-label-store' ),
             PLS_Capabilities::CAP_PRODUCTS,
             'pls-products',
             array( __CLASS__, 'render_products' )
         );
 
         add_submenu_page(
-            'woocommerce',
-            'PLS – Attributes & Swatches',
-            'PLS – Attributes & Swatches',
+            'pls-dashboard',
+            __( 'PLS – Categories', 'pls-private-label-store' ),
+            __( 'Categories', 'pls-private-label-store' ),
+            PLS_Capabilities::CAP_PRODUCTS,
+            'pls-categories',
+            array( __CLASS__, 'render_categories' )
+        );
+
+        add_submenu_page(
+            'pls-dashboard',
+            __( 'PLS – Attributes & Swatches', 'pls-private-label-store' ),
+            __( 'Attributes', 'pls-private-label-store' ),
             PLS_Capabilities::CAP_ATTRS,
             'pls-attributes',
             array( __CLASS__, 'render_attributes' )
         );
 
         add_submenu_page(
-            'woocommerce',
-            'PLS – Bundles & Deals',
-            'PLS – Bundles & Deals',
+            'pls-dashboard',
+            __( 'PLS – Ingredients', 'pls-private-label-store' ),
+            __( 'Ingredients', 'pls-private-label-store' ),
+            PLS_Capabilities::CAP_PRODUCTS,
+            'pls-ingredients',
+            array( __CLASS__, 'render_ingredients' )
+        );
+
+        add_submenu_page(
+            'pls-dashboard',
+            __( 'PLS – Bundles & Deals', 'pls-private-label-store' ),
+            __( 'Bundles', 'pls-private-label-store' ),
             PLS_Capabilities::CAP_BUNDLES,
             'pls-bundles',
             array( __CLASS__, 'render_bundles' )
@@ -107,7 +123,15 @@ final class PLS_Admin_Menu {
         require PLS_PLS_DIR . 'includes/admin/screens/attributes.php';
     }
 
+    public static function render_ingredients() {
+        require PLS_PLS_DIR . 'includes/admin/screens/ingredients.php';
+    }
+
     public static function render_bundles() {
         require PLS_PLS_DIR . 'includes/admin/screens/bundles.php';
+    }
+
+    public static function render_categories() {
+        require PLS_PLS_DIR . 'includes/admin/screens/categories.php';
     }
 }
