@@ -13,11 +13,11 @@ final class PLS_WC_Sync {
 
     public static function pack_tier_definitions() {
         return array(
-            'trial'       => 'Trial',
-            'starter'     => 'Starter',
-            'brand_entry' => 'Brand Entry',
-            'growth'      => 'Growth',
-            'wholesale'   => 'Wholesale',
+            'u50'   => '50 units',
+            'u100'  => '100 units',
+            'u250'  => '250 units',
+            'u500'  => '500 units',
+            'u1000' => '1000 units',
         );
     }
 

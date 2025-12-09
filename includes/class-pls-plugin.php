@@ -54,6 +54,7 @@ final class PLS_Plugin {
         require_once PLS_PLS_DIR . 'includes/core/class-pls-admin-notices.php';
         require_once PLS_PLS_DIR . 'includes/core/class-pls-logger.php';
         require_once PLS_PLS_DIR . 'includes/core/class-pls-capabilities.php';
+        require_once PLS_PLS_DIR . 'includes/core/class-pls-taxonomies.php';
 
         require_once PLS_PLS_DIR . 'includes/admin/class-pls-admin-menu.php';
 
@@ -81,6 +82,7 @@ final class PLS_Plugin {
 
         PLS_Admin_Notices::init();
         PLS_Capabilities::init();
+        PLS_Taxonomies::init();
         PLS_Admin_Menu::init();
         PLS_Ajax::init();
         PLS_Elementor::init();

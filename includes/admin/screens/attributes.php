@@ -3,10 +3,6 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 $notice = '';
 
-if ( isset( $_POST['pls_attrs_sync'] ) && check_admin_referer( 'pls_attrs_sync' ) ) {
-    $notice = PLS_WC_Sync::sync_attributes_from_pls();
-}
-
 if ( isset( $_POST['pls_attr_add'] ) && check_admin_referer( 'pls_attr_add' ) ) {
     $attr_key = isset( $_POST['attr_key'] ) ? sanitize_key( wp_unslash( $_POST['attr_key'] ) ) : '';
     $label    = isset( $_POST['label'] ) ? sanitize_text_field( wp_unslash( $_POST['label'] ) ) : '';
@@ -86,12 +82,6 @@ $attrs = PLS_Repo_Attributes::attrs_all();
   </form>
 
   <h2><?php esc_html_e( 'Attributes', 'pls-private-label-store' ); ?></h2>
-  <form method="post" style="margin-bottom:15px;">
-    <?php wp_nonce_field( 'pls_attrs_sync' ); ?>
-    <input type="hidden" name="pls_attrs_sync" value="1" />
-    <button class="button">Sync Attributes to WooCommerce</button>
-  </form>
-
   <?php if ( empty( $attrs ) ) : ?>
       <p><?php esc_html_e( 'No attributes yet.', 'pls-private-label-store' ); ?></p>
   <?php else : ?>
@@ -99,7 +89,7 @@ $attrs = PLS_Repo_Attributes::attrs_all();
           <?php $values = PLS_Repo_Attributes::values_for_attr( $attr->id ); ?>
           <div class="card" style="padding:15px; margin-bottom:20px;">
             <h3><?php echo esc_html( $attr->label ); ?> <code><?php echo esc_html( $attr->attr_key ); ?></code></h3>
-            <p><?php esc_html_e( 'Variation:', 'pls-private-label-store' ); ?> <?php echo $attr->is_variation ? esc_html__( 'Yes', 'pls-private-label-store' ) : esc_html__( 'No', 'pls-private-label-store' ); ?> | <?php esc_html_e( 'Woo attribute ID:', 'pls-private-label-store' ); ?> <?php echo $attr->wc_attribute_id ? esc_html( $attr->wc_attribute_id ) : '—'; ?></p>
+            <p><?php esc_html_e( 'Variation:', 'pls-private-label-store' ); ?> <?php echo $attr->is_variation ? esc_html__( 'Yes', 'pls-private-label-store' ) : esc_html__( 'No', 'pls-private-label-store' ); ?></p>
 
             <table class="widefat striped" style="margin-top:10px;">
               <thead>

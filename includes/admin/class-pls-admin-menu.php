@@ -65,6 +65,15 @@ final class PLS_Admin_Menu {
 
         add_submenu_page(
             'pls-dashboard',
+            __( 'PLS – Ingredients', 'pls-private-label-store' ),
+            __( 'Ingredients', 'pls-private-label-store' ),
+            PLS_Capabilities::CAP_PRODUCTS,
+            'pls-ingredients',
+            array( __CLASS__, 'render_ingredients' )
+        );
+
+        add_submenu_page(
+            'pls-dashboard',
             __( 'PLS – Bundles & Deals', 'pls-private-label-store' ),
             __( 'Bundles', 'pls-private-label-store' ),
             PLS_Capabilities::CAP_BUNDLES,
@@ -112,6 +121,10 @@ final class PLS_Admin_Menu {
 
     public static function render_attributes() {
         require PLS_PLS_DIR . 'includes/admin/screens/attributes.php';
+    }
+
+    public static function render_ingredients() {
+        require PLS_PLS_DIR . 'includes/admin/screens/ingredients.php';
     }
 
     public static function render_bundles() {
