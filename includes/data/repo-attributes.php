@@ -8,20 +8,21 @@ final class PLS_Repo_Attributes {
     public static function attrs_all() {
         global $wpdb;
         $table = PLS_Repositories::table( 'attribute' );
-        return $wpdb->get_results( "SELECT * FROM {$table} ORDER BY sort_order ASC, id ASC" );
+        return $wpdb->get_results( "SELECT * FROM {$table} ORDER BY id DESC" );
     }
 
     public static function insert_attr( $data ) {
         global $wpdb;
-        $table = PLS_Repositories::table( 'attribute' );
+        $table    = PLS_Repositories::table( 'attribute' );
+        $attr_key = ! empty( $data['attr_key'] ) ? $data['attr_key'] : self::generate_unique_attr_key( $data['label'] );
 
         $wpdb->insert(
             $table,
             array(
-                'attr_key'    => $data['attr_key'],
-                'label'       => $data['label'],
-                'is_variation'=> $data['is_variation'],
-                'sort_order'  => $data['sort_order'],
+                'attr_key'     => $attr_key,
+                'label'        => $data['label'],
+                'is_variation' => ! empty( $data['is_variation'] ) ? 1 : 0,
+                'sort_order'   => isset( $data['sort_order'] ) ? absint( $data['sort_order'] ) : 0,
             ),
             array( '%s', '%s', '%d', '%d' )
         );
@@ -47,7 +48,7 @@ final class PLS_Repo_Attributes {
         $table = PLS_Repositories::table( 'attribute_value' );
         return $wpdb->get_results(
             $wpdb->prepare(
-                "SELECT * FROM {$table} WHERE attribute_id = %d ORDER BY sort_order ASC, id ASC",
+                "SELECT * FROM {$table} WHERE attribute_id = %d ORDER BY id DESC",
                 $attribute_id
             )
         );
@@ -55,18 +56,19 @@ final class PLS_Repo_Attributes {
 
     public static function insert_value( $data ) {
         global $wpdb;
-        $table = PLS_Repositories::table( 'attribute_value' );
+        $table     = PLS_Repositories::table( 'attribute_value' );
+        $value_key = ! empty( $data['value_key'] ) ? $data['value_key'] : self::generate_unique_value_key( $data['attribute_id'], $data['label'] );
 
         $wpdb->insert(
             $table,
             array(
                 'attribute_id' => $data['attribute_id'],
-                'value_key'    => $data['value_key'],
+                'value_key'    => $value_key,
                 'label'        => $data['label'],
-                'seo_slug'     => $data['seo_slug'],
-                'seo_title'    => $data['seo_title'],
-                'seo_description' => $data['seo_description'],
-                'sort_order'   => $data['sort_order'],
+                'seo_slug'     => isset( $data['seo_slug'] ) ? $data['seo_slug'] : '',
+                'seo_title'    => isset( $data['seo_title'] ) ? $data['seo_title'] : '',
+                'seo_description' => isset( $data['seo_description'] ) ? $data['seo_description'] : '',
+                'sort_order'   => isset( $data['sort_order'] ) ? absint( $data['sort_order'] ) : 0,
             ),
             array( '%d', '%s', '%s', '%s', '%s', '%s', '%d' )
         );
@@ -135,5 +137,49 @@ final class PLS_Repo_Attributes {
         );
 
         return $wpdb->insert_id;
+    }
+
+    private static function generate_unique_attr_key( $label ) {
+        global $wpdb;
+        $base = sanitize_title( $label );
+        if ( ! $base ) {
+            $base = 'attr';
+        }
+
+        $table    = PLS_Repositories::table( 'attribute' );
+        $candidate = $base;
+        $i         = 2;
+
+        while ( $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$table} WHERE attr_key = %s", $candidate ) ) ) {
+            $candidate = $base . '-' . $i;
+            $i++;
+        }
+
+        return $candidate;
+    }
+
+    private static function generate_unique_value_key( $attribute_id, $label ) {
+        global $wpdb;
+        $base = sanitize_title( $label );
+        if ( ! $base ) {
+            $base = 'option';
+        }
+
+        $table     = PLS_Repositories::table( 'attribute_value' );
+        $candidate = $base;
+        $i         = 2;
+
+        while ( $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT id FROM {$table} WHERE attribute_id = %d AND value_key = %s",
+                $attribute_id,
+                $candidate
+            )
+        ) ) {
+            $candidate = $base . '-' . $i;
+            $i++;
+        }
+
+        return $candidate;
     }
 }
