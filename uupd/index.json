@@ -1,7 +1,7 @@
 {
   "slug": "pls-private-label-store",
   "name": "PLS \u2013 Private Label Store Manager (Woo + Elementor)",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "author": "Z2HB team",
   "author_homepage": "https://zerotoherobusiness.com",
   "requires_php": "7.4",
@@ -10,9 +10,9 @@
   "sections": {
     "description": "Private label store manager for WooCommerce + Elementor.",
     "installation": "Upload the plugin ZIP via Plugins > Add New and activate.",
-    "changelog": "#### 0.1.4\n\n* First test update from GitHub.\n* Changed plugin author to Z2HB team."
+    "changelog": "#### 0.2.0\n\n* 2nd test update from GitHub.\n* Changed plugin author to Z2HB team."
   },
-  "last_updated": "2025-12-07 15:30:00",
+  "last_updated": "2025-12-09 15:30:00",
   "download_url": "https://github.com/centrino97/pls-private-label-store/releases/latest/download/pls-private-label-store.zip",
   "banners": {},
   "icons": {}
