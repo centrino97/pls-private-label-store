@@ -22,6 +22,7 @@
 .pls-card--panel{padding:20px}
 .pls-pill{background:#1d4ed8;color:#fff;border-radius:999px;padding:4px 10px;font-size:12px}
 .pls-field-row{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.pls-field-stack{display:flex;flex-direction:column;gap:8px}
 .pls-field-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-bottom:12px}
 
 .pls-modal{position:fixed;inset:0;background:rgba(15,23,42,0.4);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;padding:20px;z-index:99999}
@@ -74,9 +75,15 @@ body.pls-modal-open{overflow:hidden}
 .pls-toggle-card{display:flex;gap:10px;align-items:flex-start;border:1px solid #d8e3f2;border-radius:12px;padding:12px 14px;background:#fff;box-shadow:0 10px 24px rgba(0,0,0,0.03)}
 .pls-toggle-card input{margin-top:3px}
 .pls-label-flex{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;align-items:stretch;margin-top:6px}
+.pls-toggle-card--locked{border-style:solid;border-color:#2563eb;color:#0f172a;background:linear-gradient(180deg,#eef2ff,#e0e7ff)}
 .pls-label-price{border:1px solid #e2e8f0;border-radius:12px;padding:12px;background:linear-gradient(180deg,#fff,#f8fafc)}
 .pls-label-price label{display:flex;flex-direction:column;gap:6px;margin:0}
 .pls-design-callout{margin-top:14px;padding:14px 16px;border-radius:14px;background:linear-gradient(135deg,#f3f7ff,#eef2ff);display:flex;align-items:flex-start;justify-content:space-between;gap:12px;border:1px solid #d6e3ff}
 .pls-design-callout h4{margin:2px 0 6px}
 .pls-guide-link p{margin:0}
 .pls-label-flex .pls-toggle-card strong{display:block;margin-bottom:2px}
+.pls-attribute-values{display:flex;flex-direction:column;gap:10px}
+.pls-attribute-value-row{border:1px dashed #d8e3f2;border-radius:10px;padding:10px;background:#fff}
+.pls-field-hint{display:block;color:#64748b;font-size:12px;margin-top:4px}
+.pls-key-ingredients{margin-top:12px}
+.pls-form-errors{margin-bottom:12px}
