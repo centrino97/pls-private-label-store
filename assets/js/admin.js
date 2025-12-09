@@ -433,6 +433,20 @@
         renumberAttributeRows();
       });
 
+      $(document).on('input', '.pls-attr-search', function(){
+        var query = ($(this).val() || '').toLowerCase();
+        var row = $(this).closest('.pls-attribute-row');
+        var select = row.find('.pls-attr-select');
+        if (!select.length || !query){ return; }
+        var match = select.find('option').filter(function(){
+          var val = $(this).val();
+          return val && val !== '__new__' && $(this).text().toLowerCase().indexOf(query) !== -1;
+        }).first();
+        if (match.length){
+          select.val(match.val()).trigger('change');
+        }
+      });
+
       $(document).on('change', '.pls-attr-value', function(){
         var row = $(this).closest('.pls-attribute-value-row');
         syncValueRow(row);
