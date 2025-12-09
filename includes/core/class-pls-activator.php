@@ -60,6 +60,30 @@ final class PLS_Activator {
             KEY tier_key (tier_key)
         ) $charset_collate;";
 
+        $tables[] = "CREATE TABLE {$p}pls_product_profile (
+            id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            base_product_id BIGINT(20) UNSIGNED NOT NULL,
+            short_description TEXT NULL,
+            long_description LONGTEXT NULL,
+            featured_image_id BIGINT(20) UNSIGNED NULL,
+            gallery_ids TEXT NULL,
+            basics_json LONGTEXT NULL,
+            skin_types_json LONGTEXT NULL,
+            benefits_json LONGTEXT NULL,
+            key_ingredients_json LONGTEXT NULL,
+            directions_text LONGTEXT NULL,
+            ingredients_list LONGTEXT NULL,
+            label_enabled TINYINT(1) NOT NULL DEFAULT 0,
+            label_price_per_unit DECIMAL(18,2) NULL,
+            label_requires_file TINYINT(1) NOT NULL DEFAULT 0,
+            label_helper_text TEXT NULL,
+            label_guide_url VARCHAR(255) NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY base_product_id (base_product_id)
+        ) $charset_collate;";
+
         $tables[] = "CREATE TABLE {$p}pls_bundle (
             id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
             wc_product_id BIGINT(20) UNSIGNED NULL,

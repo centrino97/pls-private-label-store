@@ -61,6 +61,7 @@ final class PLS_Plugin {
         require_once PLS_PLS_DIR . 'includes/data/repo-base-product.php';
         require_once PLS_PLS_DIR . 'includes/data/repo-pack-tier.php';
         require_once PLS_PLS_DIR . 'includes/data/repo-attributes.php';
+        require_once PLS_PLS_DIR . 'includes/data/repo-product-profile.php';
         require_once PLS_PLS_DIR . 'includes/wc/class-pls-wc-sync.php';
 
         require_once PLS_PLS_DIR . 'includes/frontend/class-pls-ajax.php';
@@ -83,6 +84,16 @@ final class PLS_Plugin {
         PLS_Admin_Menu::init();
         PLS_Ajax::init();
         PLS_Elementor::init();
+
+        $this->maybe_upgrade();
+    }
+
+    private function maybe_upgrade() {
+        $stored = get_option( 'pls_pls_version' );
+        if ( $stored !== PLS_PLS_VERSION ) {
+            require_once PLS_PLS_DIR . 'includes/core/class-pls-activator.php';
+            PLS_Activator::activate();
+        }
     }
 
     /**

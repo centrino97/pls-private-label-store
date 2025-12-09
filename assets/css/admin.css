@@ -3,3 +3,9 @@
 .pls-wrap .pls-card h2{margin-top:0}
 .pls-muted{opacity:.75}
 .pls-note{padding:10px;border:1px dashed #bbb;border-radius:8px}
+.pls-tab-panel{display:none;background:#fff;border:1px solid #dcdcde;border-radius:8px;padding:16px;margin-top:10px}
+.pls-tab-panel.is-active{display:block}
+.pls-repeater{margin:16px 0;padding:12px;border:1px solid #e1e1e1;border-radius:8px;background:#fbfbfb}
+.pls-repeater__row{display:flex;gap:8px;margin-bottom:10px;align-items:center}
+.pls-repeater__row input[type=text]{width:100%}
+.pls-repeater__template{display:none}
