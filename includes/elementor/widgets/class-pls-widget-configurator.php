@@ -49,8 +49,8 @@ final class PLS_Widget_Configurator extends Widget_Base {
         $this->add_control(
             'show_pack_tiers',
             array(
-                'label' => __( 'Show pack tiers', 'pls-private-label-store' ),
-                'type'  => Controls_Manager::SWITCHER,
+                'label'   => __( 'Show pack tiers', 'pls-private-label-store' ),
+                'type'    => Controls_Manager::SWITCHER,
                 'default' => 'yes',
             )
         );
@@ -58,8 +58,8 @@ final class PLS_Widget_Configurator extends Widget_Base {
         $this->add_control(
             'show_swatches',
             array(
-                'label' => __( 'Show swatches', 'pls-private-label-store' ),
-                'type'  => Controls_Manager::SWITCHER,
+                'label'   => __( 'Show swatches', 'pls-private-label-store' ),
+                'type'    => Controls_Manager::SWITCHER,
                 'default' => 'yes',
             )
         );
@@ -100,7 +100,7 @@ final class PLS_Widget_Configurator extends Widget_Base {
                 <strong><?php echo esc_html__( 'Pack tiers', 'pls-private-label-store' ); ?></strong>
                 <div class="pls-chips">
                     <?php foreach ( $pack_tiers as $slug ) :
-                        $term = get_term_by( 'slug', $slug, 'pa_pack-tier' );
+                        $term  = get_term_by( 'slug', $slug, 'pa_pack-tier' );
                         $label = $term ? $term->name : $slug;
                         ?>
                         <button type="button" class="pls-chip pls-tier-button" data-term="<?php echo esc_attr( $slug ); ?>"><?php echo esc_html( $label ); ?></button>
