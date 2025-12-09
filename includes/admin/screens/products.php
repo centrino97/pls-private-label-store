@@ -121,6 +121,45 @@ if ( isset( $_POST['pls_product_modal_save'] ) && check_admin_referer( 'pls_prod
         );
     }
 
+    $attr_rows_input = isset( $_POST['attr_options'] ) && is_array( $_POST['attr_options'] ) ? $_POST['attr_options'] : array();
+    $attr_rows       = array();
+
+    foreach ( $attr_rows_input as $attr_row ) {
+        $attr_id     = isset( $attr_row['attribute_id'] ) ? absint( $attr_row['attribute_id'] ) : 0;
+        $value_id    = isset( $attr_row['value_id'] ) ? absint( $attr_row['value_id'] ) : 0;
+        $attr_label  = isset( $attr_row['attribute_label'] ) ? sanitize_text_field( wp_unslash( $attr_row['attribute_label'] ) ) : '';
+        $value_label = isset( $attr_row['value_label'] ) ? sanitize_text_field( wp_unslash( $attr_row['value_label'] ) ) : '';
+        $price       = isset( $attr_row['price'] ) ? floatval( $attr_row['price'] ) : 0;
+
+        if ( ! $attr_id && $attr_label ) {
+            $attr_id = PLS_Repo_Attributes::insert_attr(
+                array(
+                    'label'        => $attr_label,
+                    'is_variation' => 1,
+                )
+            );
+        }
+
+        if ( ! $value_id && $attr_id && $value_label ) {
+            $value_id = PLS_Repo_Attributes::insert_value(
+                array(
+                    'attribute_id' => $attr_id,
+                    'label'        => $value_label,
+                )
+            );
+        }
+
+        if ( $attr_id && $value_id ) {
+            $attr_rows[] = array(
+                'attribute_id'    => $attr_id,
+                'attribute_label' => $attr_label,
+                'value_id'        => $value_id,
+                'value_label'     => $value_label,
+                'price'           => $price,
+            );
+        }
+    }
+
     if ( $base_id ) {
         $profile_data = array(
             'short_description'     => isset( $_POST['short_description'] ) ? sanitize_textarea_field( wp_unslash( $_POST['short_description'] ) ) : '',
@@ -225,7 +264,7 @@ if ( isset( $_POST['pls_product_modal_save'] ) && check_admin_referer( 'pls_prod
         'label_requires_file'  => isset( $_POST['label_requires_file'] ) ? 1 : 0,
         'label_helper_text'    => isset( $_POST['label_helper_text'] ) ? sanitize_textarea_field( wp_unslash( $_POST['label_helper_text'] ) ) : '',
         'label_guide_url'      => isset( $_POST['label_guide_url'] ) ? esc_url_raw( wp_unslash( $_POST['label_guide_url'] ) ) : '',
-        'basics_json'          => array(),
+        'basics_json'          => $attr_rows,
         'skin_types_json'      => $skin_rows,
         'benefits_json'        => $benefit_rows,
         'key_ingredients_json' => $key_ingredients_json,
@@ -266,6 +305,18 @@ if ( is_wp_error( $ingredient_terms ) ) {
     $ingredient_terms = array();
 }
 
+$attr_terms   = PLS_Repo_Attributes::attrs_all();
+$attr_payload = array();
+
+foreach ( $attr_terms as $attr ) {
+    $values = PLS_Repo_Attributes::values_for_attr( $attr->id );
+    $attr_payload[] = array(
+        'id'     => $attr->id,
+        'label'  => $attr->label,
+        'values' => $values,
+    );
+}
+
 $pack_defaults = array( 50, 100, 250, 500, 1000 );
 $skin_options  = array( 'Normal', 'Oily', 'Dry', 'Combination', 'Sensitive' );
 
@@ -278,6 +329,7 @@ foreach ( $products as $product ) {
     $profile_skin      = $profile && $profile->skin_types_json ? json_decode( $profile->skin_types_json, true ) : array();
     $profile_benefits  = $profile && $profile->benefits_json ? json_decode( $profile->benefits_json, true ) : array();
     $profile_key_ing   = $profile && $profile->key_ingredients_json ? json_decode( $profile->key_ingredients_json, true ) : array();
+    $profile_attrs     = $profile && $profile->basics_json ? json_decode( $profile->basics_json, true ) : array();
     $gallery_ids       = $profile && $profile->gallery_ids ? array_filter( array_map( 'absint', explode( ',', $profile->gallery_ids ) ) ) : array();
     $ingredient_ids    = $profile && $profile->ingredients_list ? array_filter( array_map( 'absint', explode( ',', $profile->ingredients_list ) ) ) : array();
 
@@ -302,6 +354,7 @@ foreach ( $products as $product ) {
         'skin_types'          => $profile_skin,
         'benefits'            => $profile_benefits,
         'key_ingredients'     => $profile_key_ing,
+        'attributes'          => $profile_attrs,
     );
 }
 
@@ -313,6 +366,7 @@ wp_localize_script(
         'packDefaults' => $pack_defaults,
         'skinOptions'  => $skin_options,
         'ingredients'  => $ingredient_terms,
+        'attributes'   => $attr_payload,
     )
 );
 ?>
@@ -384,122 +438,196 @@ wp_localize_script(
         <input type="hidden" name="gallery_ids" id="pls-gallery-ids" />
         <input type="hidden" name="new_ingredients_tokens" id="pls-new-ingredients" />
 
-        <div class="pls-modal__grid">
-          <div class="pls-modal__section">
-            <h3><?php esc_html_e( 'General', 'pls-private-label-store' ); ?></h3>
-            <label><?php esc_html_e( 'Name', 'pls-private-label-store' ); ?>
-              <input type="text" name="name" id="pls-name" required placeholder="Collagen Serum" />
-            </label>
-            <label><?php esc_html_e( 'Slug', 'pls-private-label-store' ); ?>
-              <input type="text" name="slug" id="pls-slug" placeholder="collagen-serum" />
-            </label>
-            <label><?php esc_html_e( 'Status', 'pls-private-label-store' ); ?>
-              <select name="status" id="pls-status">
-                <option value="draft"><?php esc_html_e( 'Draft', 'pls-private-label-store' ); ?></option>
-                <option value="live"><?php esc_html_e( 'Live', 'pls-private-label-store' ); ?></option>
-              </select>
-            </label>
-            <label><?php esc_html_e( 'Categories', 'pls-private-label-store' ); ?>
-              <select name="categories[]" id="pls-categories" multiple>
-                <?php foreach ( $categories as $cat ) : ?>
-                    <option value="<?php echo esc_attr( $cat->term_id ); ?>"><?php echo esc_html( $cat->name ); ?></option>
-                <?php endforeach; ?>
-              </select>
-            </label>
-            <label><?php esc_html_e( 'Short description', 'pls-private-label-store' ); ?>
-              <textarea name="short_description" id="pls-short-description" rows="2"></textarea>
-            </label>
-            <label><?php esc_html_e( 'Long description', 'pls-private-label-store' ); ?>
-              <textarea name="long_description" id="pls-long-description" rows="4"></textarea>
-            </label>
+        <div class="pls-stepper">
+          <div class="pls-stepper__nav" id="pls-stepper-nav">
+            <button type="button" class="pls-stepper__item is-active" data-step="general"><?php esc_html_e( 'General', 'pls-private-label-store' ); ?></button>
+            <button type="button" class="pls-stepper__item" data-step="data"><?php esc_html_e( 'Data', 'pls-private-label-store' ); ?></button>
+            <button type="button" class="pls-stepper__item" data-step="ingredients"><?php esc_html_e( 'Ingredients', 'pls-private-label-store' ); ?></button>
+            <button type="button" class="pls-stepper__item" data-step="attributes"><?php esc_html_e( 'Attribute options', 'pls-private-label-store' ); ?></button>
+            <button type="button" class="pls-stepper__item" data-step="packs"><?php esc_html_e( 'Pack tiers', 'pls-private-label-store' ); ?></button>
+            <button type="button" class="pls-stepper__item" data-step="label"><?php esc_html_e( 'Label application', 'pls-private-label-store' ); ?></button>
           </div>
 
-          <div class="pls-modal__section">
-            <h3><?php esc_html_e( 'Media', 'pls-private-label-store' ); ?></h3>
-            <div class="pls-media-picker">
-              <input type="hidden" name="featured_image_id" id="pls-featured-id" />
-              <div class="pls-media-preview" id="pls-featured-preview"></div>
-              <button type="button" class="button" id="pls-pick-featured"><?php esc_html_e( 'Pick featured image', 'pls-private-label-store' ); ?></button>
-            </div>
-            <div class="pls-media-picker">
-              <div class="pls-media-preview" id="pls-gallery-preview"></div>
-              <button type="button" class="button" id="pls-pick-gallery"><?php esc_html_e( 'Select gallery images', 'pls-private-label-store' ); ?></button>
-            </div>
-            <label><?php esc_html_e( 'Directions for use', 'pls-private-label-store' ); ?>
-              <textarea name="directions_text" id="pls-directions" rows="3"></textarea>
-            </label>
-          </div>
-        </div>
+          <div class="pls-stepper__panels">
+            <div class="pls-stepper__panel is-active" data-step="general">
+              <div class="pls-modal__grid">
+                <div class="pls-modal__section">
+                  <h3><?php esc_html_e( 'General', 'pls-private-label-store' ); ?></h3>
+                  <label><?php esc_html_e( 'Name', 'pls-private-label-store' ); ?>
+                    <input type="text" name="name" id="pls-name" required placeholder="Collagen Serum" />
+                  </label>
+                  <label><?php esc_html_e( 'Slug', 'pls-private-label-store' ); ?>
+                    <input type="text" name="slug" id="pls-slug" placeholder="collagen-serum" />
+                  </label>
+                  <label><?php esc_html_e( 'Status', 'pls-private-label-store' ); ?>
+                    <select name="status" id="pls-status">
+                      <option value="draft"><?php esc_html_e( 'Draft', 'pls-private-label-store' ); ?></option>
+                      <option value="live"><?php esc_html_e( 'Live', 'pls-private-label-store' ); ?></option>
+                    </select>
+                  </label>
+                  <label><?php esc_html_e( 'Categories', 'pls-private-label-store' ); ?>
+                    <select name="categories[]" id="pls-categories" multiple>
+                      <?php foreach ( $categories as $cat ) : ?>
+                          <option value="<?php echo esc_attr( $cat->term_id ); ?>"><?php echo esc_html( $cat->name ); ?></option>
+                      <?php endforeach; ?>
+                    </select>
+                  </label>
+                </div>
 
-        <div class="pls-modal__section">
-          <h3><?php esc_html_e( 'Pack tiers', 'pls-private-label-store' ); ?></h3>
-          <p class="description"><?php esc_html_e( 'Defaults are 50/100/250/500/1000 units. Adjust on the fly.', 'pls-private-label-store' ); ?></p>
-          <div class="pls-pack-grid" id="pls-pack-grid">
-            <?php foreach ( $pack_defaults as $i => $units ) : ?>
-              <div class="pls-pack-row">
-                <input type="hidden" name="pack_tiers[<?php echo esc_attr( $i ); ?>][sort]" value="<?php echo esc_attr( $i ); ?>" />
-                <label><?php esc_html_e( 'Units', 'pls-private-label-store' ); ?>
-                  <input type="number" name="pack_tiers[<?php echo esc_attr( $i ); ?>][units]" value="<?php echo esc_attr( $units ); ?>" />
-                </label>
-                <label><?php esc_html_e( 'Price per unit', 'pls-private-label-store' ); ?>
-                  <input type="number" step="0.01" name="pack_tiers[<?php echo esc_attr( $i ); ?>][price]" />
-                </label>
-                <label class="pls-inline-checkbox"><input type="checkbox" name="pack_tiers[<?php echo esc_attr( $i ); ?>][enabled]" checked /> <?php esc_html_e( 'Enabled', 'pls-private-label-store' ); ?></label>
+                <div class="pls-modal__section">
+                  <h3><?php esc_html_e( 'Media', 'pls-private-label-store' ); ?></h3>
+                  <div class="pls-media-picker">
+                    <input type="hidden" name="featured_image_id" id="pls-featured-id" />
+                    <div class="pls-media-preview" id="pls-featured-preview"></div>
+                    <button type="button" class="button" id="pls-pick-featured"><?php esc_html_e( 'Pick featured image', 'pls-private-label-store' ); ?></button>
+                  </div>
+                  <div class="pls-media-picker">
+                    <div class="pls-media-preview" id="pls-gallery-preview"></div>
+                    <button type="button" class="button" id="pls-pick-gallery"><?php esc_html_e( 'Select gallery images', 'pls-private-label-store' ); ?></button>
+                  </div>
+                </div>
               </div>
-            <?php endforeach; ?>
-          </div>
-        </div>
+            </div>
 
-        <div class="pls-modal__grid">
-          <div class="pls-modal__section">
-            <h3><?php esc_html_e( 'Ingredients', 'pls-private-label-store' ); ?></h3>
-            <div class="pls-chip-group" id="pls-ingredient-chips">
-              <?php foreach ( $ingredient_terms as $term ) : ?>
-                  <label class="pls-chip-select"><input type="checkbox" name="ingredient_ids[]" value="<?php echo esc_attr( $term->term_id ); ?>" /> <?php echo esc_html( $term->name ); ?></label>
-              <?php endforeach; ?>
+            <div class="pls-stepper__panel" data-step="data">
+              <div class="pls-modal__grid">
+                <div class="pls-modal__section">
+                  <h3><?php esc_html_e( 'Descriptions', 'pls-private-label-store' ); ?></h3>
+                  <label><?php esc_html_e( 'Short description', 'pls-private-label-store' ); ?>
+                    <textarea name="short_description" id="pls-short-description" rows="2"></textarea>
+                  </label>
+                  <label><?php esc_html_e( 'Long description', 'pls-private-label-store' ); ?>
+                    <textarea name="long_description" id="pls-long-description" rows="4"></textarea>
+                  </label>
+                  <label><?php esc_html_e( 'Directions for use', 'pls-private-label-store' ); ?>
+                    <textarea name="directions_text" id="pls-directions" rows="3"></textarea>
+                  </label>
+                </div>
+                <div class="pls-modal__section">
+                  <h3><?php esc_html_e( 'Skin types & benefits', 'pls-private-label-store' ); ?></h3>
+                  <div class="pls-chip-group">
+                    <?php foreach ( $skin_options as $skin ) : ?>
+                        <label class="pls-chip-select"><input type="checkbox" name="skin_types[]" value="<?php echo esc_attr( $skin ); ?>" /> <?php echo esc_html( $skin ); ?></label>
+                    <?php endforeach; ?>
+                  </div>
+                  <label><?php esc_html_e( 'Benefits (one per line)', 'pls-private-label-store' ); ?>
+                    <textarea name="benefits_text" id="pls-benefits" rows="4" placeholder="Hydrates instantly&#10;Boosts elasticity"></textarea>
+                  </label>
+                </div>
+              </div>
             </div>
-            <label><?php esc_html_e( 'Add new ingredients (comma to separate)', 'pls-private-label-store' ); ?>
-              <input type="text" id="pls-ingredients-input" placeholder="Vitamin C, Retinol" />
-            </label>
-            <p><button type="button" class="button" id="pls-push-new-ingredients"><?php esc_html_e( 'Create missing in Ingredients base', 'pls-private-label-store' ); ?></button></p>
-            <h4><?php esc_html_e( 'Key ingredients (show with icons)', 'pls-private-label-store' ); ?></h4>
-            <div class="pls-chip-group" id="pls-key-ingredients">
-              <?php foreach ( $ingredient_terms as $term ) : ?>
-                  <label class="pls-chip-select"><input type="checkbox" name="key_ingredient_ids[]" value="<?php echo esc_attr( $term->term_id ); ?>" /> <?php echo esc_html( $term->name ); ?></label>
-              <?php endforeach; ?>
-            </div>
-          </div>
-          <div class="pls-modal__section">
-            <h3><?php esc_html_e( 'Skin types & benefits', 'pls-private-label-store' ); ?></h3>
-            <div class="pls-chip-group">
-              <?php foreach ( $skin_options as $skin ) : ?>
-                  <label class="pls-chip-select"><input type="checkbox" name="skin_types[]" value="<?php echo esc_attr( $skin ); ?>" /> <?php echo esc_html( $skin ); ?></label>
-              <?php endforeach; ?>
-            </div>
-            <label><?php esc_html_e( 'Benefits (one per line)', 'pls-private-label-store' ); ?>
-              <textarea name="benefits_text" id="pls-benefits" rows="4" placeholder="Hydrates instantly&#10;Boosts elasticity"></textarea>
-            </label>
-          </div>
-        </div>
 
-        <div class="pls-modal__section">
-          <h3><?php esc_html_e( 'Label application', 'pls-private-label-store' ); ?></h3>
-          <label class="pls-inline-checkbox"><input type="checkbox" name="label_enabled" id="pls-label-enabled" /> <?php esc_html_e( 'Offer label application', 'pls-private-label-store' ); ?></label>
-          <label><?php esc_html_e( 'Additional price per unit', 'pls-private-label-store' ); ?>
-            <input type="number" step="0.01" name="label_price_per_unit" id="pls-label-price" />
-          </label>
-          <label class="pls-inline-checkbox"><input type="checkbox" name="label_requires_file" id="pls-label-file" /> <?php esc_html_e( 'Require upload', 'pls-private-label-store' ); ?></label>
-          <label><?php esc_html_e( 'Helper text', 'pls-private-label-store' ); ?>
-            <textarea name="label_helper_text" id="pls-label-helper" rows="2"></textarea>
-          </label>
-          <label><?php esc_html_e( 'Label guide URL', 'pls-private-label-store' ); ?>
-            <input type="url" name="label_guide_url" id="pls-label-guide" placeholder="https://..." />
-          </label>
+            <div class="pls-stepper__panel" data-step="ingredients">
+              <div class="pls-modal__grid">
+                <div class="pls-modal__section">
+                  <h3><?php esc_html_e( 'Ingredients', 'pls-private-label-store' ); ?></h3>
+                  <div class="pls-chip-group" id="pls-ingredient-chips">
+                    <?php foreach ( $ingredient_terms as $term ) : ?>
+                        <label class="pls-chip-select"><input type="checkbox" name="ingredient_ids[]" value="<?php echo esc_attr( $term->term_id ); ?>" /> <?php echo esc_html( $term->name ); ?></label>
+                    <?php endforeach; ?>
+                  </div>
+                  <label><?php esc_html_e( 'Add new ingredients (comma to separate)', 'pls-private-label-store' ); ?>
+                    <input type="text" id="pls-ingredients-input" placeholder="Vitamin C, Retinol" />
+                  </label>
+                  <p><button type="button" class="button" id="pls-push-new-ingredients"><?php esc_html_e( 'Create missing in Ingredients base', 'pls-private-label-store' ); ?></button></p>
+                </div>
+                <div class="pls-modal__section">
+                  <h3><?php esc_html_e( 'Key ingredients (show with icons)', 'pls-private-label-store' ); ?></h3>
+                  <div class="pls-chip-group" id="pls-key-ingredients">
+                    <?php foreach ( $ingredient_terms as $term ) : ?>
+                        <label class="pls-chip-select"><input type="checkbox" name="key_ingredient_ids[]" value="<?php echo esc_attr( $term->term_id ); ?>" /> <?php echo esc_html( $term->name ); ?></label>
+                    <?php endforeach; ?>
+                  </div>
+                  <p class="description"><?php esc_html_e( 'Upload ingredient icons from the Ingredients base screen for better previews.', 'pls-private-label-store' ); ?></p>
+                </div>
+              </div>
+            </div>
+
+            <div class="pls-stepper__panel" data-step="attributes">
+              <div class="pls-modal__section">
+                <h3><?php esc_html_e( 'Attribute options', 'pls-private-label-store' ); ?></h3>
+                <p class="description"><?php esc_html_e( 'Pick PLS attributes, add new ones, and attach pricing used when calculating totals.', 'pls-private-label-store' ); ?></p>
+                <div id="pls-attribute-rows" class="pls-attribute-rows"></div>
+                <button type="button" class="button" id="pls-add-attribute-row"><?php esc_html_e( 'Add attribute option', 'pls-private-label-store' ); ?></button>
+                <div id="pls-attribute-template" class="hidden">
+                  <div class="pls-attribute-row">
+                    <div class="pls-field-grid">
+                      <label><?php esc_html_e( 'Attribute', 'pls-private-label-store' ); ?>
+                        <select class="pls-attr-select" name="">
+                          <option value=""><?php esc_html_e( 'Select or create new', 'pls-private-label-store' ); ?></option>
+                          <?php foreach ( $attr_payload as $attr ) : ?>
+                              <option value="<?php echo esc_attr( $attr['id'] ); ?>"><?php echo esc_html( $attr['label'] ); ?></option>
+                          <?php endforeach; ?>
+                        </select>
+                      </label>
+                      <label><?php esc_html_e( 'New attribute label (optional)', 'pls-private-label-store' ); ?>
+                        <input type="text" class="pls-attr-new" />
+                      </label>
+                      <label><?php esc_html_e( 'Value', 'pls-private-label-store' ); ?>
+                        <select class="pls-attr-value" data-placeholder="<?php esc_attr_e( 'Select value', 'pls-private-label-store' ); ?>" name=""></select>
+                      </label>
+                      <label><?php esc_html_e( 'New value label (optional)', 'pls-private-label-store' ); ?>
+                        <input type="text" class="pls-attr-value-new" />
+                      </label>
+                      <label><?php esc_html_e( 'Price impact', 'pls-private-label-store' ); ?>
+                        <input type="number" step="0.01" class="pls-attr-price" />
+                      </label>
+                    </div>
+                    <button type="button" class="button-link-delete pls-attribute-remove"><?php esc_html_e( 'Remove', 'pls-private-label-store' ); ?></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="pls-stepper__panel" data-step="packs">
+              <div class="pls-modal__section">
+                <h3><?php esc_html_e( 'Pack tiers', 'pls-private-label-store' ); ?></h3>
+                <p class="description"><?php esc_html_e( 'Defaults are 50/100/250/500/1000 units. Adjust on the fly.', 'pls-private-label-store' ); ?></p>
+                <div class="pls-pack-grid" id="pls-pack-grid">
+                  <?php foreach ( $pack_defaults as $i => $units ) : ?>
+                    <div class="pls-pack-row">
+                      <input type="hidden" name="pack_tiers[<?php echo esc_attr( $i ); ?>][sort]" value="<?php echo esc_attr( $i ); ?>" />
+                      <label><?php esc_html_e( 'Units', 'pls-private-label-store' ); ?>
+                        <input type="number" name="pack_tiers[<?php echo esc_attr( $i ); ?>][units]" value="<?php echo esc_attr( $units ); ?>" />
+                      </label>
+                      <label><?php esc_html_e( 'Price per unit', 'pls-private-label-store' ); ?>
+                        <input type="number" step="0.01" name="pack_tiers[<?php echo esc_attr( $i ); ?>][price]" />
+                      </label>
+                      <label class="pls-inline-checkbox"><input type="checkbox" name="pack_tiers[<?php echo esc_attr( $i ); ?>][enabled]" checked /> <?php esc_html_e( 'Enabled', 'pls-private-label-store' ); ?></label>
+                    </div>
+                  <?php endforeach; ?>
+                </div>
+              </div>
+            </div>
+
+            <div class="pls-stepper__panel" data-step="label">
+              <div class="pls-modal__section">
+                <h3><?php esc_html_e( 'Label application', 'pls-private-label-store' ); ?></h3>
+                <label class="pls-inline-checkbox"><input type="checkbox" name="label_enabled" id="pls-label-enabled" /> <?php esc_html_e( 'Offer label application', 'pls-private-label-store' ); ?></label>
+                <label><?php esc_html_e( 'Additional price per unit', 'pls-private-label-store' ); ?>
+                  <input type="number" step="0.01" name="label_price_per_unit" id="pls-label-price" />
+                </label>
+                <label class="pls-inline-checkbox"><input type="checkbox" name="label_requires_file" id="pls-label-file" /> <?php esc_html_e( 'Require upload', 'pls-private-label-store' ); ?></label>
+                <label><?php esc_html_e( 'Helper text', 'pls-private-label-store' ); ?>
+                  <textarea name="label_helper_text" id="pls-label-helper" rows="2"></textarea>
+                </label>
+                <label><?php esc_html_e( 'Label guide URL', 'pls-private-label-store' ); ?>
+                  <input type="url" name="label_guide_url" id="pls-label-guide" placeholder="https://..." />
+                </label>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="pls-modal__footer">
-          <button type="button" class="button" id="pls-modal-cancel"><?php esc_html_e( 'Cancel', 'pls-private-label-store' ); ?></button>
-          <button type="submit" class="button button-primary button-hero"><?php esc_html_e( 'Save product', 'pls-private-label-store' ); ?></button>
+          <div class="pls-stepper__controls">
+            <button type="button" class="button" id="pls-step-prev"><?php esc_html_e( 'Back', 'pls-private-label-store' ); ?></button>
+            <button type="button" class="button button-primary" id="pls-step-next"><?php esc_html_e( 'Next', 'pls-private-label-store' ); ?></button>
+          </div>
+          <div class="pls-stepper__actions">
+            <button type="button" class="button" id="pls-modal-cancel"><?php esc_html_e( 'Cancel', 'pls-private-label-store' ); ?></button>
+            <button type="submit" class="button button-primary button-hero"><?php esc_html_e( 'Save product', 'pls-private-label-store' ); ?></button>
+          </div>
         </div>
       </form>
     </div>

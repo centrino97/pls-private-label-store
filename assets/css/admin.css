@@ -44,3 +44,15 @@
 body.pls-modal-open{overflow:hidden}
 
 .pls-page-products select[multiple]{min-height:120px}
+.pls-stepper__nav{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.pls-stepper__item{border:1px solid #cbd5e1;background:#fff;border-radius:10px;padding:8px 12px;cursor:pointer;transition:all .2s ease}
+.pls-stepper__item.is-active{background:#2563eb;color:#fff;border-color:#1d4ed8;box-shadow:0 10px 25px rgba(37,99,235,0.2)}
+.pls-stepper__panel{display:none}
+.pls-stepper__panel.is-active{display:block}
+.pls-stepper__footer{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.pls-stepper__controls{display:flex;gap:8px;align-items:center}
+.pls-stepper__actions{display:flex;gap:8px;align-items:center}
+.pls-attribute-row{border:1px solid #e2e8f0;border-radius:12px;padding:12px;margin-bottom:12px;background:#fff}
+.pls-attribute-rows{margin:10px 0}
+.pls-icon-preview img{max-height:32px}
+.hidden{display:none}

@@ -32,7 +32,17 @@ final class PLS_Taxonomies {
     }
 
     public static function icon_for_term( $term_id ) {
-        $icon = get_term_meta( $term_id, 'pls_ingredient_icon', true );
+        $icon_id = absint( get_term_meta( $term_id, 'pls_ingredient_icon_id', true ) );
+        $icon    = '';
+
+        if ( $icon_id ) {
+            $icon = wp_get_attachment_url( $icon_id );
+        }
+
+        if ( ! $icon ) {
+            $icon = get_term_meta( $term_id, 'pls_ingredient_icon', true );
+        }
+
         return $icon ? esc_url_raw( $icon ) : '';
     }
 }
