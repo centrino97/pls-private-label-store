@@ -205,7 +205,17 @@ final class PLS_Admin_Ajax {
         $payload  = array();
 
         foreach ( $attrs as $attr ) {
-            $values = PLS_Repo_Attributes::values_for_attr( $attr->id );
+            $values = array();
+            $raw_values = PLS_Repo_Attributes::values_for_attr( $attr->id );
+            foreach ( $raw_values as $value ) {
+                $price_meta = ( $value->term_id ) ? get_term_meta( $value->term_id, '_pls_default_price_impact', true ) : '';
+                $values[]   = array(
+                    'id'        => $value->id,
+                    'label'     => $value->label,
+                    'price'     => '' !== $price_meta ? floatval( $price_meta ) : ( isset( $value->price ) ? floatval( $value->price ) : '' ),
+                    'term_id'   => $value->term_id,
+                );
+            }
             $payload[] = array(
                 'id'     => $attr->id,
                 'label'  => $attr->label,
@@ -853,6 +863,13 @@ final class PLS_Admin_Ajax {
 
                 if ( ! $value_id && ! $value_label ) {
                     continue;
+                }
+
+                if ( $value_id ) {
+                    $value_row = PLS_Repo_Attributes::get_value( $value_id );
+                    if ( $value_row && $value_row->term_id ) {
+                        update_term_meta( $value_row->term_id, '_pls_default_price_impact', $price );
+                    }
                 }
 
                 $value_payload[] = array(
