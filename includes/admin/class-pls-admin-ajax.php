@@ -19,6 +19,7 @@ final class PLS_Admin_Ajax {
         add_action( 'wp_ajax_pls_sync_all_products', array( __CLASS__, 'sync_all_products' ) );
         add_action( 'wp_ajax_pls_create_attribute', array( __CLASS__, 'create_attribute' ) );
         add_action( 'wp_ajax_pls_create_attribute_value', array( __CLASS__, 'create_attribute_value' ) );
+        add_action( 'wp_ajax_pls_update_attribute_values', array( __CLASS__, 'update_attribute_values' ) );
     }
 
     /**
@@ -172,6 +173,8 @@ final class PLS_Admin_Ajax {
 
         $attribute_id = isset( $_POST['attribute_id'] ) ? absint( $_POST['attribute_id'] ) : 0;
         $label        = isset( $_POST['label'] ) ? sanitize_text_field( wp_unslash( $_POST['label'] ) ) : '';
+        $price_raw    = isset( $_POST['price'] ) ? wp_unslash( $_POST['price'] ) : '';
+        $price        = '' !== $price_raw ? round( floatval( $price_raw ), 2 ) : '';
 
         if ( ! $attribute_id || '' === $label ) {
             wp_send_json_error( array( 'message' => __( 'Attribute and value label are required.', 'pls-private-label-store' ) ), 400 );
@@ -184,13 +187,64 @@ final class PLS_Admin_Ajax {
             )
         );
 
+        $value_row = PLS_Repo_Attributes::get_value( $value_id );
+        if ( '' !== $price && $value_row && $value_row->term_id ) {
+            update_term_meta( $value_row->term_id, '_pls_default_price_impact', $price );
+        }
+
         wp_send_json_success(
             array(
                 'value' => array(
                     'id'            => $value_id,
                     'label'         => $label,
                     'attribute_id'  => $attribute_id,
+                    'price'         => '' !== $price ? $price : '',
                 ),
+            )
+        );
+    }
+
+    /**
+     * Update default impacts for attribute values.
+     */
+    public static function update_attribute_values() {
+        check_ajax_referer( 'pls_admin_nonce', 'nonce' );
+
+        if ( ! current_user_can( PLS_Capabilities::CAP_PRODUCTS ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $attribute_id = isset( $_POST['attribute_id'] ) ? absint( $_POST['attribute_id'] ) : 0;
+        $values       = isset( $_POST['values'] ) ? (array) $_POST['values'] : array();
+
+        if ( ! $attribute_id ) {
+            wp_send_json_error( array( 'message' => __( 'Attribute ID required.', 'pls-private-label-store' ) ), 400 );
+        }
+
+        foreach ( $values as $value_row ) {
+            $value_id = isset( $value_row['id'] ) ? absint( $value_row['id'] ) : 0;
+            $price    = isset( $value_row['price'] ) ? round( floatval( $value_row['price'] ), 2 ) : '';
+            if ( ! $value_id ) {
+                continue;
+            }
+            $value_obj = PLS_Repo_Attributes::get_value( $value_id );
+            if ( $value_obj && $value_obj->term_id && '' !== $price ) {
+                update_term_meta( $value_obj->term_id, '_pls_default_price_impact', $price );
+            }
+        }
+
+        $attr_payload = self::attribute_payload();
+        $attribute    = null;
+        foreach ( $attr_payload as $attr ) {
+            if ( isset( $attr['id'] ) && (int) $attr['id'] === $attribute_id ) {
+                $attribute = $attr;
+                break;
+            }
+        }
+
+        wp_send_json_success(
+            array(
+                'attribute' => $attribute,
             )
         );
     }
@@ -621,6 +675,7 @@ final class PLS_Admin_Ajax {
         $selected_ingredients = array_unique( array_filter( $selected_ingredients ) );
         $key_ingredients      = array_unique( array_filter( $key_ingredients ) );
         $key_ingredients      = array_values( array_intersect( $key_ingredients, $selected_ingredients ) );
+        $key_ingredients      = array_slice( $key_ingredients, 0, 5 );
 
         $payload['ingredients'] = $selected_ingredients;
         $payload['key_ingredients'] = array();
