@@ -6,201 +6,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 $notice                = '';
 $label_guide_constant  = 'https://bodocibiophysics.com/label-guide/';
 
-if ( isset( $_POST['pls_product_modal_save'] ) && check_admin_referer( 'pls_product_modal_save' ) ) {
-    $base_id        = isset( $_POST['id'] ) ? absint( $_POST['id'] ) : 0;
-    $name           = isset( $_POST['name'] ) ? sanitize_text_field( wp_unslash( $_POST['name'] ) ) : '';
-    $status         = 'draft';
-    $slug           = sanitize_title( $name );
-    $categories     = isset( $_POST['categories'] ) && is_array( $_POST['categories'] ) ? array_map( 'absint', $_POST['categories'] ) : array();
-    $categories     = array_filter( $categories );
-    $category_path  = $categories ? implode( ',', $categories ) : '';
-    $attr_terms     = PLS_Repo_Attributes::attrs_all();
-    $attr_label_map = array();
-
-    foreach ( $attr_terms as $attr ) {
-        $attr_label_map[ $attr->id ] = $attr->label;
-    }
-
-    if ( '' !== $name ) {
-        $data = array(
-            'name'          => $name,
-            'slug'          => $slug,
-            'status'        => $status,
-            'category_path' => $category_path,
-        );
-
-        if ( $base_id ) {
-            PLS_Repo_Base_Product::update( $base_id, $data );
-        } else {
-            $base_id = PLS_Repo_Base_Product::insert( $data );
-        }
-    }
-
-    if ( $base_id ) {
-        $tiers_input = isset( $_POST['pack_tiers'] ) && is_array( $_POST['pack_tiers'] ) ? $_POST['pack_tiers'] : array();
-
-        foreach ( $tiers_input as $tier_row ) {
-            $units    = isset( $tier_row['units'] ) ? absint( $tier_row['units'] ) : 0;
-            $tier_key = $units ? 'u' . $units : sanitize_key( wp_generate_uuid4() );
-            $enabled  = isset( $tier_row['enabled'] ) ? 1 : 0;
-            $price    = isset( $tier_row['price'] ) ? round( floatval( $tier_row['price'] ), 2 ) : 0;
-            $sort     = isset( $tier_row['sort'] ) ? absint( $tier_row['sort'] ) : 0;
-
-            if ( ! $units ) {
-                continue;
-            }
-
-            PLS_Repo_Pack_Tier::upsert( $base_id, $tier_key, $units, $price, $enabled, $sort );
-        }
-    }
-
-    $gallery_raw = isset( $_POST['gallery_ids'] ) ? sanitize_text_field( wp_unslash( $_POST['gallery_ids'] ) ) : '';
-    $gallery_ids = $gallery_raw ? array_map( 'absint', explode( ',', $gallery_raw ) ) : array();
-    $featured_id = isset( $_POST['featured_image_id'] ) ? absint( $_POST['featured_image_id'] ) : 0;
-
-    $selected_ingredients = isset( $_POST['ingredient_ids'] ) && is_array( $_POST['ingredient_ids'] ) ? array_map( 'absint', $_POST['ingredient_ids'] ) : array();
-    $key_ingredients      = isset( $_POST['key_ingredient_ids'] ) && is_array( $_POST['key_ingredient_ids'] ) ? array_map( 'absint', $_POST['key_ingredient_ids'] ) : array();
-    $new_ingredients_raw  = isset( $_POST['new_ingredients_tokens'] ) ? sanitize_text_field( wp_unslash( $_POST['new_ingredients_tokens'] ) ) : '';
-
-    if ( $new_ingredients_raw ) {
-        $tokens = array_filter( array_map( 'trim', explode( ',', $new_ingredients_raw ) ) );
-        foreach ( $tokens as $token ) {
-            $maybe_slug = sanitize_title( $token );
-            $maybe      = term_exists( $maybe_slug, 'pls_ingredient' );
-            if ( ! $maybe ) {
-                $created = wp_insert_term( $token, 'pls_ingredient', array( 'slug' => $maybe_slug ) );
-                if ( ! is_wp_error( $created ) ) {
-                    $selected_ingredients[] = $created['term_id'];
-                }
-            } elseif ( is_array( $maybe ) && isset( $maybe['term_id'] ) ) {
-                $selected_ingredients[] = absint( $maybe['term_id'] );
-            } elseif ( is_object( $maybe ) && isset( $maybe->term_id ) ) {
-                $selected_ingredients[] = absint( $maybe->term_id );
-            }
-        }
-    }
-
-    $selected_ingredients = array_unique( array_filter( $selected_ingredients ) );
-    $key_ingredients      = array_unique( array_filter( $key_ingredients ) );
-    $key_ingredients      = array_values( array_intersect( $key_ingredients, $selected_ingredients ) );
-
-    $key_ingredients_json = array();
-
-    foreach ( $key_ingredients as $term_id ) {
-        $term = get_term( $term_id );
-        if ( $term && ! is_wp_error( $term ) ) {
-            $key_ingredients_json[] = array(
-                'label'   => $term->name,
-                'icon'    => PLS_Taxonomies::icon_for_term( $term_id ),
-                'term_id' => $term_id,
-                'short_description' => sanitize_text_field( (string) get_term_meta( $term_id, 'pls_ingredient_short_desc', true ) ),
-            );
-        }
-    }
-
-    $benefits_text = isset( $_POST['benefits_text'] ) ? wp_unslash( $_POST['benefits_text'] ) : '';
-    $benefit_rows  = array();
-    foreach ( preg_split( '/\r\n|\r|\n/', $benefits_text ) as $benefit_line ) {
-        $clean = sanitize_text_field( $benefit_line );
-        if ( '' !== $clean ) {
-            $benefit_rows[] = array(
-                'label' => $clean,
-                'icon'  => '',
-            );
-        }
-    }
-
-    $skin_selected = isset( $_POST['skin_types'] ) && is_array( $_POST['skin_types'] ) ? array_map( 'sanitize_text_field', wp_unslash( $_POST['skin_types'] ) ) : array();
-    $skin_rows     = array();
-    foreach ( $skin_selected as $skin_label ) {
-        $skin_rows[] = array(
-            'label' => $skin_label,
-            'icon'  => '',
-        );
-    }
-
-    $attr_rows_input = isset( $_POST['attr_options'] ) && is_array( $_POST['attr_options'] ) ? $_POST['attr_options'] : array();
-    $attr_rows       = array();
-
-    foreach ( $attr_rows_input as $attr_row ) {
-        $attr_id        = isset( $attr_row['attribute_id'] ) ? absint( $attr_row['attribute_id'] ) : 0;
-        $attr_label_raw = isset( $attr_row['attribute_label'] ) ? sanitize_text_field( wp_unslash( $attr_row['attribute_label'] ) ) : '';
-        $values_input   = isset( $attr_row['values'] ) && is_array( $attr_row['values'] ) ? $attr_row['values'] : array();
-
-        if ( ! $attr_id && $attr_label_raw ) {
-            $attr_id = PLS_Repo_Attributes::insert_attr(
-                array(
-                    'label'        => $attr_label_raw,
-                    'is_variation' => 1,
-                )
-            );
-            $attr_label_map[ $attr_id ] = $attr_label_raw;
-        }
-
-        $attr_label = $attr_id && isset( $attr_label_map[ $attr_id ] ) ? $attr_label_map[ $attr_id ] : $attr_label_raw;
-
-        $value_payload = array();
-
-        foreach ( $values_input as $value_row ) {
-            $value_id    = isset( $value_row['value_id'] ) ? absint( $value_row['value_id'] ) : 0;
-            $value_label = isset( $value_row['value_label'] ) ? sanitize_text_field( wp_unslash( $value_row['value_label'] ) ) : '';
-            $price       = isset( $value_row['price'] ) ? round( floatval( $value_row['price'] ), 2 ) : 0;
-
-            if ( ! $value_id && $attr_id && $value_label ) {
-                $value_id = PLS_Repo_Attributes::insert_value(
-                    array(
-                        'attribute_id' => $attr_id,
-                        'label'        => $value_label,
-                    )
-                );
-            }
-
-            if ( ! $value_id && ! $value_label ) {
-                continue;
-            }
-
-            $value_payload[] = array(
-                'value_id'    => $value_id,
-                'value_label' => $value_label,
-                'price'       => $price,
-            );
-        }
-
-        if ( $attr_id && $value_payload ) {
-            $attr_rows[] = array(
-                'attribute_id'    => $attr_id,
-                'attribute_label' => $attr_label,
-                'values'          => $value_payload,
-            );
-        }
-    }
-
-    if ( $base_id ) {
-        $profile_data = array(
-            'short_description'    => isset( $_POST['short_description'] ) ? sanitize_textarea_field( wp_unslash( $_POST['short_description'] ) ) : '',
-            'long_description'     => isset( $_POST['long_description'] ) ? wp_kses_post( wp_unslash( $_POST['long_description'] ) ) : '',
-            'featured_image_id'    => $featured_id,
-            'gallery_ids'          => $gallery_ids,
-            'directions_text'      => isset( $_POST['directions_text'] ) ? sanitize_textarea_field( wp_unslash( $_POST['directions_text'] ) ) : '',
-            'ingredients_list'     => $selected_ingredients ? implode( ',', $selected_ingredients ) : '',
-            'label_enabled'        => isset( $_POST['label_enabled'] ) ? 1 : 0,
-            'label_price_per_unit' => isset( $_POST['label_price_per_unit'] ) ? round( floatval( $_POST['label_price_per_unit'] ), 2 ) : 0,
-            'label_requires_file'  => ( isset( $_POST['label_enabled'] ) && isset( $_POST['label_requires_file'] ) ) ? 1 : 0,
-            'label_helper_text'    => '',
-            'label_guide_url'      => $label_guide_constant,
-            'basics_json'          => $attr_rows,
-            'skin_types_json'      => $skin_rows,
-            'benefits_json'        => $benefit_rows,
-            'key_ingredients_json' => $key_ingredients_json,
-        );
-
-        PLS_Repo_Product_Profile::upsert( $base_id, $profile_data );
-    }
-
-    wp_safe_redirect( admin_url( 'admin.php?page=pls-products&message=saved' ) );
-    exit;
-}
-
 $message = isset( $_GET['message'] ) ? sanitize_text_field( wp_unslash( $_GET['message'] ) ) : '';
 
 $categories = get_terms(
@@ -222,138 +27,19 @@ $categories = array_filter(
 
 $ingredient_terms = PLS_Admin_Ajax::ingredient_payload();
 
-$attr_terms   = PLS_Repo_Attributes::attrs_all();
-$attr_payload = array();
-
-function pls_normalize_attr_rows( $raw_rows, $attr_lookup ) {
-    if ( empty( $raw_rows ) ) {
-        return array();
-    }
-
-    $label_map = array();
-
-    foreach ( $attr_lookup as $attr ) {
-        if ( isset( $attr['id'], $attr['label'] ) ) {
-            $label_map[ $attr['id'] ] = $attr['label'];
-        }
-    }
-
-    $normalized = array();
-
-    foreach ( $raw_rows as $row ) {
-        if ( isset( $row['values'] ) ) {
-            $attr_id    = isset( $row['attribute_id'] ) ? absint( $row['attribute_id'] ) : 0;
-            $attr_label = isset( $row['attribute_label'] ) ? $row['attribute_label'] : ( $attr_id && isset( $label_map[ $attr_id ] ) ? $label_map[ $attr_id ] : '' );
-            $values     = array();
-
-            foreach ( $row['values'] as $value ) {
-                $values[] = array(
-                    'value_id'    => isset( $value['value_id'] ) ? absint( $value['value_id'] ) : 0,
-                    'value_label' => isset( $value['value_label'] ) ? $value['value_label'] : '',
-                    'price'       => isset( $value['price'] ) ? floatval( $value['price'] ) : 0,
-                );
-            }
-
-            if ( $attr_id && $values ) {
-                $normalized[] = array(
-                    'attribute_id'    => $attr_id,
-                    'attribute_label' => $attr_label,
-                    'values'          => $values,
-                );
-            }
-
-            continue;
-        }
-    }
-
-    if ( $normalized ) {
-        return $normalized;
-    }
-
-    $grouped = array();
-
-    foreach ( $raw_rows as $row ) {
-        $attr_id     = isset( $row['attribute_id'] ) ? absint( $row['attribute_id'] ) : 0;
-        $attr_label  = isset( $row['attribute_label'] ) ? $row['attribute_label'] : ( $attr_id && isset( $label_map[ $attr_id ] ) ? $label_map[ $attr_id ] : '' );
-        $value_id    = isset( $row['value_id'] ) ? absint( $row['value_id'] ) : 0;
-        $value_label = isset( $row['value_label'] ) ? $row['value_label'] : '';
-        $price       = isset( $row['price'] ) ? floatval( $row['price'] ) : 0;
-
-        if ( ! $attr_id && ! $attr_label ) {
-            continue;
-        }
-
-        $key = $attr_id ? 'id-' . $attr_id : 'label-' . md5( $attr_label );
-
-        if ( ! isset( $grouped[ $key ] ) ) {
-            $grouped[ $key ] = array(
-                'attribute_id'    => $attr_id,
-                'attribute_label' => $attr_label,
-                'values'          => array(),
-            );
-        }
-
-        if ( $value_id || $value_label ) {
-            $grouped[ $key ]['values'][] = array(
-                'value_id'    => $value_id,
-                'value_label' => $value_label,
-                'price'       => $price,
-            );
-        }
-    }
-
-    return array_values( array_filter( $grouped, fn( $row ) => ! empty( $row['values'] ) ) );
-}
-
-foreach ( $attr_terms as $attr ) {
-    $values = PLS_Repo_Attributes::values_for_attr( $attr->id );
-    $attr_payload[] = array(
-        'id'     => $attr->id,
-        'label'  => $attr->label,
-        'values' => $values,
-    );
-}
+$attr_payload = PLS_Admin_Ajax::attribute_payload();
 
 $pack_defaults = array( 50, 100, 250, 500, 1000 );
 $skin_options  = array( 'Normal', 'Oily', 'Dry', 'Combination', 'Sensitive' );
 
-$products        = PLS_Repo_Base_Product::all();
+$products        = PLS_Admin_Ajax::reconcile_orphaned_products( PLS_Repo_Base_Product::all() );
 $product_payload = array();
 
 foreach ( $products as $product ) {
-    $profile           = PLS_Repo_Product_Profile::get_for_base( $product->id );
-    $tiers             = PLS_Repo_Pack_Tier::for_base( $product->id );
-    $profile_skin      = $profile && $profile->skin_types_json ? json_decode( $profile->skin_types_json, true ) : array();
-    $profile_benefits  = $profile && $profile->benefits_json ? json_decode( $profile->benefits_json, true ) : array();
-    $profile_key_ing   = $profile && $profile->key_ingredients_json ? json_decode( $profile->key_ingredients_json, true ) : array();
-    $profile_attrs_raw = $profile && $profile->basics_json ? json_decode( $profile->basics_json, true ) : array();
-    $profile_attrs     = pls_normalize_attr_rows( $profile_attrs_raw, $attr_payload );
-    $gallery_ids       = $profile && $profile->gallery_ids ? array_filter( array_map( 'absint', explode( ',', $profile->gallery_ids ) ) ) : array();
-    $ingredient_ids    = $profile && $profile->ingredients_list ? array_filter( array_map( 'absint', explode( ',', $profile->ingredients_list ) ) ) : array();
-
-    $product_payload[] = array(
-        'id'                  => $product->id,
-        'name'                => $product->name,
-        'slug'                => $product->slug,
-        'status'              => $product->status,
-        'categories'          => $product->category_path ? array_map( 'absint', explode( ',', $product->category_path ) ) : array(),
-        'pack_tiers'          => $tiers,
-        'short_description'   => $profile ? $profile->short_description : '',
-        'long_description'    => $profile ? $profile->long_description : '',
-        'directions_text'     => $profile ? $profile->directions_text : '',
-        'ingredients_list'    => $ingredient_ids,
-        'featured_image_id'   => $profile ? absint( $profile->featured_image_id ) : 0,
-        'gallery_ids'         => $gallery_ids,
-        'label_enabled'       => $profile ? absint( $profile->label_enabled ) : 0,
-        'label_price_per_unit'=> $profile ? floatval( $profile->label_price_per_unit ) : 0,
-        'label_requires_file' => $profile ? absint( $profile->label_requires_file ) : 0,
-        'label_helper_text'   => '',
-        'label_guide_url'     => $profile && ! empty( $profile->label_guide_url ) ? $profile->label_guide_url : $label_guide_constant,
-        'skin_types'          => $profile_skin,
-        'benefits'            => $profile_benefits,
-        'key_ingredients'     => $profile_key_ing,
-        'attributes'          => $profile_attrs,
-    );
+    $formatted = PLS_Admin_Ajax::format_product_payload( $product, $label_guide_constant );
+    if ( $formatted ) {
+        $product_payload[] = $formatted;
+    }
 }
 
 wp_localize_script(
@@ -377,6 +63,7 @@ wp_localize_script(
       <p class="description"><?php esc_html_e( 'Create and manage every SKU inside PLS. WooCommerce only receives the final variable product.', 'pls-private-label-store' ); ?></p>
     </div>
     <div>
+      <button class="button" id="pls-sync-all"><?php esc_html_e( 'Sync all to Woo', 'pls-private-label-store' ); ?></button>
       <button class="button button-primary button-hero" id="pls-open-product-modal"><?php esc_html_e( 'Add product', 'pls-private-label-store' ); ?></button>
     </div>
   </div>
@@ -403,6 +90,14 @@ wp_localize_script(
                     }
                 }
             }
+            $sync_status = isset( $product['sync_status'] ) ? $product['sync_status'] : null;
+            $sync_label  = __( 'Not synced yet.', 'pls-private-label-store' );
+            if ( $sync_status ) {
+                $status_prefix = ! empty( $sync_status['success'] ) ? __( 'Synced', 'pls-private-label-store' ) : __( 'Sync failed', 'pls-private-label-store' );
+                $ts            = ! empty( $sync_status['timestamp'] ) ? date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $sync_status['timestamp'] ) : '';
+                $msg           = ! empty( $sync_status['message'] ) ? $sync_status['message'] : '';
+                $sync_label    = trim( $status_prefix . ( $ts ? ' – ' . $ts : '' ) . ( $msg ? ' – ' . $msg : '' ) );
+            }
             ?>
             <div class="pls-card" data-product-id="<?php echo esc_attr( $product['id'] ); ?>">
               <div class="pls-card__heading">
@@ -415,7 +110,10 @@ wp_localize_script(
               <?php if ( ! empty( $product['short_description'] ) ) : ?>
                   <p class="description"><?php echo esc_html( $product['short_description'] ); ?></p>
               <?php endif; ?>
+              <p class="description pls-sync-meta" data-product-id="<?php echo esc_attr( $product['id'] ); ?>"><?php echo esc_html( $sync_label ); ?></p>
               <button class="button pls-edit-product" data-product-id="<?php echo esc_attr( $product['id'] ); ?>"><?php esc_html_e( 'Open editor', 'pls-private-label-store' ); ?></button>
+              <button class="button pls-sync-product" data-product-id="<?php echo esc_attr( $product['id'] ); ?>" data-wc-product-id="<?php echo esc_attr( isset( $product['wc_product_id'] ) ? $product['wc_product_id'] : 0 ); ?>"><?php esc_html_e( 'Sync', 'pls-private-label-store' ); ?></button>
+              <button class="button-link-delete pls-delete-product" data-product-id="<?php echo esc_attr( $product['id'] ); ?>"><?php esc_html_e( 'Delete', 'pls-private-label-store' ); ?></button>
             </div>
         <?php endforeach; ?>
     <?php endif; ?>
@@ -435,7 +133,6 @@ wp_localize_script(
         <input type="hidden" name="pls_product_modal_save" value="1" />
         <input type="hidden" name="id" id="pls-product-id" />
         <input type="hidden" name="gallery_ids" id="pls-gallery-ids" />
-        <input type="hidden" name="new_ingredients_tokens" id="pls-new-ingredients" />
         <div class="notice notice-error pls-form-errors" id="pls-product-errors" style="display:none;">
           <p><?php esc_html_e( 'Please review the highlighted issues before saving.', 'pls-private-label-store' ); ?></p>
           <ul></ul>
@@ -540,25 +237,23 @@ wp_localize_script(
               <div class="pls-modal__grid">
                 <div class="pls-modal__section">
                   <h3><?php esc_html_e( 'Ingredients', 'pls-private-label-store' ); ?></h3>
-                  <div class="pls-chip-group pls-ingredient-list" id="pls-ingredient-chips" data-default-icon="<?php echo esc_attr( PLS_Taxonomies::default_icon() ); ?>">
-                    <?php foreach ( $ingredient_terms as $term ) : ?>
-                        <label class="pls-chip-select pls-chip-select--rich" data-ingredient-id="<?php echo esc_attr( $term['id'] ); ?>">
-                          <input type="checkbox" name="ingredient_ids[]" value="<?php echo esc_attr( $term['id'] ); ?>" />
-                          <span class="pls-chip-media"><?php if ( ! empty( $term['icon'] ) ) : ?><img src="<?php echo esc_url( $term['icon'] ); ?>" alt="" /><?php endif; ?></span>
-                          <span class="pls-chip-copy">
-                            <strong><?php echo esc_html( $term['name'] ); ?></strong>
-                            <?php if ( ! empty( $term['short_description'] ) ) : ?>
-                                <small><?php echo esc_html( $term['short_description'] ); ?></small>
-                            <?php endif; ?>
-                          </span>
-                        </label>
-                    <?php endforeach; ?>
+                  <div class="pls-field-stack">
+                    <label class="pls-field-stack">
+                      <span class="pls-micro"><?php esc_html_e( 'Search ingredients', 'pls-private-label-store' ); ?></span>
+                      <input type="search" id="pls-ingredient-search" placeholder="<?php esc_attr_e( 'Search ingredients', 'pls-private-label-store' ); ?>" />
+                    </label>
+                    <button type="button" class="button" id="pls-open-ingredient-create"><?php esc_html_e( 'Create ingredient', 'pls-private-label-store' ); ?></button>
                   </div>
-                  <label class="pls-field-stack"><?php esc_html_e( 'Add new ingredients (one per line)', 'pls-private-label-store' ); ?>
-                    <textarea id="pls-ingredients-input" class="pls-rich-textarea" rows="3" placeholder="Vitamin C | Antioxidant brightener&#10;Sea Moss | Mineral-rich hydrator"></textarea>
-                    <span class="pls-field-hint"><?php esc_html_e( 'Use Name | Short description. Entries are created instantly and appear above for selection.', 'pls-private-label-store' ); ?></span>
-                  </label>
-                  <p><button type="button" class="button" id="pls-push-new-ingredients" data-label="<?php esc_attr_e( 'Create missing in Ingredients base', 'pls-private-label-store' ); ?>" data-busy-label="<?php esc_attr_e( 'Creating…', 'pls-private-label-store' ); ?>"><?php esc_html_e( 'Create missing in Ingredients base', 'pls-private-label-store' ); ?></button></p>
+                  <div class="pls-ingredient-columns">
+                    <div class="pls-ingredient-panel">
+                      <p class="pls-micro"><?php esc_html_e( 'All ingredients', 'pls-private-label-store' ); ?></p>
+                      <div class="pls-chip-group pls-ingredient-list" id="pls-ingredient-chips" data-default-icon="<?php echo esc_attr( PLS_Taxonomies::default_icon() ); ?>"></div>
+                    </div>
+                    <div class="pls-ingredient-panel">
+                      <p class="pls-micro"><?php esc_html_e( 'Selected', 'pls-private-label-store' ); ?> (<span id="pls-selected-count">0</span>)</p>
+                      <div class="pls-chip-group" id="pls-selected-ingredients"></div>
+                    </div>
+                  </div>
                 </div>
                 <div class="pls-modal__section">
                   <div class="pls-section-heading">
@@ -568,20 +263,25 @@ wp_localize_script(
                   </div>
                   <p class="pls-subtle"><?php esc_html_e( 'Pick your hero ingredients and keep their icons aligned with the base list.', 'pls-private-label-store' ); ?></p>
                   <div class="pls-chip-group" id="pls-key-ingredients"></div>
+                  <div class="pls-ingredient-spotlight" id="pls-ingredient-spotlight"></div>
                 </div>
               </div>
             </div>
 
             <div class="pls-stepper__panel" data-step="attributes">
-              <div class="pls-modal__section">
-                <div class="pls-section-heading">
-                  <p class="pls-label"><?php esc_html_e( 'Attributes', 'pls-private-label-store' ); ?></p>
-                  <h3><?php esc_html_e( 'Attribute options', 'pls-private-label-store' ); ?></h3>
-                  <p class="pls-subtle"><?php esc_html_e( 'Pick an existing attribute or craft a new one, then attach multiple values with their price impact.', 'pls-private-label-store' ); ?></p>
-                </div>
-                <div id="pls-attribute-rows" class="pls-attribute-rows"></div>
-                <button type="button" class="button" id="pls-add-attribute-row"><?php esc_html_e( 'Add attribute option', 'pls-private-label-store' ); ?></button>
-                <div id="pls-attribute-template" class="hidden">
+                <div class="pls-modal__section">
+                  <div class="pls-section-heading">
+                    <p class="pls-label"><?php esc_html_e( 'Attributes', 'pls-private-label-store' ); ?></p>
+                    <h3><?php esc_html_e( 'Attribute options', 'pls-private-label-store' ); ?></h3>
+                    <p class="pls-subtle"><?php esc_html_e( 'Pick an existing attribute or craft a new one, then attach multiple values with their price impact.', 'pls-private-label-store' ); ?></p>
+                  </div>
+                  <div class="pls-field-stack">
+                    <button type="button" class="button" id="pls-open-attribute-modal"><?php esc_html_e( 'Create attribute', 'pls-private-label-store' ); ?></button>
+                    <button type="button" class="button" id="pls-open-value-modal"><?php esc_html_e( 'Create value/option', 'pls-private-label-store' ); ?></button>
+                  </div>
+                  <div id="pls-attribute-rows" class="pls-attribute-rows"></div>
+                  <button type="button" class="button" id="pls-add-attribute-row"><?php esc_html_e( 'Add attribute option', 'pls-private-label-store' ); ?></button>
+                  <div id="pls-attribute-template" class="hidden">
                   <div class="pls-attribute-row">
                     <div class="pls-attribute-row__grid">
                       <div class="pls-attribute-card">
@@ -715,5 +415,91 @@ wp_localize_script(
         </div>
       </form>
     </div>
+  </div>
+</div>
+
+<div class="pls-modal" id="pls-ingredient-create-modal">
+  <div class="pls-modal__dialog">
+    <div class="pls-modal__head">
+      <div>
+        <h2><?php esc_html_e( 'Create ingredient', 'pls-private-label-store' ); ?></h2>
+        <p class="description"><?php esc_html_e( 'Add a new ingredient with an optional icon and description.', 'pls-private-label-store' ); ?></p>
+      </div>
+      <button type="button" class="pls-modal__close" aria-label="<?php esc_attr_e( 'Close', 'pls-private-label-store' ); ?>">×</button>
+    </div>
+    <form class="pls-modern-form" id="pls-create-ingredient-form">
+      <div class="pls-modal__section">
+        <label><?php esc_html_e( 'Ingredient name', 'pls-private-label-store' ); ?>
+          <input type="text" id="pls-new-ingredient-name" required placeholder="<?php esc_attr_e( 'e.g., Vitamin C', 'pls-private-label-store' ); ?>" />
+        </label>
+        <label><?php esc_html_e( 'Short description (optional)', 'pls-private-label-store' ); ?>
+          <input type="text" id="pls-new-ingredient-short" placeholder="<?php esc_attr_e( 'Antioxidant brightener', 'pls-private-label-store' ); ?>" />
+        </label>
+        <div class="pls-icon-picker" data-target="pls-new-ingredient-icon">
+          <div class="pls-icon-preview" id="pls-new-ingredient-icon-preview"></div>
+          <input type="hidden" id="pls-new-ingredient-icon" />
+          <button type="button" class="button pls-icon-pick"><?php esc_html_e( 'Upload/Select icon', 'pls-private-label-store' ); ?></button>
+          <button type="button" class="button-link-delete pls-icon-clear"><?php esc_html_e( 'Remove', 'pls-private-label-store' ); ?></button>
+        </div>
+      </div>
+      <div class="pls-modal__footer">
+        <button type="button" class="button" id="pls-cancel-ingredient-create"><?php esc_html_e( 'Cancel', 'pls-private-label-store' ); ?></button>
+        <button type="submit" class="button button-primary" id="pls-save-ingredient-create"><?php esc_html_e( 'Save ingredient', 'pls-private-label-store' ); ?></button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="pls-modal" id="pls-attribute-create-modal">
+  <div class="pls-modal__dialog">
+    <div class="pls-modal__head">
+      <div>
+        <h2><?php esc_html_e( 'Create attribute', 'pls-private-label-store' ); ?></h2>
+        <p class="description"><?php esc_html_e( 'Add a reusable attribute for product options.', 'pls-private-label-store' ); ?></p>
+      </div>
+      <button type="button" class="pls-modal__close" aria-label="<?php esc_attr_e( 'Close', 'pls-private-label-store' ); ?>">×</button>
+    </div>
+    <form class="pls-modern-form" id="pls-create-attribute-form">
+      <div class="pls-modal__section">
+        <label><?php esc_html_e( 'Label', 'pls-private-label-store' ); ?>
+          <input type="text" id="pls-new-attribute-label" required placeholder="<?php esc_attr_e( 'Packaging Type', 'pls-private-label-store' ); ?>" />
+        </label>
+        <label class="pls-inline-checkbox"><input type="checkbox" id="pls-new-attribute-variation" checked /> <?php esc_html_e( 'Use for variations', 'pls-private-label-store' ); ?></label>
+      </div>
+      <div class="pls-modal__footer">
+        <button type="button" class="button" id="pls-cancel-attribute-create"><?php esc_html_e( 'Cancel', 'pls-private-label-store' ); ?></button>
+        <button type="submit" class="button button-primary" id="pls-save-attribute-create"><?php esc_html_e( 'Save attribute', 'pls-private-label-store' ); ?></button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="pls-modal" id="pls-value-create-modal">
+  <div class="pls-modal__dialog">
+    <div class="pls-modal__head">
+      <div>
+        <h2><?php esc_html_e( 'Create value/option', 'pls-private-label-store' ); ?></h2>
+        <p class="description"><?php esc_html_e( 'Attach a reusable option to an existing attribute.', 'pls-private-label-store' ); ?></p>
+      </div>
+      <button type="button" class="pls-modal__close" aria-label="<?php esc_attr_e( 'Close', 'pls-private-label-store' ); ?>">×</button>
+    </div>
+    <form class="pls-modern-form" id="pls-create-value-form">
+      <div class="pls-modal__section">
+        <label><?php esc_html_e( 'Attribute', 'pls-private-label-store' ); ?>
+          <select id="pls-value-attribute">
+            <?php foreach ( $attr_payload as $attr ) : ?>
+                <option value="<?php echo esc_attr( $attr['id'] ); ?>"><?php echo esc_html( $attr['label'] ); ?></option>
+            <?php endforeach; ?>
+          </select>
+        </label>
+        <label><?php esc_html_e( 'Value label', 'pls-private-label-store' ); ?>
+          <input type="text" id="pls-new-value-label" required placeholder="<?php esc_attr_e( 'Airless Pump', 'pls-private-label-store' ); ?>" />
+        </label>
+      </div>
+      <div class="pls-modal__footer">
+        <button type="button" class="button" id="pls-cancel-value-create"><?php esc_html_e( 'Cancel', 'pls-private-label-store' ); ?></button>
+        <button type="submit" class="button button-primary" id="pls-save-value-create"><?php esc_html_e( 'Save value', 'pls-private-label-store' ); ?></button>
+      </div>
+    </form>
   </div>
 </div>

@@ -76,5 +76,15 @@ final class PLS_Repo_Product_Profile {
 
         return $formats;
     }
-}
 
+    public static function delete_for_base( $base_product_id ) {
+        global $wpdb;
+        $table = PLS_Repositories::table( 'product_profile' );
+
+        return $wpdb->delete(
+            $table,
+            array( 'base_product_id' => $base_product_id ),
+            array( '%d' )
+        );
+    }
+}

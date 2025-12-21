@@ -109,16 +109,16 @@ final class PLS_WC_Sync {
      */
     public static function sync_base_product_to_wc( $base_product_id ) {
         if ( ! class_exists( 'WooCommerce' ) ) {
-            return __( 'WooCommerce not active; sync skipped.', 'pls-private-label-store' );
+            return new WP_Error( 'pls_wc_missing', __( 'WooCommerce not active; sync skipped.', 'pls-private-label-store' ) );
         }
 
         if ( ! function_exists( 'wc_get_product' ) ) {
-            return __( 'WooCommerce product functions unavailable; sync skipped.', 'pls-private-label-store' );
+            return new WP_Error( 'pls_wc_missing', __( 'WooCommerce product functions unavailable; sync skipped.', 'pls-private-label-store' ) );
         }
 
         $base = PLS_Repo_Base_Product::get( $base_product_id );
         if ( ! $base ) {
-            return __( 'Base product not found.', 'pls-private-label-store' );
+            return new WP_Error( 'pls_base_missing', __( 'Base product not found.', 'pls-private-label-store' ) );
         }
 
         $status  = ( 'live' === $base->status ) ? 'publish' : 'draft';
@@ -150,7 +150,7 @@ final class PLS_WC_Sync {
         }
 
         if ( ! $product ) {
-            return __( 'WooCommerce product not available.', 'pls-private-label-store' );
+            return new WP_Error( 'pls_wc_product_missing', __( 'WooCommerce product not available.', 'pls-private-label-store' ) );
         }
 
         if ( $product->get_status() !== $status ) {
@@ -172,7 +172,7 @@ final class PLS_WC_Sync {
 
         $pack_attr = self::ensure_pack_tier_attribute();
         if ( ! $pack_attr ) {
-            return __( 'Unable to ensure pack tier attribute.', 'pls-private-label-store' );
+            return new WP_Error( 'pls_pack_attribute_missing', __( 'Unable to ensure pack tier attribute.', 'pls-private-label-store' ) );
         }
 
         $wc_attribute = new WC_Product_Attribute();
@@ -240,7 +240,12 @@ final class PLS_WC_Sync {
 
         $messages = array();
         foreach ( $bases as $base ) {
-            $messages[] = self::sync_base_product_to_wc( $base->id );
+            $result = self::sync_base_product_to_wc( $base->id );
+            if ( is_wp_error( $result ) ) {
+                $messages[] = $result->get_error_message();
+            } else {
+                $messages[] = $result;
+            }
         }
 
         return implode( ' ', $messages );

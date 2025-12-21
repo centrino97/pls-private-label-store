@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.6.1
+Stable tag: 0.6.2
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -19,5 +19,5 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 3. Configure under WooCommerce → Private Label (PLS)
 
 == Notes ==
-This version is a scaffold (Phase 0). Your dev team will implement full CRUD and the sync engine.
-
+* Enforces required fields with server-side validation and syncs every save/delete to WooCommerce (plus reconciliation when Woo products are missing).
+* Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.

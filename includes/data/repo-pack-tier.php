@@ -75,4 +75,15 @@ final class PLS_Repo_Pack_Tier {
             array( '%d', '%s' )
         );
     }
+
+    public static function delete_for_base( $base_product_id ) {
+        global $wpdb;
+        $table = PLS_Repositories::table( 'pack_tier' );
+
+        return $wpdb->delete(
+            $table,
+            array( 'base_product_id' => $base_product_id ),
+            array( '%d' )
+        );
+    }
 }
