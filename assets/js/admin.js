@@ -765,9 +765,8 @@
             .text(attr.label);
           if (attr.id === manageAttrCurrent){
             btn.addClass('is-active');
-        }
-        list.append(btn);
-      });
+          }
+          list.append(btn);
         });
         if (!manageAttrCurrent && firstId){
           manageAttrCurrent = firstId;
