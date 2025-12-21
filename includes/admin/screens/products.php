@@ -261,9 +261,12 @@ wp_localize_script(
                     <h3><?php esc_html_e( 'Key ingredients', 'pls-private-label-store' ); ?></h3>
                     <p class="pls-subtle" id="pls-key-ingredients-hint" data-ready-text="<?php esc_attr_e( 'Choose which ingredients to spotlight with icons (up to 5).', 'pls-private-label-store' ); ?>"><?php esc_html_e( 'Select ingredients on the left to spotlight them here.', 'pls-private-label-store' ); ?></p>
                   </div>
+                  <div class="pls-key-ingredients-header">
+                    <strong id="pls-key-counter"><?php esc_html_e( 'Key ingredients: 0 / 5', 'pls-private-label-store' ); ?></strong>
+                    <span class="pls-key-limit-message" id="pls-key-limit-message" aria-live="polite"></span>
+                  </div>
                   <p class="pls-subtle"><?php esc_html_e( 'Pick your hero ingredients and keep their icons aligned with the base list.', 'pls-private-label-store' ); ?></p>
-                  <div class="pls-chip-group" id="pls-key-ingredients"></div>
-                  <div class="pls-ingredient-spotlight" id="pls-ingredient-spotlight"></div>
+                  <div class="pls-chip-group pls-key-ingredients-list" id="pls-key-ingredients"></div>
                 </div>
               </div>
             </div>
@@ -276,8 +279,7 @@ wp_localize_script(
                     <p class="pls-subtle"><?php esc_html_e( 'Pick an existing attribute or craft a new one, then attach multiple values with their price impact.', 'pls-private-label-store' ); ?></p>
                   </div>
                   <div class="pls-field-stack">
-                    <button type="button" class="button" id="pls-open-attribute-modal"><?php esc_html_e( 'Create attribute', 'pls-private-label-store' ); ?></button>
-                    <button type="button" class="button" id="pls-open-value-modal"><?php esc_html_e( 'Create value/option', 'pls-private-label-store' ); ?></button>
+                    <button type="button" class="button" id="pls-open-attribute-manage"><?php esc_html_e( 'Manage attributes & values', 'pls-private-label-store' ); ?></button>
                   </div>
                   <div id="pls-attribute-rows" class="pls-attribute-rows"></div>
                   <button type="button" class="button" id="pls-add-attribute-row"><?php esc_html_e( 'Add attribute option', 'pls-private-label-store' ); ?></button>
@@ -286,49 +288,24 @@ wp_localize_script(
                     <div class="pls-attribute-row__grid">
                       <div class="pls-attribute-card">
                         <p class="pls-micro"><?php esc_html_e( 'Attribute', 'pls-private-label-store' ); ?></p>
-                        <label class="pls-field-stack">
-                          <span class="screen-reader-text"><?php esc_html_e( 'Search existing attributes', 'pls-private-label-store' ); ?></span>
-                          <input type="search" class="pls-attr-search" placeholder="<?php esc_attr_e( 'Search existing attributes', 'pls-private-label-store' ); ?>" />
-                          <span class="pls-field-hint"><?php esc_html_e( 'Start typing to jump to the attribute you already set up.', 'pls-private-label-store' ); ?></span>
-                        </label>
                         <select class="pls-attr-select" name="">
                           <option value=""><?php esc_html_e( 'Select attribute', 'pls-private-label-store' ); ?></option>
-                          <option value="__new__"><?php esc_html_e( 'Create new attribute', 'pls-private-label-store' ); ?></option>
                           <?php foreach ( $attr_payload as $attr ) : ?>
                               <option value="<?php echo esc_attr( $attr['id'] ); ?>"><?php echo esc_html( $attr['label'] ); ?></option>
                           <?php endforeach; ?>
                         </select>
-                        <div class="pls-attr-new-wrap">
-                          <label><?php esc_html_e( 'New attribute label', 'pls-private-label-store' ); ?>
-                            <input type="text" class="pls-attr-new" placeholder="Add a clean label" />
-                          </label>
-                        </div>
+                        <span class="pls-field-hint"><?php esc_html_e( 'Pick one attribute for this row.', 'pls-private-label-store' ); ?></span>
                       </div>
                       <div class="pls-attribute-card">
                         <div class="pls-attr-value-stack">
                           <p class="pls-micro"><?php esc_html_e( 'Values & price impact', 'pls-private-label-store' ); ?></p>
-                          <div class="pls-attribute-values"></div>
-                          <div class="pls-attribute-value-template hidden">
-                            <div class="pls-attribute-value-row">
-                              <div class="pls-attr-value-stack">
-                                <label><?php esc_html_e( 'Value', 'pls-private-label-store' ); ?>
-                                  <select class="pls-attr-value" data-placeholder="<?php esc_attr_e( 'Select value', 'pls-private-label-store' ); ?>" name=""></select>
-                                </label>
-                                <div class="pls-attr-value-new-wrap">
-                                  <label><?php esc_html_e( 'New value label', 'pls-private-label-store' ); ?>
-                                    <input type="text" class="pls-attr-value-new" placeholder="Ex: Frosted 50ml" />
-                                  </label>
-                                </div>
-                              </div>
-                              <div class="pls-price-inline">
-                                <label><?php esc_html_e( 'Price impact for this value', 'pls-private-label-store' ); ?>
-                                  <input type="number" step="0.01" class="pls-attr-price pls-price-input" inputmode="decimal" />
-                                </label>
-                              </div>
-                              <button type="button" class="button-link-delete pls-attribute-value-remove"><?php esc_html_e( 'Remove value', 'pls-private-label-store' ); ?></button>
-                            </div>
-                          </div>
-                          <button type="button" class="button button-small pls-attribute-value-add"><?php esc_html_e( 'Add value', 'pls-private-label-store' ); ?></button>
+                          <label class="pls-field-stack">
+                            <span class="screen-reader-text"><?php esc_html_e( 'Select values', 'pls-private-label-store' ); ?></span>
+                            <select class="pls-attr-value-multi" multiple data-placeholder="<?php esc_attr_e( 'Select values', 'pls-private-label-store' ); ?>"></select>
+                          </label>
+                          <div class="pls-attribute-value-details"></div>
+                          <div class="pls-attribute-custom-values"></div>
+                          <button type="button" class="button button-small pls-attribute-value-add-custom"><?php esc_html_e( 'Add custom value', 'pls-private-label-store' ); ?></button>
                         </div>
                       </div>
                     </div>
@@ -456,57 +433,57 @@ wp_localize_script(
     </form>
   </div>
 </div>
-
-<div class="pls-modal" id="pls-attribute-create-modal">
+<div class="pls-modal" id="pls-attribute-manage-modal">
   <div class="pls-modal__dialog">
     <div class="pls-modal__head">
       <div>
-        <h2><?php esc_html_e( 'Create attribute', 'pls-private-label-store' ); ?></h2>
-        <p class="description"><?php esc_html_e( 'Add a reusable attribute for product options.', 'pls-private-label-store' ); ?></p>
+        <h2><?php esc_html_e( 'Manage attributes & values', 'pls-private-label-store' ); ?></h2>
+        <p class="description"><?php esc_html_e( 'Create attributes and manage reusable values with their default price impacts.', 'pls-private-label-store' ); ?></p>
       </div>
       <button type="button" class="pls-modal__close" aria-label="<?php esc_attr_e( 'Close', 'pls-private-label-store' ); ?>">×</button>
     </div>
-    <form class="pls-modern-form" id="pls-create-attribute-form">
-      <div class="pls-modal__section">
-        <label><?php esc_html_e( 'Label', 'pls-private-label-store' ); ?>
-          <input type="text" id="pls-new-attribute-label" required placeholder="<?php esc_attr_e( 'Packaging Type', 'pls-private-label-store' ); ?>" />
-        </label>
-        <label class="pls-inline-checkbox"><input type="checkbox" id="pls-new-attribute-variation" checked /> <?php esc_html_e( 'Use for variations', 'pls-private-label-store' ); ?></label>
+    <div class="pls-modal__section pls-attribute-manage">
+      <div class="pls-attribute-manage__grid">
+        <div class="pls-attribute-manage__panel">
+          <div class="pls-section-heading">
+            <p class="pls-label"><?php esc_html_e( 'Attributes', 'pls-private-label-store' ); ?></p>
+            <h3><?php esc_html_e( 'Pick or create', 'pls-private-label-store' ); ?></h3>
+          </div>
+          <div id="pls-manage-attr-list" class="pls-manage-attr-list"></div>
+          <form class="pls-field-stack" id="pls-manage-attr-create">
+            <label><?php esc_html_e( 'New attribute label', 'pls-private-label-store' ); ?>
+              <input type="text" id="pls-manage-attr-label" placeholder="<?php esc_attr_e( 'Packaging Type', 'pls-private-label-store' ); ?>" />
+            </label>
+            <label class="pls-inline-checkbox"><input type="checkbox" id="pls-manage-attr-variation" checked /> <?php esc_html_e( 'Use for variations', 'pls-private-label-store' ); ?></label>
+            <button type="submit" class="button button-primary"><?php esc_html_e( 'Create attribute', 'pls-private-label-store' ); ?></button>
+          </form>
+        </div>
+        <div class="pls-attribute-manage__panel">
+          <div class="pls-section-heading">
+            <p class="pls-label"><?php esc_html_e( 'Values', 'pls-private-label-store' ); ?></p>
+            <h3 id="pls-manage-attr-current">&nbsp;</h3>
+            <p class="pls-subtle" id="pls-manage-attr-hint"><?php esc_html_e( 'Select an attribute on the left to view its values.', 'pls-private-label-store' ); ?></p>
+          </div>
+          <div id="pls-manage-value-list" class="pls-manage-value-list"></div>
+          <form class="pls-manage-value-form" id="pls-manage-value-create">
+            <div class="pls-field-grid">
+              <label><?php esc_html_e( 'Value label', 'pls-private-label-store' ); ?>
+                <input type="text" id="pls-manage-value-label" placeholder="<?php esc_attr_e( 'Airless Pump', 'pls-private-label-store' ); ?>" />
+              </label>
+              <label><?php esc_html_e( 'Default price impact', 'pls-private-label-store' ); ?>
+                <input type="number" step="0.01" class="pls-price-input" id="pls-manage-value-price" placeholder="0.00" />
+              </label>
+            </div>
+            <div class="pls-chip-row">
+              <button type="submit" class="button button-small"><?php esc_html_e( 'Add value', 'pls-private-label-store' ); ?></button>
+              <span class="pls-key-limit-message" id="pls-manage-value-status"></span>
+            </div>
+          </form>
+          <div class="pls-chip-row">
+            <button type="button" class="button button-primary" id="pls-manage-save-values"><?php esc_html_e( 'Save defaults', 'pls-private-label-store' ); ?></button>
+          </div>
+        </div>
       </div>
-      <div class="pls-modal__footer">
-        <button type="button" class="button" id="pls-cancel-attribute-create"><?php esc_html_e( 'Cancel', 'pls-private-label-store' ); ?></button>
-        <button type="submit" class="button button-primary" id="pls-save-attribute-create"><?php esc_html_e( 'Save attribute', 'pls-private-label-store' ); ?></button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<div class="pls-modal" id="pls-value-create-modal">
-  <div class="pls-modal__dialog">
-    <div class="pls-modal__head">
-      <div>
-        <h2><?php esc_html_e( 'Create value/option', 'pls-private-label-store' ); ?></h2>
-        <p class="description"><?php esc_html_e( 'Attach a reusable option to an existing attribute.', 'pls-private-label-store' ); ?></p>
-      </div>
-      <button type="button" class="pls-modal__close" aria-label="<?php esc_attr_e( 'Close', 'pls-private-label-store' ); ?>">×</button>
     </div>
-    <form class="pls-modern-form" id="pls-create-value-form">
-      <div class="pls-modal__section">
-        <label><?php esc_html_e( 'Attribute', 'pls-private-label-store' ); ?>
-          <select id="pls-value-attribute">
-            <?php foreach ( $attr_payload as $attr ) : ?>
-                <option value="<?php echo esc_attr( $attr['id'] ); ?>"><?php echo esc_html( $attr['label'] ); ?></option>
-            <?php endforeach; ?>
-          </select>
-        </label>
-        <label><?php esc_html_e( 'Value label', 'pls-private-label-store' ); ?>
-          <input type="text" id="pls-new-value-label" required placeholder="<?php esc_attr_e( 'Airless Pump', 'pls-private-label-store' ); ?>" />
-        </label>
-      </div>
-      <div class="pls-modal__footer">
-        <button type="button" class="button" id="pls-cancel-value-create"><?php esc_html_e( 'Cancel', 'pls-private-label-store' ); ?></button>
-        <button type="submit" class="button button-primary" id="pls-save-value-create"><?php esc_html_e( 'Save value', 'pls-private-label-store' ); ?></button>
-      </div>
-    </form>
   </div>
 </div>
