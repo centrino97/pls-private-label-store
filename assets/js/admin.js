@@ -63,9 +63,13 @@
       goToStep('general');
 
       var ingredientMap = {};
+      var ingredientFilter = '';
+      var ingredientSearchTimer = null;
+      var gallerySelection = [];
       if (window.PLS_ProductAdmin && Array.isArray(PLS_ProductAdmin.ingredients)) {
         PLS_ProductAdmin.ingredients.forEach(function(term){
           var key = term.term_id || term.id;
+          term.id = parseInt(key, 10);
           ingredientMap[key] = term;
         });
       }
@@ -73,8 +77,11 @@
 
       function renderIngredientLabel(term, inputName, isChecked){
         var label = $('<label class="pls-chip-select pls-chip-select--rich"></label>');
-        var input = $('<input type="checkbox" />').attr('name', inputName || '').val(term.id);
-        if (isChecked) { input.prop('checked', true); }
+        if (inputName){
+          var input = $('<input type="checkbox" />').attr('name', inputName).val(term.id);
+          if (isChecked) { input.prop('checked', true); }
+          label.append(input);
+        }
         var iconSrc = term.icon || defaultIngredientIcon;
         var media = $('<span class="pls-chip-media"></span>');
         if (iconSrc) {
@@ -85,41 +92,71 @@
         if (term.short_description) {
           copy.append($('<small></small>').text(term.short_description));
         }
-        label.append(input).append(media).append(copy);
+        label.append(media).append(copy);
         return label;
       }
 
-      function renderIngredientList(list, selectedIds, keySelected){
-        var wrap = $('#pls-ingredient-chips');
-        if (!wrap.length) { return; }
-        var preserved = Array.isArray(selectedIds) ? selectedIds.map(function(id){ return parseInt(id,10); }) : wrap.find('input:checked').map(function(){ return parseInt($(this).val(), 10); }).get();
-        var preservedKey = Array.isArray(keySelected) ? keySelected.map(function(id){ return parseInt(id,10); }) : $('#pls-key-ingredients input:checked').map(function(){ return parseInt($(this).val(), 10); }).get();
-        wrap.empty();
-        list.forEach(function(term){
-          var normId = parseInt(term.term_id || term.id, 10);
-          if (!normId) { return; }
-          term.id = normId;
-          ingredientMap[normId] = term;
-          var chip = renderIngredientLabel(term, 'ingredient_ids[]', preserved.indexOf(normId) !== -1);
-          wrap.append(chip);
-        });
-        updateKeyIngredients(preservedKey);
+      function renderIngredientOption(term, isChecked){
+        var label = $('<label class="pls-chip-select"></label>');
+        var input = $('<input type="checkbox" />').attr('name', 'ingredient_ids[]').val(term.id);
+        if (isChecked) { input.prop('checked', true); }
+        label.append(input).append($('<span></span>').text(term.name || term.label || ('#'+term.id)));
+        return label;
       }
 
-      function parseIngredientInput(raw){
-        var items = [];
-        if (!raw) { return items; }
-        raw.split(/\n|,/).forEach(function(line){
-          var piece = line.trim();
-          if (!piece) { return; }
-          var parts = piece.split('|');
-          var name = (parts.shift() || '').trim();
-          var short = parts.join('|').trim();
-          if (name) {
-            items.push({ name: name, short_description: short });
+      function renderSelectedIngredients(selectedIds){
+        var wrap = $('#pls-selected-ingredients');
+        $('#pls-selected-count').text(selectedIds.length);
+        if (!wrap.length){ return; }
+        wrap.empty();
+        selectedIds.forEach(function(id){
+          var term = ingredientMap[id] || { name: '#'+id };
+          var chip = $('<span class="pls-chip"></span>').text(term.name || term.label || ('#'+id));
+          wrap.append(chip);
+        });
+      }
+
+      function renderSpotlight(selectedIds){
+        var wrap = $('#pls-ingredient-spotlight');
+        if (!wrap.length){ return; }
+        wrap.empty();
+        selectedIds.forEach(function(id){
+          var term = ingredientMap[id] || { id: id, name: '#'+id, icon: defaultIngredientIcon };
+          wrap.append(renderIngredientLabel(term, '', false));
+        });
+      }
+
+      function renderIngredientList(filter){
+        var wrap = $('#pls-ingredient-chips');
+        if (!wrap.length) { return; }
+        var preserved = wrap.find('input:checked').map(function(){ return parseInt($(this).val(), 10); }).get();
+        var preservedKey = $('#pls-key-ingredients input:checked').map(function(){ return parseInt($(this).val(), 10); }).get();
+        var normalizedFilter = (filter || '').toLowerCase();
+        wrap.empty();
+
+        var ordered = [];
+        preserved.forEach(function(id){
+          if (ingredientMap[id]){
+            ordered.push(ingredientMap[id]);
           }
         });
-        return items;
+
+        Object.values(ingredientMap).forEach(function(term){
+          var normId = parseInt(term.term_id || term.id, 10);
+          if (!normId || preserved.indexOf(normId) !== -1){ return; }
+          var haystack = (term.name || term.label || '').toLowerCase();
+          if (normalizedFilter && haystack.indexOf(normalizedFilter) === -1){ return; }
+          term.id = normId;
+          ordered.push(term);
+        });
+
+        ordered.forEach(function(term){
+          wrap.append(renderIngredientOption(term, preserved.indexOf(term.id) !== -1));
+        });
+
+        renderSelectedIngredients(preserved);
+        renderSpotlight(preserved);
+        updateKeyIngredients(preservedKey);
       }
 
       function formatPrice(val){
@@ -135,11 +172,49 @@
         $('.pls-label-price').toggleClass('is-disabled', !isEnabled);
       }
 
+      function renderFeaturedPreview(id, url){
+        $('#pls-featured-id').val(id || '');
+        var preview = $('#pls-featured-preview');
+        preview.empty();
+        if (!id){ return; }
+        var thumb = $('<div class="pls-thumb"></div>');
+        if (url){
+          thumb.append($('<img/>').attr('src', url).attr('alt', ''));
+        } else {
+          thumb.text('#'+id);
+        }
+        var removeBtn = $('<button type="button" class="button-link-delete pls-remove-featured">Remove</button>');
+        preview.append(thumb).append(removeBtn);
+      }
+
+      function syncGalleryField(){
+        var ids = gallerySelection.map(function(item){ return item.id; });
+        $('#pls-gallery-ids').val(ids.join(','));
+      }
+
+      function renderGalleryPreview(){
+        var wrap = $('#pls-gallery-preview');
+        wrap.empty();
+        gallerySelection.forEach(function(item, index){
+          var cell = $('<span class="pls-thumb"></span>');
+          if (item.url){
+            cell.append($('<img/>').attr('src', item.url).attr('alt', ''));
+          } else {
+            cell.text('#'+item.id);
+          }
+          var removeBtn = $('<button type="button" class="button-link-delete pls-remove-gallery" data-gallery-index="'+index+'">×</button>');
+          var container = $('<span class="pls-thumb-wrap"></span>');
+          container.append(cell).append(removeBtn);
+          wrap.append(container);
+        });
+        syncGalleryField();
+      }
+
       var keyHintDefault = $('#pls-key-ingredients-hint').text();
       var keyHintReady = $('#pls-key-ingredients-hint').data('readyText') || 'Choose which ingredients to spotlight with icons.';
 
       if (Object.keys(ingredientMap).length){
-        renderIngredientList(Object.values(ingredientMap));
+        renderIngredientList(ingredientFilter);
       }
 
       function resetModal(){
@@ -148,10 +223,14 @@
           form[0].reset();
         }
         $('#pls-product-id, #pls-gallery-ids, #pls-featured-id').val('');
-        $('#pls-featured-preview, #pls-gallery-preview').empty();
+        gallerySelection = [];
+        renderFeaturedPreview('', '');
+        renderGalleryPreview();
         $('#pls-ingredient-chips input[type=checkbox], #pls-category-pills input[type=checkbox], .pls-chip-group input[type=checkbox]').prop('checked', false);
-        $('#pls-benefits, #pls-long-description, #pls-short-description, #pls-directions, #pls-ingredients-input, #pls-new-ingredients').val('');
-        $('#pls-ingredient-chips .pls-chip-row').remove();
+        $('#pls-benefits, #pls-long-description, #pls-short-description, #pls-directions').val('');
+        ingredientFilter = '';
+        $('#pls-ingredient-search').val('');
+        renderIngredientList(ingredientFilter);
         $('#pls-attribute-rows').empty();
         $('#pls-label-guide').val(defaultLabelGuide);
         $('#pls-label-price').val('');
@@ -159,6 +238,8 @@
         setLabelState(true);
         $('#pls-product-errors').hide().find('ul').empty();
         goToStep('general');
+        renderSelectedIngredients([]);
+        renderSpotlight([]);
         updateKeyIngredients();
         $('#pls-pack-grid .pls-pack-row').each(function(idx){
           var defaults = (window.PLS_ProductAdmin && PLS_ProductAdmin.packDefaults) ? PLS_ProductAdmin.packDefaults : [];
@@ -297,6 +378,41 @@
         syncAttributeRow(template, false);
       }
 
+      function addAttributeToMap(attr){
+        if (!attr || !attr.id){ return; }
+        attrMap[attr.id] = { id: attr.id, label: attr.label, values: [] };
+        $('.pls-attr-select').each(function(){
+          if (!$(this).find('option[value="'+attr.id+'"]').length){
+            $(this).append('<option value="'+attr.id+'">'+attr.label+'</option>');
+          }
+        });
+        if (!$('#pls-value-attribute option[value="'+attr.id+'"]').length){
+          $('#pls-value-attribute').append('<option value="'+attr.id+'">'+attr.label+'</option>');
+        }
+      }
+
+      function addValueToMap(attributeId, value){
+        if (!attributeId || !value){ return; }
+        if (!attrMap[attributeId]){
+          attrMap[attributeId] = { id: attributeId, label: '', values: [] };
+        }
+        if (!Array.isArray(attrMap[attributeId].values)){
+          attrMap[attributeId].values = [];
+        }
+        attrMap[attributeId].values.push({ id: value.id, label: value.label });
+        $('.pls-attribute-row').each(function(){
+          var attrId = parseInt($(this).find('.pls-attr-select').val(), 10);
+          if (attrId === attributeId){
+            var selectEl = $(this).find('.pls-attr-value');
+            var currentVal = selectEl.val();
+            populateValueOptions($(this), selectEl);
+            if (currentVal){
+              selectEl.val(currentVal);
+            }
+          }
+        });
+      }
+
       function populateModal(data){
         resetModal();
         if (!data) { return; }
@@ -306,6 +422,9 @@
         $('#pls-short-description').val(data.short_description || '');
         $('#pls-long-description').val(data.long_description || '');
         $('#pls-directions').val(data.directions_text || '');
+        ingredientFilter = '';
+        $('#pls-ingredient-search').val('');
+        renderIngredientList(ingredientFilter);
 
         if (Array.isArray(data.categories)){
           $('#pls-category-pills input[type=checkbox]').prop('checked', false);
@@ -350,20 +469,18 @@
             }
           });
         }
+        var selectedIngredients = $('#pls-ingredient-chips input:checked').map(function(){ return parseInt($(this).val(), 10); }).get();
+        renderSelectedIngredients(selectedIngredients);
+        renderSpotlight(selectedIngredients);
         updateKeyIngredients(keySelections);
 
-        if (data.featured_image_id){
-          $('#pls-featured-id').val(data.featured_image_id);
-          var img = $('<div class="pls-thumb"></div>').text('#'+data.featured_image_id);
-          $('#pls-featured-preview').html(img);
+        renderFeaturedPreview(data.featured_image_id, data.featured_image_thumb || '');
+        if (Array.isArray(data.gallery_media) && data.gallery_media.length){
+          gallerySelection = data.gallery_media.map(function(item){ return { id: item.id, url: item.url }; });
+        } else if (Array.isArray(data.gallery_ids)){
+          gallerySelection = data.gallery_ids.map(function(id){ return { id: id, url: '' }; });
         }
-
-        if (Array.isArray(data.gallery_ids)){
-          $('#pls-gallery-ids').val(data.gallery_ids.join(','));
-          var wrap = $('<div class="pls-thumb-row"></div>');
-          data.gallery_ids.forEach(function(id){ wrap.append($('<span class="pls-thumb"></span>').text('#'+id)); });
-          $('#pls-gallery-preview').html(wrap);
-        }
+        renderGalleryPreview();
 
         setLabelState(!!parseInt(data.label_enabled));
         $('#pls-label-price').val(formatPrice(data.label_price_per_unit || ''));
@@ -400,6 +517,241 @@
       $('.pls-modal__close, #pls-modal-cancel').on('click', function(){
         closeModal();
       });
+
+    $(document).on('click', '.pls-delete-product', function(e){
+      e.preventDefault();
+      var id = $(this).data('product-id');
+      if (!id){ return; }
+      if (!confirm('Delete this product and trash its WooCommerce product?')){
+        return;
+      }
+      var button = $(this);
+      button.prop('disabled', true);
+      $.post(ajaxurl, { action: 'pls_delete_product', nonce: (window.PLS_Admin ? PLS_Admin.nonce : ''), id: id }, function(resp){
+        if (resp && resp.success){
+          $('.pls-card[data-product-id="'+id+'"]').remove();
+          delete productMap[id];
+        } else {
+          alert((resp && resp.data && resp.data.message) ? resp.data.message : 'Could not delete product.');
+        }
+      }).fail(function(){
+        alert('Could not delete product.');
+      }).always(function(){
+        button.prop('disabled', false);
+      });
+    });
+
+    $(document).on('click', '.pls-sync-product', function(e){
+      e.preventDefault();
+      var id = $(this).data('product-id');
+      if (!id){ return; }
+      var button = $(this);
+      var originalText = button.text();
+      button.prop('disabled', true).text('Syncing...');
+      $.post(ajaxurl, { action: 'pls_sync_product', nonce: (window.PLS_Admin ? PLS_Admin.nonce : ''), id: id }, function(resp){
+        if (resp && resp.success && resp.data && resp.data.product){
+          productMap[id] = resp.data.product;
+          updateCardSync(resp.data.product);
+        } else {
+          alert((resp && resp.data && resp.data.message) ? resp.data.message : 'Could not sync product.');
+        }
+      }).fail(function(){
+        alert('Could not sync product.');
+      }).always(function(){
+        button.prop('disabled', false).text(originalText);
+      });
+    });
+
+    $('#pls-sync-all').on('click', function(e){
+      e.preventDefault();
+      var button = $(this);
+      var originalText = button.text();
+      button.prop('disabled', true).text('Syncing...');
+      $.post(ajaxurl, { action: 'pls_sync_all_products', nonce: (window.PLS_Admin ? PLS_Admin.nonce : '') }, function(resp){
+        alert((resp && resp.data && resp.data.message) ? resp.data.message : 'Sync complete.');
+        window.location.reload();
+      }).fail(function(){
+        alert('Could not sync all products.');
+      }).always(function(){
+        button.prop('disabled', false).text(originalText);
+      });
+    });
+
+    $('#pls-open-ingredient-create').on('click', function(e){
+      e.preventDefault();
+      $('#pls-ingredient-create-modal').addClass('is-active');
+      $('body').addClass('pls-modal-open');
+    });
+
+    $('#pls-cancel-ingredient-create, #pls-ingredient-create-modal .pls-modal__close').on('click', function(e){
+      e.preventDefault();
+      $('#pls-ingredient-create-modal').removeClass('is-active');
+      if (!$('#pls-product-modal').hasClass('is-active')){
+        $('body').removeClass('pls-modal-open');
+      }
+    });
+
+    $('#pls-create-ingredient-form').on('submit', function(e){
+      e.preventDefault();
+      var name = ($('#pls-new-ingredient-name').val() || '').trim();
+      if (!name){
+        alert('Ingredient name is required.');
+        return;
+      }
+      var payload = {
+        action: 'pls_create_ingredients',
+        nonce: (window.PLS_Admin ? PLS_Admin.nonce : ''),
+        ingredients: [{
+          name: name,
+          short_description: ($('#pls-new-ingredient-short').val() || '').trim(),
+          icon_id: parseInt($('#pls-new-ingredient-icon').val(), 10) || 0
+        }]
+      };
+      var submitBtn = $('#pls-save-ingredient-create');
+      var originalText = submitBtn.text();
+      submitBtn.prop('disabled', true).text('Saving...');
+      $.post(ajaxurl, payload, function(resp){
+        if (!resp || !resp.success || !resp.data || !Array.isArray(resp.data.ingredients)){
+          alert((resp && resp.data && resp.data.message) ? resp.data.message : 'Could not create ingredient.');
+          return;
+        }
+        if (resp.data.default_icon){
+          defaultIngredientIcon = resp.data.default_icon;
+        }
+        resp.data.ingredients.forEach(function(term){
+          var key = term.term_id || term.id;
+          term.id = parseInt(key, 10);
+          ingredientMap[key] = term;
+        });
+        renderIngredientList(ingredientFilter);
+        $('#pls-ingredient-create-modal').removeClass('is-active');
+        if (!$('#pls-product-modal').hasClass('is-active')){
+          $('body').removeClass('pls-modal-open');
+        }
+        $('#pls-new-ingredient-name').val('');
+        $('#pls-new-ingredient-short').val('');
+        $('#pls-new-ingredient-icon').val('');
+        $('#pls-new-ingredient-icon-preview').empty();
+        var newId = resp.data.ingredients.length ? (resp.data.ingredients[0].id || resp.data.ingredients[0].term_id) : 0;
+        if (newId){
+          $('#pls-ingredient-chips input[value="'+newId+'"]').prop('checked', true);
+          var selected = $('#pls-ingredient-chips input:checked').map(function(){ return parseInt($(this).val(), 10); }).get();
+          renderSelectedIngredients(selected);
+          renderSpotlight(selected);
+          updateKeyIngredients();
+        }
+      }).fail(function(){
+        alert('Could not create ingredient.');
+      }).always(function(){
+        submitBtn.prop('disabled', false).text(originalText);
+      });
+    });
+
+    $('#pls-open-attribute-modal').on('click', function(e){
+      e.preventDefault();
+      $('#pls-attribute-create-modal').addClass('is-active');
+      $('body').addClass('pls-modal-open');
+    });
+
+    $('#pls-cancel-attribute-create, #pls-attribute-create-modal .pls-modal__close').on('click', function(e){
+      e.preventDefault();
+      $('#pls-attribute-create-modal').removeClass('is-active');
+      if (!$('#pls-product-modal').hasClass('is-active')){
+        $('body').removeClass('pls-modal-open');
+      }
+    });
+
+    $('#pls-create-attribute-form').on('submit', function(e){
+      e.preventDefault();
+      var label = ($('#pls-new-attribute-label').val() || '').trim();
+      if (!label){
+        alert('Attribute label is required.');
+        return;
+      }
+      var payload = {
+        action: 'pls_create_attribute',
+        nonce: (window.PLS_Admin ? PLS_Admin.nonce : ''),
+        label: label,
+        is_variation: $('#pls-new-attribute-variation').is(':checked') ? 1 : 0
+      };
+      var submitBtn = $('#pls-save-attribute-create');
+      var originalText = submitBtn.text();
+      submitBtn.prop('disabled', true).text('Saving...');
+      $.post(ajaxurl, payload, function(resp){
+        if (!resp || !resp.success || !resp.data || !resp.data.attribute){
+          alert((resp && resp.data && resp.data.message) ? resp.data.message : 'Could not create attribute.');
+          return;
+        }
+        addAttributeToMap(resp.data.attribute);
+        $('#pls-attribute-create-modal').removeClass('is-active');
+        if (!$('#pls-product-modal').hasClass('is-active')){
+          $('body').removeClass('pls-modal-open');
+        }
+        $('#pls-new-attribute-label').val('');
+        $('#pls-new-attribute-variation').prop('checked', true);
+      }).fail(function(){
+        alert('Could not create attribute.');
+      }).always(function(){
+        submitBtn.prop('disabled', false).text(originalText);
+      });
+    });
+
+    $('#pls-open-value-modal').on('click', function(e){
+      e.preventDefault();
+      if (!$('#pls-value-attribute option').length){
+        alert('Create an attribute first.');
+        return;
+      }
+      var currentAttr = $('.pls-attribute-row').first().find('.pls-attr-select').val();
+      if (currentAttr){
+        $('#pls-value-attribute').val(currentAttr);
+      }
+      $('#pls-value-create-modal').addClass('is-active');
+      $('body').addClass('pls-modal-open');
+    });
+
+    $('#pls-cancel-value-create, #pls-value-create-modal .pls-modal__close').on('click', function(e){
+      e.preventDefault();
+      $('#pls-value-create-modal').removeClass('is-active');
+      if (!$('#pls-product-modal').hasClass('is-active')){
+        $('body').removeClass('pls-modal-open');
+      }
+    });
+
+    $('#pls-create-value-form').on('submit', function(e){
+      e.preventDefault();
+      var attrId = parseInt($('#pls-value-attribute').val(), 10);
+      var label = ($('#pls-new-value-label').val() || '').trim();
+      if (!attrId || !label){
+        alert('Attribute and value label are required.');
+        return;
+      }
+      var payload = {
+        action: 'pls_create_attribute_value',
+        nonce: (window.PLS_Admin ? PLS_Admin.nonce : ''),
+        attribute_id: attrId,
+        label: label
+      };
+      var submitBtn = $('#pls-save-value-create');
+      var originalText = submitBtn.text();
+      submitBtn.prop('disabled', true).text('Saving...');
+      $.post(ajaxurl, payload, function(resp){
+        if (!resp || !resp.success || !resp.data || !resp.data.value){
+          alert((resp && resp.data && resp.data.message) ? resp.data.message : 'Could not create value.');
+          return;
+        }
+        addValueToMap(attrId, resp.data.value);
+        $('#pls-value-create-modal').removeClass('is-active');
+        if (!$('#pls-product-modal').hasClass('is-active')){
+          $('body').removeClass('pls-modal-open');
+        }
+        $('#pls-new-value-label').val('');
+      }).fail(function(){
+        alert('Could not create value.');
+      }).always(function(){
+        submitBtn.prop('disabled', false).text(originalText);
+      });
+    });
 
     $('#pls-stepper-nav').on('click', '.pls-stepper__item', function(){
       var step = $(this).data('step');
@@ -479,7 +831,19 @@
       });
 
       $('#pls-ingredient-chips').on('change', 'input[type=checkbox]', function(){
+        var selected = $('#pls-ingredient-chips input:checked').map(function(){ return parseInt($(this).val(), 10); }).get();
+        renderSelectedIngredients(selected);
+        renderSpotlight(selected);
         updateKeyIngredients();
+      });
+
+      $('#pls-ingredient-search').on('input', function(){
+        var value = ($(this).val() || '').toLowerCase();
+        clearTimeout(ingredientSearchTimer);
+        ingredientSearchTimer = setTimeout(function(){
+          ingredientFilter = value;
+          renderIngredientList(ingredientFilter);
+        }, 200);
       });
 
       $(document).on('input', '.pls-price-input', function(){
@@ -519,14 +883,48 @@
         if (!$('#pls-category-pills input:checked').length){
           errors.push('Select at least one category.');
         }
+        if (!$('#pls-featured-id').val()){
+          errors.push('Featured image is required.');
+        }
+        if (!$('#pls-gallery-ids').val()){
+          errors.push('Add at least one gallery image.');
+        }
         if (!$('#pls-short-description').val().trim()){
           errors.push('Short description is required.');
         }
         if (!$('#pls-long-description').val().trim()){
           errors.push('Long description is required.');
         }
+        if (!$('#pls-directions').val().trim()){
+          errors.push('Directions are required.');
+        }
+        if (!$('input[name="skin_types[]"]:checked').length){
+          errors.push('Select at least one skin type.');
+        }
+        var benefitsText = $('#pls-benefits').val() || '';
+        if (!benefitsText.trim()){
+          errors.push('Provide at least one benefit.');
+        }
         if (!$('#pls-ingredient-chips input:checked').length){
           errors.push('Select at least one ingredient.');
+        }
+        var enabledTier = false;
+        $('#pls-pack-grid .pls-pack-row').each(function(){
+          var units = parseInt($(this).find('input[name*="[units]"]').val(), 10) || 0;
+          var priceVal = parseFloat($(this).find('input[name*="[price]"]').val());
+          var enabled = $(this).find('input[name*="[enabled]"]').is(':checked');
+          if (enabled){ enabledTier = true; }
+          if (enabled && (isNaN(priceVal) || priceVal <= 0)){
+            errors.push('Pack tier prices must be greater than zero.');
+            return false;
+          }
+          if (enabled && units <= 0){
+            errors.push('Pack tier units must be provided.');
+            return false;
+          }
+        });
+        if (!enabledTier){
+          errors.push('Enable at least one pack tier.');
         }
 
         $('#pls-attribute-rows .pls-attribute-row').each(function(){
@@ -560,6 +958,13 @@
           });
         });
 
+        if ($('#pls-label-enabled').is(':checked')) {
+          var labelPrice = parseFloat($('#pls-label-price').val());
+          if (isNaN(labelPrice) || labelPrice <= 0){
+            errors.push('Label price per unit must be greater than zero when label application is enabled.');
+          }
+        }
+
         $('.pls-price-input').each(function(){
           var val = $(this).val();
           if (val && isNaN(parseFloat(val))){
@@ -592,55 +997,113 @@
       e.preventDefault();
       pickImage(function(files){
         if (!files || !files.length){ return; }
-        $('#pls-featured-id').val(files[0].id);
-        $('#pls-featured-preview').html('<div class="pls-thumb">#'+files[0].id+'</div>');
+        var file = files[0];
+        var thumbUrl = (file.sizes && file.sizes.thumbnail && file.sizes.thumbnail.url) ? file.sizes.thumbnail.url : file.url;
+        renderFeaturedPreview(file.id, thumbUrl);
       }, false);
     });
 
     $('#pls-pick-gallery').on('click', function(e){
       e.preventDefault();
       pickImage(function(files){
-        var ids = files.map(function(file){ return file.id; });
-        $('#pls-gallery-ids').val(ids.join(','));
-        var wrap = $('<div class="pls-thumb-row"></div>');
-        ids.forEach(function(id){ wrap.append($('<span class="pls-thumb"></span>').text('#'+id)); });
-        $('#pls-gallery-preview').html(wrap);
+        gallerySelection = files.map(function(file){
+          var thumbUrl = (file.sizes && file.sizes.thumbnail && file.sizes.thumbnail.url) ? file.sizes.thumbnail.url : file.url;
+          return { id: file.id, url: thumbUrl };
+        });
+        renderGalleryPreview();
       }, true);
     });
 
-    $('#pls-push-new-ingredients').on('click', function(e){
+    $(document).on('click', '.pls-remove-featured', function(e){
       e.preventDefault();
-      var raw = $('#pls-ingredients-input').val();
-      var parsed = parseIngredientInput(raw);
-      var button = $(this);
-      if (!parsed.length){ return; }
-      button.prop('disabled', true).text(button.data('busy-label') || 'Creating...');
-      $.post(ajaxurl, { action: 'pls_create_ingredients', nonce: (window.PLS_Admin ? PLS_Admin.nonce : ''), ingredients: parsed }, function(resp){
-        button.prop('disabled', false).text(button.data('label') || 'Create missing in Ingredients base');
-        if (!resp || !resp.success || !resp.data || !Array.isArray(resp.data.ingredients)){
-          alert((resp && resp.data && resp.data.message) ? resp.data.message : 'Could not create ingredients.');
-          return;
-        }
-        if (resp.data.default_icon){
-          defaultIngredientIcon = resp.data.default_icon;
-        }
-        renderIngredientList(resp.data.ingredients);
-        $('#pls-ingredients-input').val('');
-      }).fail(function(){
-        button.prop('disabled', false).text(button.data('label') || 'Create missing in Ingredients base');
-        alert('Could not create ingredients.');
-      });
+      renderFeaturedPreview('', '');
     });
 
+    $(document).on('click', '.pls-remove-gallery', function(e){
+      e.preventDefault();
+      var idx = parseInt($(this).data('gallery-index'), 10);
+      if (!isNaN(idx)){
+        gallerySelection.splice(idx, 1);
+        renderGalleryPreview();
+      }
+    });
+
+    function renderServerErrors(resp){
+      if (resp && resp.responseJSON && resp !== resp.responseJSON){
+        renderServerErrors(resp.responseJSON);
+        return;
+      }
+      var errs = [];
+      if (resp && resp.data && Array.isArray(resp.data.errors)){
+        resp.data.errors.forEach(function(item){
+          if (item && item.message){
+            errs.push(item.message);
+          }
+        });
+      } else if (resp && resp.data && resp.data.message){
+        errs.push(resp.data.message);
+      } else if (resp && resp.message){
+        errs.push(resp.message);
+      }
+      if (!errs.length){
+        errs.push('Could not save product.');
+      }
+      renderErrors(errs);
+    }
+
+    function formatSyncStatus(status){
+      if (!status){
+        return 'Not synced yet.';
+      }
+      var label = status.success ? 'Synced' : 'Sync failed';
+      var parts = [label];
+      if (status.timestamp){
+        parts.push(new Date(status.timestamp * 1000).toLocaleString());
+      }
+      if (status.message){
+        parts.push(status.message);
+      }
+      return parts.join(' – ');
+    }
+
+    function updateCardSync(product){
+      var card = $('.pls-card[data-product-id="'+product.id+'"]');
+      var meta = card.find('.pls-sync-meta');
+      if (meta.length){
+        meta.text(formatSyncStatus(product.sync_status));
+      }
+    }
+
     $('#pls-product-form').on('submit', function(e){
-        $('#pls-new-ingredients').val('');
+        e.preventDefault();
         var errors = validateProductForm();
         if (errors.length){
-          e.preventDefault();
           renderErrors(errors);
-        } else {
-          renderErrors([]);
+          return;
         }
+        renderErrors([]);
+        var form = $(this);
+        var submitBtn = form.find('button[type=submit]');
+        var originalText = submitBtn.text();
+        var payload = form.serializeArray();
+        payload.push({ name: 'action', value: 'pls_save_product' });
+        payload.push({ name: 'nonce', value: (window.PLS_Admin ? PLS_Admin.nonce : '') });
+        submitBtn.prop('disabled', true).text('Saving...');
+        $.post(ajaxurl, payload, function(resp){
+          if (!resp || !resp.success || !resp.data || resp.data.ok === false){
+            renderServerErrors(resp);
+            return;
+          }
+          if (resp.data && resp.data.product){
+            productMap[resp.data.product.id] = resp.data.product;
+          }
+          closeModal();
+          window.location.reload();
+        }).fail(function(resp){
+          renderServerErrors(resp);
+        }).always(function(){
+          submitBtn.prop('disabled', false).text(originalText);
+        });
       });
 
     $(document).on('click', '.pls-icon-pick', function(e){
