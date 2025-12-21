@@ -127,16 +127,6 @@
         });
       }
 
-      function renderSpotlight(selectedIds){
-        var wrap = $('#pls-ingredient-spotlight');
-        if (!wrap.length){ return; }
-        wrap.empty();
-        selectedIds.forEach(function(id){
-          var term = ingredientMap[id] || { id: id, name: '#'+id, icon: defaultIngredientIcon };
-          wrap.append(renderIngredientLabel(term, '', false));
-        });
-      }
-
       function renderIngredientList(filter){
         var wrap = $('#pls-ingredient-chips');
         if (!wrap.length) { return; }
@@ -175,7 +165,6 @@
         });
 
         renderSelectedIngredients(preserved);
-        renderSpotlight(preserved);
         updateKeyIngredients(preservedKey);
       }
 
@@ -259,7 +248,6 @@
         $('#pls-product-errors').hide().find('ul').empty();
         goToStep('general');
         renderSelectedIngredients([]);
-        renderSpotlight([]);
         keySelected = [];
         updateKeyIngredients();
         $('#pls-pack-grid .pls-pack-row').each(function(idx){
@@ -274,6 +262,8 @@
       function updateKeyIngredients(forceSelection){
         var wrap = $('#pls-key-ingredients');
         var hint = $('#pls-key-ingredients-hint');
+        var counter = $('#pls-key-counter');
+        var limitMsg = $('#pls-key-limit-message');
         var selectedIngredients = $('#pls-ingredient-chips input:checked').map(function(){ return parseInt($(this).val(), 10); }).get();
         var preserved = Array.isArray(forceSelection) ? forceSelection.map(function(id){ return parseInt(id, 10); }) : keySelected.slice();
         var normalizedSelection = [];
@@ -284,6 +274,8 @@
         });
         keySelected = normalizedSelection;
         wrap.empty();
+        limitMsg.text('');
+        counter.text('Key ingredients: ' + keySelected.length + ' / ' + keyLimit);
         if (!selectedIngredients.length){
           hint.text(keyHintDefault);
           return;
@@ -295,11 +287,15 @@
         });
       }
 
-      function populateValueOptions(attrRow, selectEl){
+      function populateValueOptions(attrRow){
         var attrId = parseInt(attrRow.find('.pls-attr-select').val(), 10);
-        var placeholder = selectEl.data('placeholder') || 'Select value';
+        var selectEl = attrRow.find('.pls-attr-value-multi');
         selectEl.empty();
-        selectEl.append('<option value="">'+placeholder+'</option>');
+        if (!attrId || !attrMap[attrId]){
+          selectEl.prop('disabled', true);
+          return;
+        }
+        selectEl.prop('disabled', false);
         if (attrMap[attrId] && Array.isArray(attrMap[attrId].values)){
           attrMap[attrId].values.forEach(function(val){
             var opt = $('<option></option>').attr('value', val.id).text(val.label);
@@ -312,106 +308,101 @@
             selectEl.append(opt);
           });
         }
-        selectEl.append('<option value="__new__">Create new value</option>');
       }
 
-      function setPriceAvailability(valueRow){
-        var newLabel = valueRow.find('.pls-attr-value-new').val() || '';
-        var currentSelect = valueRow.find('.pls-attr-value').val();
-        var hasValue = (!!currentSelect && currentSelect !== '__new__') || !!newLabel.trim();
-        valueRow.find('.pls-attr-price').prop('disabled', !hasValue);
+      function defaultPriceForValue(id, selectEl){
+        if (id && typeof valuePriceCache[id] !== 'undefined'){
+          return valuePriceCache[id];
+        }
+        var opt = selectEl.find('option[value="'+id+'"]');
+        var optPrice = parseFloat(opt.data('price'));
+        if (!isNaN(optPrice)){
+          return optPrice;
+        }
+        return '';
       }
 
-      function applyDefaultPriceFromOption(valueRow){
-        var select = valueRow.find('.pls-attr-value');
-        var priceInput = valueRow.find('.pls-attr-price');
-        if (priceInput.val() && priceInput.val().toString().trim() !== ''){
-          return;
-        }
-        var selectedId = parseInt(select.val(), 10);
-        var price = null;
-        if (selectedId && typeof valuePriceCache[selectedId] !== 'undefined'){
-          price = valuePriceCache[selectedId];
-        }
-        if (price === null || price === ''){
-          var optPrice = parseFloat(select.find('option:selected').data('price'));
-          if (!isNaN(optPrice)){
-            price = optPrice;
+      function renderValueDetails(attrRow){
+        var selectEl = attrRow.find('.pls-attr-value-multi');
+        var details = attrRow.find('.pls-attribute-value-details');
+        var customWrap = attrRow.find('.pls-attribute-custom-values');
+        details.empty();
+        var selected = selectEl.val() || [];
+        selected.forEach(function(valId){
+          var parsed = parseInt(valId, 10);
+          var valObj = null;
+          var attrId = parseInt(attrRow.find('.pls-attr-select').val(), 10);
+          if (attrMap[attrId] && Array.isArray(attrMap[attrId].values)){
+            valObj = attrMap[attrId].values.find(function(v){ return parseInt(v.id, 10) === parsed; }) || null;
           }
-        }
-        if (price !== null && price !== '' && !isNaN(parseFloat(price))){
-          priceInput.val(formatPrice(price));
-        }
+          var label = valObj ? valObj.label : ('#'+valId);
+          var row = $('<div class="pls-attribute-value-detail"></div>').attr('data-value-id', valId);
+          row.append('<input type="hidden" class="pls-value-id" value="'+valId+'" />');
+          row.append('<input type="hidden" class="pls-value-label" value="'+label.replace(/\"/g,'&quot;')+'" />');
+          var priceInput = $('<input type="number" step="0.01" class="pls-attr-price pls-price-input" inputmode="decimal" />');
+          var defaultPrice = formatPrice(defaultPriceForValue(parsed, selectEl));
+          if (defaultPrice){
+            priceInput.attr('placeholder', defaultPrice);
+            if (!priceInput.val()){
+              priceInput.val(defaultPrice);
+            }
+          }
+          row.append($('<div class="pls-price-inline"></div>').append(
+            $('<label>'+label+'</label>').append(priceInput)
+          ));
+          details.append(row);
+        });
+        renumberAttributeRows();
       }
 
-      function syncValueRow(valueRow){
-        var attrRow = valueRow.closest('.pls-attribute-row');
-        var attrSelect = attrRow.find('.pls-attr-select');
-        var isNewAttr = attrSelect.val() === '__new__';
-        var select = valueRow.find('.pls-attr-value');
-        if (!isNewAttr){
-          populateValueOptions(attrRow, select);
-        }
-        select.prop('disabled', isNewAttr);
-        valueRow.find('.pls-attr-value-new-wrap').toggle(isNewAttr || select.val() === '__new__');
-        setPriceAvailability(valueRow);
-        if (!isNewAttr && select.val() && select.val() !== '__new__'){
-          applyDefaultPriceFromOption(valueRow);
-        }
+      function addCustomValueRow(attrRow, data){
+        var customWrap = attrRow.find('.pls-attribute-custom-values');
+        var row = $('<div class="pls-attribute-value-custom"></div>');
+        var labelInput = $('<input type="text" class="pls-attr-value-new" placeholder="Ex: Frosted 50ml" />').val(data && data.value_label ? data.value_label : '');
+        var priceInput = $('<input type="number" step="0.01" class="pls-attr-price pls-price-input" inputmode="decimal" />').val(data && typeof data.price !== 'undefined' ? formatPrice(data.price) : '');
+        var removeBtn = $('<button type="button" class="button-link-delete pls-attribute-custom-remove">Remove</button>');
+        row.append(
+          $('<div class="pls-attr-value-stack"></div>').append(
+            $('<label>Custom value</label>').append(labelInput)
+          )
+        );
+        row.append(
+          $('<div class="pls-price-inline"></div>').append(
+            $('<label>Price impact</label>').append(priceInput)
+          )
+        );
+        row.append(removeBtn);
+        customWrap.append(row);
+        renumberAttributeRows();
       }
 
       function renumberAttributeRows(){
         $('#pls-attribute-rows .pls-attribute-row').each(function(idx){
           $(this).find('.pls-attr-select').attr('name', 'attr_options['+idx+'][attribute_id]');
-          $(this).find('.pls-attr-new').attr('name', 'attr_options['+idx+'][attribute_label]');
-          $(this).find('.pls-attribute-value-row').each(function(vIdx){
-            $(this).find('.pls-attr-value').attr('name', 'attr_options['+idx+'][values]['+vIdx+'][value_id]');
+          var vIdx = 0;
+          $(this).find('.pls-attribute-value-details .pls-attribute-value-detail').each(function(){
+            $(this).find('.pls-value-id').attr('name', 'attr_options['+idx+'][values]['+vIdx+'][value_id]');
+            $(this).find('.pls-value-label').attr('name', 'attr_options['+idx+'][values]['+vIdx+'][value_label]');
+            $(this).find('.pls-attr-price').attr('name', 'attr_options['+idx+'][values]['+vIdx+'][price]');
+            vIdx++;
+          });
+          $(this).find('.pls-attribute-custom-values .pls-attribute-value-custom').each(function(){
             $(this).find('.pls-attr-value-new').attr('name', 'attr_options['+idx+'][values]['+vIdx+'][value_label]');
             $(this).find('.pls-attr-price').attr('name', 'attr_options['+idx+'][values]['+vIdx+'][price]');
+            vIdx++;
           });
         });
       }
 
-      function hydrateAttributeValues(attrRow){
-        var attrId = parseInt(attrRow.find('.pls-attr-select').val(), 10);
-        if (!attrId) { return; }
-        var valuesWrap = attrRow.find('.pls-attribute-values');
-        valuesWrap.empty();
-        var presets = (attrMap[attrId] && Array.isArray(attrMap[attrId].values)) ? attrMap[attrId].values : [];
-        if (!presets.length){
-          addValueRow(attrRow, {});
-          return;
-        }
-        presets.forEach(function(val){
-          addValueRow(attrRow, { value_id: val.id, price: formatPrice(typeof val.price !== 'undefined' ? val.price : '') });
-        });
-      }
-
-      function addValueRow(attrRow, data){
-        data = data || {};
-        var template = attrRow.find('.pls-attribute-value-template .pls-attribute-value-row').first().clone();
-        attrRow.find('.pls-attribute-values').append(template);
-        renumberAttributeRows();
-        populateValueOptions(attrRow, template.find('.pls-attr-value'));
-        if (data.value_id){
-          template.find('.pls-attr-value').val(data.value_id);
-        } else if (data.value_label){
-          template.find('.pls-attr-value').val('__new__');
-          template.find('.pls-attr-value-new').val(data.value_label);
-        }
-        if (typeof data.price !== 'undefined'){ template.find('.pls-attr-price').val(formatPrice(data.price)); }
-        syncValueRow(template);
-      }
-
       function syncAttributeRow(attrRow, forceHydrate){
-        var attrSelect = attrRow.find('.pls-attr-select');
-        var isNewAttr = attrSelect.val() === '__new__';
-        attrRow.toggleClass('pls-attribute-row--new', isNewAttr);
-        attrRow.find('.pls-attr-new-wrap').toggle(isNewAttr);
-        if (!isNewAttr && (forceHydrate || !attrRow.find('.pls-attribute-value-row').length)){
-          hydrateAttributeValues(attrRow);
+        populateValueOptions(attrRow);
+        if (forceHydrate){
+          attrRow.find('.pls-attribute-custom-values').empty();
+          attrRow.find('.pls-attr-value-multi').val([]);
         }
-        attrRow.find('.pls-attribute-value-row').each(function(){ syncValueRow($(this)); });
+        if (forceHydrate){
+          renderValueDetails(attrRow);
+        }
       }
 
       function buildAttributeRow(data){
@@ -422,38 +413,60 @@
 
         if (data.attribute_id){
           template.find('.pls-attr-select').val(data.attribute_id);
-        } else if (data.attribute_label){
-          template.find('.pls-attr-select').val('__new__');
-          template.find('.pls-attr-new').val(data.attribute_label);
         }
+
+        populateValueOptions(template);
 
         var values = Array.isArray(data.values) ? data.values : [];
         if (!values.length && (data.value_id || data.value_label)){
           values = [{ value_id: data.value_id, value_label: data.value_label, price: data.price }];
         }
-        if (!values.length){ values.push({}); }
 
+        var selectedIds = [];
         values.forEach(function(row){
-          if (row.value_id && typeof row.price !== 'undefined' && row.price !== ''){
-            valuePriceCache[row.value_id] = row.price;
+          if (row.value_id){
+            selectedIds.push(row.value_id.toString());
+            if (typeof row.price !== 'undefined' && row.price !== ''){
+              valuePriceCache[row.value_id] = row.price;
+            }
           }
         });
 
-        values.forEach(function(row){ addValueRow(template, row); });
+        template.find('.pls-attr-value-multi').val(selectedIds);
+        renderValueDetails(template);
+
+        values.forEach(function(row){
+          if (row.value_id && typeof row.price !== 'undefined'){
+            template.find('.pls-attribute-value-detail[data-value-id="'+row.value_id+'"] .pls-attr-price').val(formatPrice(row.price));
+          }
+        });
+
+        values.forEach(function(row){
+          if (!row.value_id && row.value_label){
+            addCustomValueRow(template, row);
+          }
+        });
 
         syncAttributeRow(template, false);
       }
 
       function addAttributeToMap(attr){
         if (!attr || !attr.id){ return; }
-        attrMap[attr.id] = { id: attr.id, label: attr.label, values: [] };
+        attrMap[attr.id] = { id: attr.id, label: attr.label, values: attr.values || [] };
+        if (Array.isArray(attr.values)){
+          attr.values.forEach(function(val){
+            if (typeof val.price !== 'undefined' && val.price !== ''){
+              valuePriceCache[val.id] = val.price;
+            }
+          });
+        }
         $('.pls-attr-select').each(function(){
           if (!$(this).find('option[value="'+attr.id+'"]').length){
             $(this).append('<option value="'+attr.id+'">'+attr.label+'</option>');
           }
         });
-        if (!$('#pls-value-attribute option[value="'+attr.id+'"]').length){
-          $('#pls-value-attribute').append('<option value="'+attr.id+'">'+attr.label+'</option>');
+        if ($('#pls-attribute-manage-modal').hasClass('is-active')){
+          renderManageAttrList();
         }
       }
 
@@ -465,17 +478,23 @@
         if (!Array.isArray(attrMap[attributeId].values)){
           attrMap[attributeId].values = [];
         }
-        attrMap[attributeId].values.push({ id: value.id, label: value.label });
+        attrMap[attributeId].values.push({ id: value.id, label: value.label, price: value.price });
         valuePriceCache[value.id] = typeof value.price !== 'undefined' ? value.price : valuePriceCache[value.id];
+        refreshAttributeRowsForAttr(attributeId, value.id);
+      }
+
+      function refreshAttributeRowsForAttr(attributeId, preselectValueId){
         $('.pls-attribute-row').each(function(){
           var attrId = parseInt($(this).find('.pls-attr-select').val(), 10);
           if (attrId === attributeId){
-            var selectEl = $(this).find('.pls-attr-value');
-            var currentVal = selectEl.val();
-            populateValueOptions($(this), selectEl);
-            if (currentVal){
-              selectEl.val(currentVal);
+            populateValueOptions($(this));
+            var multi = $(this).find('.pls-attr-value-multi');
+            var selected = multi.val() || [];
+            if (preselectValueId && selected.indexOf(String(preselectValueId)) === -1){
+              selected.push(String(preselectValueId));
             }
+            multi.val(selected);
+            renderValueDetails($(this));
           }
         });
       }
@@ -538,7 +557,6 @@
         }
         var selectedIngredients = $('#pls-ingredient-chips input:checked').map(function(){ return parseInt($(this).val(), 10); }).get();
         renderSelectedIngredients(selectedIngredients);
-        renderSpotlight(selectedIngredients);
         updateKeyIngredients(keySelections);
 
         renderFeaturedPreview(data.featured_image_id, data.featured_image_thumb || '');
@@ -564,6 +582,17 @@
       $('body').toggleClass('pls-modal-open', hasActive);
     }
 
+    function closeAllModals(){
+      $('.pls-modal').removeClass('is-active');
+      updateModalState();
+    }
+
+    function openModalById(id){
+      closeAllModals();
+      $(id).addClass('is-active');
+      updateModalState();
+    }
+
     function openProductModal(data){
       resetModal();
       if (data){
@@ -571,7 +600,7 @@
       } else {
         $('#pls-modal-title').text('Create product');
       }
-      $('.pls-modal').removeClass('is-active');
+      closeAllModals();
       $('#pls-product-modal').addClass('is-active');
       updateModalState();
     }
@@ -663,14 +692,12 @@
 
     $('#pls-open-ingredient-create').on('click', function(e){
       e.preventDefault();
-      $('#pls-ingredient-create-modal').addClass('is-active');
-      updateModalState();
+      openModalById('#pls-ingredient-create-modal');
     });
 
     $('#pls-cancel-ingredient-create, #pls-ingredient-create-modal .pls-modal__close').on('click', function(e){
       e.preventDefault();
-      $('#pls-ingredient-create-modal').removeClass('is-active');
-      updateModalState();
+      closeModalElement($('#pls-ingredient-create-modal'));
     });
 
     $('#pls-create-ingredient-form').on('submit', function(e){
@@ -706,8 +733,7 @@
           ingredientMap[key] = term;
         });
         renderIngredientList(ingredientFilter);
-        $('#pls-ingredient-create-modal').removeClass('is-active');
-        updateModalState();
+        closeModalElement($('#pls-ingredient-create-modal'));
         $('#pls-new-ingredient-name').val('');
         $('#pls-new-ingredient-short').val('');
         $('#pls-new-ingredient-icon').val('');
@@ -717,7 +743,6 @@
           $('#pls-ingredient-chips input[value="'+newId+'"]').prop('checked', true);
           var selected = $('#pls-ingredient-chips input:checked').map(function(){ return parseInt($(this).val(), 10); }).get();
           renderSelectedIngredients(selected);
-          renderSpotlight(selected);
           updateKeyIngredients();
         }
       }).fail(function(){
@@ -727,101 +752,161 @@
       });
     });
 
-    $('#pls-open-attribute-modal').on('click', function(e){
-      e.preventDefault();
-      $('#pls-attribute-create-modal').addClass('is-active');
-      updateModalState();
-    });
+    var manageAttrCurrent = 0;
 
-    $('#pls-cancel-attribute-create, #pls-attribute-create-modal .pls-modal__close').on('click', function(e){
-      e.preventDefault();
-      $('#pls-attribute-create-modal').removeClass('is-active');
-      updateModalState();
-    });
+      function renderManageAttrList(){
+        var list = $('#pls-manage-attr-list');
+        list.empty();
+        var firstId = 0;
+        Object.values(attrMap).forEach(function(attr){
+          if (!firstId){ firstId = attr.id; }
+          var btn = $('<button type="button" class="button button-small pls-manage-attr-item"></button>')
+            .attr('data-attr-id', attr.id)
+            .text(attr.label);
+          if (attr.id === manageAttrCurrent){
+            btn.addClass('is-active');
+          }
+          list.append(btn);
+        });
+        if (!manageAttrCurrent && firstId){
+          manageAttrCurrent = firstId;
+        }
+        if (manageAttrCurrent){
+          selectManageAttribute(manageAttrCurrent);
+        } else {
+          $('#pls-manage-attr-current').text('');
+          $('#pls-manage-value-list').empty();
+        }
+      }
 
-    $('#pls-create-attribute-form').on('submit', function(e){
-      e.preventDefault();
-      var label = ($('#pls-new-attribute-label').val() || '').trim();
-      if (!label){
-        alert('Attribute label is required.');
+    function selectManageAttribute(attrId){
+      manageAttrCurrent = parseInt(attrId, 10) || 0;
+      $('#pls-manage-attr-list .pls-manage-attr-item').removeClass('is-active');
+      $('#pls-manage-attr-list .pls-manage-attr-item[data-attr-id="'+manageAttrCurrent+'"]').addClass('is-active');
+      var attr = attrMap[manageAttrCurrent];
+      if (!attr){
+        $('#pls-manage-attr-current').text('');
+        $('#pls-manage-value-list').empty();
         return;
       }
+      $('#pls-manage-attr-current').text(attr.label);
+      $('#pls-manage-attr-hint').text('');
+      var list = $('#pls-manage-value-list');
+      list.empty();
+      (attr.values || []).forEach(function(val){
+        var row = $('<div class="pls-manage-value-row"></div>').attr('data-value-id', val.id);
+        row.append($('<span class="pls-manage-value-label"></span>').text(val.label));
+        var priceInput = $('<input type="number" step="0.01" class="pls-price-input pls-manage-value-price" />').val(val.price !== undefined && val.price !== '' ? formatPrice(val.price) : '');
+        priceInput.attr('placeholder', formatPrice(val.price));
+        row.append(priceInput);
+        list.append(row);
+      });
+    }
+
+    $('#pls-open-attribute-manage').on('click', function(e){
+      e.preventDefault();
+      openModalById('#pls-attribute-manage-modal');
+      renderManageAttrList();
+    });
+
+    $(document).on('click', '.pls-manage-attr-item', function(){
+      var id = parseInt($(this).data('attr-id'), 10);
+      selectManageAttribute(id);
+    });
+
+    $('#pls-manage-attr-create').on('submit', function(e){
+      e.preventDefault();
+      var label = ($('#pls-manage-attr-label').val() || '').trim();
+      if (!label){ return; }
       var payload = {
         action: 'pls_create_attribute',
         nonce: (window.PLS_Admin ? PLS_Admin.nonce : ''),
         label: label,
-        is_variation: $('#pls-new-attribute-variation').is(':checked') ? 1 : 0
+        is_variation: $('#pls-manage-attr-variation').is(':checked') ? 1 : 0
       };
-      var submitBtn = $('#pls-save-attribute-create');
-      var originalText = submitBtn.text();
-      submitBtn.prop('disabled', true).text('Saving...');
+      var btn = $(this).find('button[type=submit]');
+      var original = btn.text();
+      btn.prop('disabled', true).text('Saving...');
       $.post(ajaxurl, payload, function(resp){
-        if (!resp || !resp.success || !resp.data || !resp.data.attribute){
+        if (resp && resp.success && resp.data && resp.data.attribute){
+          addAttributeToMap(resp.data.attribute);
+          $('#pls-manage-attr-label').val('');
+          $('#pls-manage-attr-variation').prop('checked', true);
+          manageAttrCurrent = resp.data.attribute.id;
+          renderManageAttrList();
+        } else {
           alert((resp && resp.data && resp.data.message) ? resp.data.message : 'Could not create attribute.');
-          return;
         }
-        addAttributeToMap(resp.data.attribute);
-        $('#pls-attribute-create-modal').removeClass('is-active');
-        updateModalState();
-        $('#pls-new-attribute-label').val('');
-        $('#pls-new-attribute-variation').prop('checked', true);
       }).fail(function(){
         alert('Could not create attribute.');
       }).always(function(){
-        submitBtn.prop('disabled', false).text(originalText);
+        btn.prop('disabled', false).text(original);
       });
     });
 
-    $('#pls-open-value-modal').on('click', function(e){
+    $('#pls-manage-value-create').on('submit', function(e){
       e.preventDefault();
-      if (!$('#pls-value-attribute option').length){
-        alert('Create an attribute first.');
-        return;
-      }
-      var currentAttr = $('.pls-attribute-row').first().find('.pls-attr-select').val();
-      if (currentAttr){
-        $('#pls-value-attribute').val(currentAttr);
-      }
-      $('#pls-value-create-modal').addClass('is-active');
-      updateModalState();
-    });
-
-    $('#pls-cancel-value-create, #pls-value-create-modal .pls-modal__close').on('click', function(e){
-      e.preventDefault();
-      $('#pls-value-create-modal').removeClass('is-active');
-      updateModalState();
-    });
-
-    $('#pls-create-value-form').on('submit', function(e){
-      e.preventDefault();
-      var attrId = parseInt($('#pls-value-attribute').val(), 10);
-      var label = ($('#pls-new-value-label').val() || '').trim();
-      if (!attrId || !label){
-        alert('Attribute and value label are required.');
-        return;
-      }
+      var label = ($('#pls-manage-value-label').val() || '').trim();
+      var price = $('#pls-manage-value-price').val();
+      if (!manageAttrCurrent || !label){ return; }
       var payload = {
         action: 'pls_create_attribute_value',
         nonce: (window.PLS_Admin ? PLS_Admin.nonce : ''),
-        attribute_id: attrId,
-        label: label
+        attribute_id: manageAttrCurrent,
+        label: label,
+        price: price
       };
-      var submitBtn = $('#pls-save-value-create');
-      var originalText = submitBtn.text();
-      submitBtn.prop('disabled', true).text('Saving...');
+      var btn = $(this).find('button[type=submit]');
+      var original = btn.text();
+      btn.prop('disabled', true).text('Saving...');
       $.post(ajaxurl, payload, function(resp){
-        if (!resp || !resp.success || !resp.data || !resp.data.value){
+        if (resp && resp.success && resp.data && resp.data.value){
+          addValueToMap(manageAttrCurrent, resp.data.value);
+          $('#pls-manage-value-label').val('');
+          $('#pls-manage-value-price').val('');
+          selectManageAttribute(manageAttrCurrent);
+        } else {
           alert((resp && resp.data && resp.data.message) ? resp.data.message : 'Could not create value.');
-          return;
         }
-        addValueToMap(attrId, resp.data.value);
-        $('#pls-value-create-modal').removeClass('is-active');
-        updateModalState();
-        $('#pls-new-value-label').val('');
       }).fail(function(){
         alert('Could not create value.');
       }).always(function(){
-        submitBtn.prop('disabled', false).text(originalText);
+        btn.prop('disabled', false).text(original);
+      });
+    });
+
+    $('#pls-manage-save-values').on('click', function(e){
+      e.preventDefault();
+      if (!manageAttrCurrent){ return; }
+      var rows = $('#pls-manage-value-list .pls-manage-value-row');
+      var values = [];
+      rows.each(function(){
+        var id = parseInt($(this).data('value-id'), 10);
+        var price = $(this).find('.pls-manage-value-price').val();
+        values.push({ id: id, price: price });
+      });
+      var btn = $(this);
+      var original = btn.text();
+      btn.prop('disabled', true).text('Saving...');
+      $.post(ajaxurl, {
+        action: 'pls_update_attribute_values',
+        nonce: (window.PLS_Admin ? PLS_Admin.nonce : ''),
+        attribute_id: manageAttrCurrent,
+        values: values
+      }, function(resp){
+        if (resp && resp.success && resp.data && resp.data.attribute){
+          addAttributeToMap(resp.data.attribute);
+          selectManageAttribute(manageAttrCurrent);
+          refreshAttributeRowsForAttr(manageAttrCurrent);
+          $('#pls-manage-value-status').text('Defaults saved.');
+          setTimeout(function(){ $('#pls-manage-value-status').text(''); }, 2000);
+        } else {
+          alert((resp && resp.data && resp.data.message) ? resp.data.message : 'Could not save values.');
+        }
+      }).fail(function(){
+        alert('Could not save values.');
+      }).always(function(){
+        btn.prop('disabled', false).text(original);
       });
     });
 
@@ -857,28 +942,9 @@
         renumberAttributeRows();
       });
 
-      $(document).on('input', '.pls-attr-search', function(){
-        var query = ($(this).val() || '').toLowerCase();
+      $(document).on('change', '.pls-attr-value-multi', function(){
         var row = $(this).closest('.pls-attribute-row');
-        var select = row.find('.pls-attr-select');
-        if (!select.length || !query){ return; }
-        var match = select.find('option').filter(function(){
-          var val = $(this).val();
-          return val && val !== '__new__' && $(this).text().toLowerCase().indexOf(query) !== -1;
-        }).first();
-        if (match.length){
-          select.val(match.val()).trigger('change');
-        }
-      });
-
-      $(document).on('change', '.pls-attr-value', function(){
-        var row = $(this).closest('.pls-attribute-value-row');
-        applyDefaultPriceFromOption(row);
-        syncValueRow(row);
-      });
-
-      $(document).on('input', '.pls-attr-value-new', function(){
-        setPriceAvailability($(this).closest('.pls-attribute-value-row'));
+        renderValueDetails(row);
       });
 
       $(document).on('click', '.pls-attribute-remove', function(e){
@@ -887,25 +953,21 @@
         renumberAttributeRows();
       });
 
-      $(document).on('click', '.pls-attribute-value-add', function(e){
+      $(document).on('click', '.pls-attribute-value-add-custom', function(e){
         e.preventDefault();
         var attrRow = $(this).closest('.pls-attribute-row');
-        addValueRow(attrRow, {});
+        addCustomValueRow(attrRow, {});
       });
 
-      $(document).on('click', '.pls-attribute-value-remove', function(e){
+      $(document).on('click', '.pls-attribute-custom-remove', function(e){
         e.preventDefault();
-        var attrRow = $(this).closest('.pls-attribute-row');
-        $(this).closest('.pls-attribute-value-row').remove();
-        if (!attrRow.find('.pls-attribute-value-row').length){
-          addValueRow(attrRow, {});
-        }
+        $(this).closest('.pls-attribute-value-custom').remove();
         renumberAttributeRows();
       });
 
       $(document).on('change blur', '.pls-attr-price', function(){
-        var row = $(this).closest('.pls-attribute-value-row');
-        var valId = parseInt(row.find('.pls-attr-value').val(), 10);
+        var row = $(this).closest('.pls-attribute-value-detail');
+        var valId = parseInt(row.data('value-id'), 10);
         var priceVal = parseFloat($(this).val());
         if (valId && !isNaN(priceVal)){
           valuePriceCache[valId] = priceVal;
@@ -915,7 +977,6 @@
       $('#pls-ingredient-chips').on('change', 'input[type=checkbox]', function(){
         var selected = $('#pls-ingredient-chips input:checked').map(function(){ return parseInt($(this).val(), 10); }).get();
         renderSelectedIngredients(selected);
-        renderSpotlight(selected);
         updateKeyIngredients();
       });
 
@@ -923,8 +984,13 @@
         var checked = $('#pls-key-ingredients input:checked');
         if (checked.length > keyLimit){
           $(this).prop('checked', false);
+          $('#pls-key-limit-message').text('Choose up to '+keyLimit+' key ingredients.');
         }
         keySelected = $('#pls-key-ingredients input:checked').map(function(){ return parseInt($(this).val(), 10); }).get();
+        $('#pls-key-counter').text('Key ingredients: ' + keySelected.length + ' / ' + keyLimit);
+        if (keySelected.length <= keyLimit){
+          $('#pls-key-limit-message').text('');
+        }
       });
 
       $('#pls-ingredient-search').on('input', function(){
@@ -1019,22 +1085,17 @@
 
         $('#pls-attribute-rows .pls-attribute-row').each(function(){
           var attrSelectVal = $(this).find('.pls-attr-select').val();
-          var attrLabel = ($(this).find('.pls-attr-new').val() || '').trim();
-          var hasAttribute = !!attrSelectVal || !!attrLabel;
-          if (!hasAttribute){
+          if (!attrSelectVal){
             return;
           }
-          if (attrSelectVal === '__new__' && !attrLabel){
-            errors.push('Provide a label for each new attribute.');
-          }
-          var valueRows = $(this).find('.pls-attribute-value-row');
+          var valueRows = $(this).find('.pls-attribute-value-detail, .pls-attribute-value-custom');
           if (!valueRows.length){
             errors.push('Add at least one value for each attribute.');
             return;
           }
           valueRows.each(function(){
-            var selectVal = $(this).find('.pls-attr-value').val();
-            var newLabel = ($(this).find('.pls-attr-value-new').val() || '').trim();
+            var selectVal = $(this).find('.pls-value-id').val();
+            var newLabel = ($(this).find('.pls-attr-value-new').val() || '').trim() || ($(this).find('.pls-value-label').val() || '').trim();
             if (!selectVal && !newLabel){
               errors.push('Attribute values need a selection or custom label.');
               return false;
