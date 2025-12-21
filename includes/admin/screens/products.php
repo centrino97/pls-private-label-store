@@ -172,12 +172,12 @@ wp_localize_script(
                   <div class="pls-media-picker">
                     <p class="pls-micro"><?php esc_html_e( 'Featured image', 'pls-private-label-store' ); ?></p>
                     <input type="hidden" name="featured_image_id" id="pls-featured-id" />
-                    <div class="pls-media-preview" id="pls-featured-preview"></div>
+                    <div class="pls-media-preview pls-media-preview--single" id="pls-featured-preview"></div>
                     <button type="button" class="button" id="pls-pick-featured"><?php esc_html_e( 'Pick featured image', 'pls-private-label-store' ); ?></button>
                   </div>
                   <div class="pls-media-picker">
                     <p class="pls-micro"><?php esc_html_e( 'Gallery images', 'pls-private-label-store' ); ?></p>
-                    <div class="pls-media-preview" id="pls-gallery-preview"></div>
+                    <div class="pls-media-preview pls-media-preview--grid" id="pls-gallery-preview"></div>
                     <button type="button" class="button" id="pls-pick-gallery"><?php esc_html_e( 'Select gallery images', 'pls-private-label-store' ); ?></button>
                   </div>
                 </div>
@@ -259,7 +259,7 @@ wp_localize_script(
                   <div class="pls-section-heading">
                     <p class="pls-label"><?php esc_html_e( 'Spotlight picks', 'pls-private-label-store' ); ?></p>
                     <h3><?php esc_html_e( 'Key ingredients', 'pls-private-label-store' ); ?></h3>
-                    <p class="pls-subtle" id="pls-key-ingredients-hint" data-ready-text="<?php esc_attr_e( 'Choose which ingredients to spotlight with icons.', 'pls-private-label-store' ); ?>"><?php esc_html_e( 'Select ingredients on the left to spotlight them here.', 'pls-private-label-store' ); ?></p>
+                    <p class="pls-subtle" id="pls-key-ingredients-hint" data-ready-text="<?php esc_attr_e( 'Choose which ingredients to spotlight with icons (up to 5).', 'pls-private-label-store' ); ?>"><?php esc_html_e( 'Select ingredients on the left to spotlight them here.', 'pls-private-label-store' ); ?></p>
                   </div>
                   <p class="pls-subtle"><?php esc_html_e( 'Pick your hero ingredients and keep their icons aligned with the base list.', 'pls-private-label-store' ); ?></p>
                   <div class="pls-chip-group" id="pls-key-ingredients"></div>
@@ -428,18 +428,25 @@ wp_localize_script(
       <button type="button" class="pls-modal__close" aria-label="<?php esc_attr_e( 'Close', 'pls-private-label-store' ); ?>">×</button>
     </div>
     <form class="pls-modern-form" id="pls-create-ingredient-form">
-      <div class="pls-modal__section">
-        <label><?php esc_html_e( 'Ingredient name', 'pls-private-label-store' ); ?>
-          <input type="text" id="pls-new-ingredient-name" required placeholder="<?php esc_attr_e( 'e.g., Vitamin C', 'pls-private-label-store' ); ?>" />
-        </label>
-        <label><?php esc_html_e( 'Short description (optional)', 'pls-private-label-store' ); ?>
-          <input type="text" id="pls-new-ingredient-short" placeholder="<?php esc_attr_e( 'Antioxidant brightener', 'pls-private-label-store' ); ?>" />
-        </label>
-        <div class="pls-icon-picker" data-target="pls-new-ingredient-icon">
-          <div class="pls-icon-preview" id="pls-new-ingredient-icon-preview"></div>
-          <input type="hidden" id="pls-new-ingredient-icon" />
-          <button type="button" class="button pls-icon-pick"><?php esc_html_e( 'Upload/Select icon', 'pls-private-label-store' ); ?></button>
-          <button type="button" class="button-link-delete pls-icon-clear"><?php esc_html_e( 'Remove', 'pls-private-label-store' ); ?></button>
+      <div class="pls-modal__section pls-form-grid">
+        <div class="pls-field-stack">
+          <label><?php esc_html_e( 'Ingredient name', 'pls-private-label-store' ); ?>
+            <input type="text" id="pls-new-ingredient-name" required placeholder="<?php esc_attr_e( 'e.g., Vitamin C', 'pls-private-label-store' ); ?>" />
+          </label>
+          <label><?php esc_html_e( 'Short description (optional)', 'pls-private-label-store' ); ?>
+            <input type="text" id="pls-new-ingredient-short" placeholder="<?php esc_attr_e( 'Antioxidant brightener', 'pls-private-label-store' ); ?>" />
+          </label>
+        </div>
+        <div class="pls-field-stack">
+          <span class="pls-micro"><?php esc_html_e( 'Icon (optional)', 'pls-private-label-store' ); ?></span>
+          <div class="pls-icon-picker" data-target="pls-new-ingredient-icon">
+            <div class="pls-icon-preview" id="pls-new-ingredient-icon-preview"></div>
+            <input type="hidden" id="pls-new-ingredient-icon" />
+            <div class="pls-chip-row">
+              <button type="button" class="button pls-icon-pick"><?php esc_html_e( 'Upload/Select icon', 'pls-private-label-store' ); ?></button>
+              <button type="button" class="button-link-delete pls-icon-clear"><?php esc_html_e( 'Remove', 'pls-private-label-store' ); ?></button>
+            </div>
+          </div>
         </div>
       </div>
       <div class="pls-modal__footer">
