@@ -1,0 +1,73 @@
+# PLS Development Workflow - Core Rules
+
+## 🚨 CRITICAL: Why Changes Aren't Visible
+
+**Users CANNOT see updates until ALL steps are complete:**
+
+1. ✅ Version bumped in `pls-private-label-store.php` (line 5 AND line 20)
+2. ✅ Version bumped in `readme.txt` (`Stable tag:`)
+3. ✅ Version bumped in `uupd/index.json` (`version` field)
+4. ✅ `last_updated` timestamp updated in `uupd/index.json`
+5. ✅ Changelog added to both `readme.txt` and `uupd/index.json`
+6. ✅ Changes committed: `git commit -m "v0.8.X: Description"`
+7. ✅ Tag created: `git tag v0.8.X`
+8. ✅ Branch pushed: `git push origin main`
+9. ✅ Tag pushed: `git push origin v0.8.X`
+10. ✅ GitHub Actions builds ZIP (automatic, wait 1-2 min)
+11. ✅ User clicks "Check for updates" in WordPress
+
+**If ANY step is missing → Update won't be visible!**
+
+---
+
+## 📋 Mandatory Release Steps
+
+### 1. Update Version (3 files)
+- `pls-private-label-store.php`: Line 5 (`* Version:`) AND Line 20 (`define( 'PLS_PLS_VERSION'`)
+- `readme.txt`: Line 7 (`Stable tag:`)
+- `uupd/index.json`: `"version"` field AND `"last_updated"` timestamp
+
+### 2. Update Changelog (2 files)
+- `readme.txt`: Add new version section
+- `uupd/index.json`: Add to `"changelog"` field
+
+### 3. Git Operations
+```bash
+git add -A
+git commit -m "v0.8.X: Description"
+git tag v0.8.X
+git push origin main
+git push origin v0.8.X
+```
+
+### 4. Inform User
+- Wait 1-2 minutes for GitHub Actions
+- Tell user to click "Check for updates" in WordPress
+
+---
+
+## 🔍 How UUPD Works
+
+1. **WordPress checks:** `uupd/index.json` version
+2. **Compares:** JSON version vs `PLS_PLS_VERSION` constant
+3. **If JSON > constant:** Shows update notification
+4. **Downloads:** ZIP from GitHub releases
+
+**Key Point:** `uupd/index.json` version MUST be higher than plugin version for update to appear!
+
+---
+
+## ⚡ Quick Reference
+
+- **Version files:** `pls-private-label-store.php`, `readme.txt`, `uupd/index.json`
+- **GitHub Actions:** Triggers on tag push (`v*`), builds ZIP automatically
+- **ZIP URL:** `https://github.com/centrino97/pls-private-label-store/releases/latest/download/pls-private-label-store.zip`
+- **JSON URL:** `https://raw.githubusercontent.com/centrino97/pls-private-label-store/main/uupd/index.json`
+
+---
+
+## 🎯 Golden Rule
+
+**ALWAYS bump version in ALL 3 files + update timestamp + push tag = Update visible**
+
+**MISSING ANY STEP = Update NOT visible**
