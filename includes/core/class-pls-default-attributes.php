@@ -76,13 +76,13 @@ final class PLS_Default_Attributes {
 
         update_option( 'pls_pack_tier_attribute_id', $attr_id );
 
-        // Create tier values
+        // Create tier values with default prices from image
         $tiers = array(
-            array( 'label' => 'Tier 1', 'tier_level' => 1, 'units' => 50, 'sort' => 1 ),
-            array( 'label' => 'Tier 2', 'tier_level' => 2, 'units' => 100, 'sort' => 2 ),
-            array( 'label' => 'Tier 3', 'tier_level' => 3, 'units' => 250, 'sort' => 3 ),
-            array( 'label' => 'Tier 4', 'tier_level' => 4, 'units' => 500, 'sort' => 4 ),
-            array( 'label' => 'Tier 5', 'tier_level' => 5, 'units' => 1000, 'sort' => 5 ),
+            array( 'label' => 'Tier 1', 'tier_level' => 1, 'units' => 50, 'price' => 15.90, 'sort' => 1 ),
+            array( 'label' => 'Tier 2', 'tier_level' => 2, 'units' => 100, 'price' => 14.50, 'sort' => 2 ),
+            array( 'label' => 'Tier 3', 'tier_level' => 3, 'units' => 250, 'price' => 12.50, 'sort' => 3 ),
+            array( 'label' => 'Tier 4', 'tier_level' => 4, 'units' => 500, 'price' => 9.50, 'sort' => 4 ),
+            array( 'label' => 'Tier 5', 'tier_level' => 5, 'units' => 1000, 'price' => 7.90, 'sort' => 5 ),
         );
 
         foreach ( $tiers as $tier ) {
@@ -108,6 +108,7 @@ final class PLS_Default_Attributes {
                 if ( $value && $value->term_id ) {
                     update_term_meta( $value->term_id, '_pls_tier_level', $tier['tier_level'] );
                     update_term_meta( $value->term_id, '_pls_default_units', $tier['units'] );
+                    update_term_meta( $value->term_id, '_pls_default_price_per_unit', $tier['price'] );
                 }
             }
         }

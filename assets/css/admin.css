@@ -45,6 +45,7 @@
 .pls-modal__footer{display:flex;align-items:center;justify-content:flex-end;gap:10px;position:sticky;bottom:0;background:#f8fafc;padding-top:8px}
 .pls-pack-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
 .pls-pack-row{display:flex;flex-direction:column;gap:8px;border:1px solid #e2e8f0;border-radius:12px;padding:10px;background:#fff}
+.pls-pack-row .pls-tier-total{font-size:16px;color:#2271b1}
 .pls-chip-group{display:flex;flex-wrap:wrap;gap:8px}
 .pls-thumb{background:#111827;color:#fff;border-radius:8px;padding:4px 8px;display:inline-block;font-size:12px}
 .pls-thumb-row{display:flex;gap:6px;flex-wrap:wrap}

@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.8.4
+Stable tag: 0.8.5
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,14 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 0.8.5 =
+* **Tabbed Product Options UI:** Complete redesign with tabs for Pack Tier (PRIMARY), Product Options, and Ingredients.
+* **Pack Tier Defaults:** Pack tiers now have default units and prices that are always loaded but editable per product.
+* **Default Prices:** Added default price per unit for all pack tiers (Tier 1: $15.90, Tier 2: $14.50, Tier 3: $12.50, Tier 4: $9.50, Tier 5: $7.90).
+* **Ingredients as Options:** Ingredients are now treated as Product Options accessible via tabs.
+* **UI/UX Improvements:** Enhanced product creation form with auto-calculating tier totals, better visual hierarchy, and improved responsiveness.
+* **Pack Tier Management:** New interface to manage pack tier defaults (units, prices) with descriptions for each tier level.
+
 = 0.8.4 =
 * **UUPD Fix:** Fixed update detection by forcing direct JSON fetch instead of GitHub API.
 * **Update Mechanism:** Improved reliability of automatic updates from GitHub releases.

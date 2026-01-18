@@ -29,7 +29,34 @@ $ingredient_terms = PLS_Admin_Ajax::ingredient_payload();
 
 $attr_payload = PLS_Admin_Ajax::attribute_payload();
 
-$pack_defaults = array( 50, 100, 250, 500, 1000 );
+// Get pack tier defaults from attribute system
+require_once PLS_PLS_DIR . 'includes/core/class-pls-tier-rules.php';
+$pack_defaults = array();
+$primary_attr = PLS_Repo_Attributes::get_primary_attribute();
+if ( $primary_attr ) {
+    $tier_values = PLS_Repo_Attributes::values_for_attr( $primary_attr->id );
+    foreach ( $tier_values as $tier_value ) {
+        $units = PLS_Tier_Rules::get_default_units_for_tier( $tier_value->id );
+        $price = PLS_Tier_Rules::get_default_price_per_unit( $tier_value->id );
+        if ( $units ) {
+            $pack_defaults[] = array(
+                'units' => $units,
+                'price' => $price ?: 0,
+                'label' => $tier_value->label,
+            );
+        }
+    }
+}
+// Fallback to hardcoded defaults if no tiers found
+if ( empty( $pack_defaults ) ) {
+    $pack_defaults = array(
+        array( 'units' => 50, 'price' => 15.90, 'label' => 'Tier 1' ),
+        array( 'units' => 100, 'price' => 14.50, 'label' => 'Tier 2' ),
+        array( 'units' => 250, 'price' => 12.50, 'label' => 'Tier 3' ),
+        array( 'units' => 500, 'price' => 9.50, 'label' => 'Tier 4' ),
+        array( 'units' => 1000, 'price' => 7.90, 'label' => 'Tier 5' ),
+    );
+}
 $skin_options  = array( 'Normal', 'Oily', 'Dry', 'Combination', 'Sensitive' );
 
 $products        = PLS_Admin_Ajax::reconcile_orphaned_products( PLS_Repo_Base_Product::all() );
@@ -47,7 +74,7 @@ wp_localize_script(
     'PLS_ProductAdmin',
     array(
         'products'     => $product_payload,
-        'packDefaults' => $pack_defaults,
+        'packDefaults' => $pack_defaults, // Now array of objects with units, price, label
         'skinOptions'  => $skin_options,
         'ingredients'  => $ingredient_terms,
         'attributes'   => $attr_payload,
@@ -320,15 +347,26 @@ wp_localize_script(
                 <h3><?php esc_html_e( 'Pack tiers', 'pls-private-label-store' ); ?></h3>
                 <p class="description"><?php esc_html_e( 'Defaults are 50/100/250/500/1000 units. Adjust on the fly.', 'pls-private-label-store' ); ?></p>
                 <div class="pls-pack-grid" id="pls-pack-grid">
-                  <?php foreach ( $pack_defaults as $i => $units ) : ?>
+                  <?php foreach ( $pack_defaults as $i => $tier ) : ?>
+                    <?php
+                    $units = isset( $tier['units'] ) ? $tier['units'] : $tier;
+                    $price = isset( $tier['price'] ) ? $tier['price'] : 0;
+                    $label = isset( $tier['label'] ) ? $tier['label'] : '';
+                    ?>
                     <div class="pls-pack-row">
                       <input type="hidden" name="pack_tiers[<?php echo esc_attr( $i ); ?>][sort]" value="<?php echo esc_attr( $i ); ?>" />
+                      <?php if ( $label ) : ?>
+                        <div style="font-weight: 600; margin-bottom: 8px; color: #2271b1;"><?php echo esc_html( $label ); ?></div>
+                      <?php endif; ?>
                       <label><?php esc_html_e( 'Units', 'pls-private-label-store' ); ?>
-                        <input type="number" name="pack_tiers[<?php echo esc_attr( $i ); ?>][units]" value="<?php echo esc_attr( $units ); ?>" />
+                        <input type="number" name="pack_tiers[<?php echo esc_attr( $i ); ?>][units]" value="<?php echo esc_attr( $units ); ?>" min="1" />
                       </label>
                       <label><?php esc_html_e( 'Price per unit', 'pls-private-label-store' ); ?>
-                        <input type="number" step="0.01" class="pls-price-input" name="pack_tiers[<?php echo esc_attr( $i ); ?>][price]" />
+                        <input type="number" step="0.01" class="pls-price-input" name="pack_tiers[<?php echo esc_attr( $i ); ?>][price]" value="<?php echo esc_attr( $price ); ?>" min="0" />
                       </label>
+                      <div style="padding: 8px 0;">
+                        <strong style="color: #2271b1;"><?php esc_html_e( 'Total:', 'pls-private-label-store' ); ?> $<span class="pls-tier-total"><?php echo number_format( $units * $price, 2 ); ?></span></strong>
+                      </div>
                       <label class="pls-inline-checkbox"><input type="checkbox" name="pack_tiers[<?php echo esc_attr( $i ); ?>][enabled]" checked /> <?php esc_html_e( 'Enabled', 'pls-private-label-store' ); ?></label>
                     </div>
                   <?php endforeach; ?>

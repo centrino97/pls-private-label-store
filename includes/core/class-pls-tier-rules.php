@@ -214,4 +214,20 @@ final class PLS_Tier_Rules {
         $units = get_term_meta( $value->term_id, '_pls_default_units', true );
         return $units ? absint( $units ) : false;
     }
+
+    /**
+     * Get default price per unit for a pack tier value.
+     *
+     * @param int $value_id Pack tier attribute value ID.
+     * @return float|false Price per unit or false if not found.
+     */
+    public static function get_default_price_per_unit( $value_id ) {
+        $value = PLS_Repo_Attributes::get_value( $value_id );
+        if ( ! $value || ! $value->term_id ) {
+            return false;
+        }
+
+        $price = get_term_meta( $value->term_id, '_pls_default_price_per_unit', true );
+        return '' !== $price ? floatval( $price ) : false;
+    }
 }

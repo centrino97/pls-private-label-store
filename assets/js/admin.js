@@ -252,9 +252,14 @@
         updateKeyIngredients();
         $('#pls-pack-grid .pls-pack-row').each(function(idx){
           var defaults = (window.PLS_ProductAdmin && PLS_ProductAdmin.packDefaults) ? PLS_ProductAdmin.packDefaults : [];
-          var unitVal = defaults[idx] || '';
-          $(this).find('input[name*="[units]"]').val(unitVal);
-          $(this).find('input[name*="[price]"]').val('');
+          var tier = defaults[idx];
+          if (tier) {
+            var unitVal = typeof tier === 'object' ? (tier.units || '') : tier;
+            var priceVal = typeof tier === 'object' ? (tier.price || '') : '';
+            $(this).find('input[name*="[units]"]').val(unitVal);
+            $(this).find('input[name*="[price]"]').val(formatPrice(priceVal));
+            updateTierTotal($(this));
+          }
           $(this).find('input[name*="[enabled]"]').prop('checked', true);
         });
       }
@@ -566,8 +571,21 @@
             $(this).find('input[name*="[units]"]').val(row.units || '');
             $(this).find('input[name*="[price]"]').val(formatPrice(row.price || ''));
             $(this).find('input[name*="[enabled]"]').prop('checked', !!parseInt(row.is_enabled || row.enabled || 0));
+            updateTierTotal($(this));
           });
         }
+        
+        // Auto-calculate tier totals
+        function updateTierTotal(row){
+          var units = parseFloat(row.find('input[name*="[units]"]').val()) || 0;
+          var price = parseFloat(row.find('input[name*="[price]"]').val()) || 0;
+          var total = units * price;
+          row.find('.pls-tier-total').text(total.toFixed(2));
+        }
+        
+        $('#pls-pack-grid').on('input', 'input[name*="[units]"], input[name*="[price]"]', function(){
+          updateTierTotal($(this).closest('.pls-pack-row'));
+        });
 
         if (Array.isArray(data.skin_types)){
           data.skin_types.forEach(function(item){
