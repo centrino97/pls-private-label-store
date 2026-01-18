@@ -11,14 +11,49 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 final class PLS_WC_Sync {
 
+    /**
+     * Get pack tier attribute ID.
+     *
+     * @return int|false Attribute ID or false if not set.
+     */
+    public static function get_pack_tier_attribute_id() {
+        return get_option( 'pls_pack_tier_attribute_id', false );
+    }
+
+    /**
+     * Get pack tier values dynamically from attribute system.
+     *
+     * @return array Array of attribute value objects.
+     */
+    public static function get_pack_tier_values() {
+        $attr_id = self::get_pack_tier_attribute_id();
+        if ( ! $attr_id ) {
+            return array();
+        }
+
+        return PLS_Repo_Attributes::values_for_attr( $attr_id );
+    }
+
+    /**
+     * Get pack tier definitions for backwards compatibility.
+     * Maps tier values to old format.
+     *
+     * @return array Associative array of tier_key => label.
+     */
     public static function pack_tier_definitions() {
-        return array(
-            'u50'   => '50 units',
-            'u100'  => '100 units',
-            'u250'  => '250 units',
-            'u500'  => '500 units',
-            'u1000' => '1000 units',
-        );
+        $tiers = self::get_pack_tier_values();
+        $definitions = array();
+
+        foreach ( $tiers as $tier ) {
+            require_once PLS_PLS_DIR . 'includes/core/class-pls-tier-rules.php';
+            $units = PLS_Tier_Rules::get_default_units_for_tier( $tier->id );
+            if ( $units ) {
+                $key = 'u' . $units;
+                $definitions[ $key ] = $units . ' units';
+            }
+        }
+
+        return $definitions;
     }
 
     /**
@@ -85,15 +120,36 @@ final class PLS_WC_Sync {
         $taxonomy = wc_attribute_taxonomy_name( $slug );
         $term_ids = array();
 
-        foreach ( self::pack_tier_definitions() as $key => $label ) {
-            $term = get_term_by( 'slug', $key, $taxonomy );
+        // Get pack tier values dynamically
+        $pack_tier_values = self::get_pack_tier_values();
+        require_once PLS_PLS_DIR . 'includes/core/class-pls-tier-rules.php';
+
+        foreach ( $pack_tier_values as $tier_value ) {
+            $units = PLS_Tier_Rules::get_default_units_for_tier( $tier_value->id );
+            if ( ! $units ) {
+                continue;
+            }
+
+            $key = 'u' . $units;
+            $label = $tier_value->label . ' (' . $units . ' units)';
+
+            $term = get_term_by( 'slug', $tier_value->value_key, $taxonomy );
             if ( ! $term ) {
-                $inserted = wp_insert_term( $label, $taxonomy, array( 'slug' => $key ) );
+                $inserted = wp_insert_term( $label, $taxonomy, array( 'slug' => $tier_value->value_key ) );
                 if ( ! is_wp_error( $inserted ) ) {
                     $term_ids[ $key ] = $inserted['term_id'];
+                    // Store tier level and units in term meta
+                    update_term_meta( $inserted['term_id'], '_pls_tier_level', PLS_Tier_Rules::get_tier_level_from_value( $tier_value->id ) );
+                    update_term_meta( $inserted['term_id'], '_pls_default_units', $units );
                 }
             } else {
                 $term_ids[ $key ] = $term->term_id;
+                // Ensure metadata is set
+                $tier_level = PLS_Tier_Rules::get_tier_level_from_value( $tier_value->id );
+                if ( $tier_level ) {
+                    update_term_meta( $term->term_id, '_pls_tier_level', $tier_level );
+                }
+                update_term_meta( $term->term_id, '_pls_default_units', $units );
             }
         }
 
@@ -186,32 +242,97 @@ final class PLS_WC_Sync {
         $product->save();
 
         // Variations from PLS pack tiers.
-        $tiers               = PLS_Repo_Pack_Tier::for_base( $base_product_id );
-        $created_variations  = 0;
+        // First, try to use new attribute-based system
+        $pack_tier_attr_id = self::get_pack_tier_attribute_id();
+        $created_variations = 0;
 
-        foreach ( $tiers as $tier ) {
-            if ( (int) $tier->is_enabled !== 1 ) {
-                continue;
+        if ( $pack_tier_attr_id ) {
+            // New system: Use pack tier attribute values
+            require_once PLS_PLS_DIR . 'includes/core/class-pls-tier-rules.php';
+            $pack_tier_values = self::get_pack_tier_values();
+            $tiers = PLS_Repo_Pack_Tier::for_base( $base_product_id );
+
+            // Map old tier_key to new attribute values
+            $tier_map = array();
+            foreach ( $tiers as $tier ) {
+                if ( (int) $tier->is_enabled !== 1 ) {
+                    continue;
+                }
+
+                // Find corresponding attribute value by units
+                foreach ( $pack_tier_values as $tier_value ) {
+                    $units = PLS_Tier_Rules::get_default_units_for_tier( $tier_value->id );
+                    if ( $units && $units === (int) $tier->units ) {
+                        $tier_map[ $tier->tier_key ] = array(
+                            'value' => $tier_value,
+                            'price' => $tier->price,
+                            'units' => $tier->units,
+                            'wc_variation_id' => $tier->wc_variation_id,
+                        );
+                        break;
+                    }
+                }
             }
 
-            $variation = null;
-            if ( $tier->wc_variation_id ) {
-                $variation = wc_get_product( $tier->wc_variation_id );
+            // Create variations from mapped tiers
+            foreach ( $tier_map as $tier_key => $tier_data ) {
+                $tier_value = $tier_data['value'];
+                $variation = null;
+
+                if ( $tier_data['wc_variation_id'] ) {
+                    $variation = wc_get_product( $tier_data['wc_variation_id'] );
+                }
+
+                if ( ! $variation || ! $variation instanceof WC_Product_Variation ) {
+                    $variation = new WC_Product_Variation();
+                    $variation->set_parent_id( $product->get_id() );
+                }
+
+                // Use value_key as the term slug
+                $variation->set_attributes( array( $pack_attr['taxonomy'] => $tier_value->value_key ) );
+                $variation->set_regular_price( $tier_data['price'] );
+                $variation->set_status( 'publish' );
+                $variation->save();
+
+                // Store tier metadata
+                $tier_level = PLS_Tier_Rules::get_tier_level_from_value( $tier_value->id );
+                if ( $tier_level ) {
+                    update_post_meta( $variation->get_id(), '_pls_tier_level', $tier_level );
+                }
+                update_post_meta( $variation->get_id(), '_pls_units', $tier_data['units'] );
+
+                // Update backreference
+                PLS_Repo_Pack_Tier::set_wc_variation_id( $base_product_id, $tier_key, $variation->get_id() );
+                $created_variations++;
             }
+        } else {
+            // Fallback to old system for backwards compatibility
+            $tiers = PLS_Repo_Pack_Tier::for_base( $base_product_id );
 
-            if ( ! $variation || ! $variation instanceof WC_Product_Variation ) {
-                $variation = new WC_Product_Variation();
-                $variation->set_parent_id( $product->get_id() );
+            foreach ( $tiers as $tier ) {
+                if ( (int) $tier->is_enabled !== 1 ) {
+                    continue;
+                }
+
+                $variation = null;
+                if ( $tier->wc_variation_id ) {
+                    $variation = wc_get_product( $tier->wc_variation_id );
+                }
+
+                if ( ! $variation || ! $variation instanceof WC_Product_Variation ) {
+                    $variation = new WC_Product_Variation();
+                    $variation->set_parent_id( $product->get_id() );
+                }
+
+                $variation->set_attributes( array( $pack_attr['taxonomy'] => $tier->tier_key ) );
+                $variation->set_regular_price( $tier->price );
+                $variation->set_status( 'publish' );
+                $variation->save();
+
+                update_post_meta( $variation->get_id(), '_pls_units', $tier->units );
+                PLS_Repo_Pack_Tier::set_wc_variation_id( $base_product_id, $tier->tier_key, $variation->get_id() );
+                $created_variations++;
             }
-
-            $variation->set_attributes( array( $pack_attr['taxonomy'] => $tier->tier_key ) );
-            $variation->set_regular_price( $tier->price );
-            $variation->set_status( 'publish' );
-            $variation->save();
-
-            update_post_meta( $variation->get_id(), '_pls_units', $tier->units );
-            PLS_Repo_Pack_Tier::set_wc_variation_id( $base_product_id, $tier->tier_key, $variation->get_id() );
-            $created_variations++;
         }
 
         if ( $created ) {

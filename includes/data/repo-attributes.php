@@ -194,4 +194,77 @@ final class PLS_Repo_Attributes {
 
         return $candidate;
     }
+
+    /**
+     * Update tier rules for an attribute value.
+     *
+     * @param int $value_id Attribute value ID.
+     * @param int $min_tier_level Minimum tier level required (1-5).
+     * @param array|null $tier_price_overrides Optional tier-specific price overrides (tier_level => price).
+     * @return bool|int Number of rows affected or false on error.
+     */
+    public static function update_value_tier_rules( $value_id, $min_tier_level, $tier_price_overrides = null ) {
+        global $wpdb;
+        $table = PLS_Repositories::table( 'attribute_value' );
+
+        $data = array(
+            'min_tier_level' => absint( $min_tier_level ),
+        );
+
+        if ( is_array( $tier_price_overrides ) ) {
+            $data['tier_price_overrides'] = wp_json_encode( $tier_price_overrides );
+        }
+
+        return $wpdb->update(
+            $table,
+            $data,
+            array( 'id' => $value_id ),
+            array( '%d', '%s' ),
+            array( '%d' )
+        );
+    }
+
+    /**
+     * Get attribute values available for a specific tier level.
+     *
+     * @param int $attribute_id Attribute ID.
+     * @param int $tier_level Tier level (1-5).
+     * @return array Array of attribute value objects.
+     */
+    public static function get_values_for_tier( $attribute_id, $tier_level ) {
+        global $wpdb;
+        $table = PLS_Repositories::table( 'attribute_value' );
+
+        return $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT * FROM {$table} 
+                WHERE attribute_id = %d 
+                AND min_tier_level <= %d 
+                ORDER BY sort_order ASC, id ASC",
+                $attribute_id,
+                $tier_level
+            )
+        );
+    }
+
+    /**
+     * Get tier-specific pricing for an attribute value.
+     *
+     * @param int $value_id Attribute value ID.
+     * @param int $tier_level Tier level (1-5).
+     * @return float Price for this tier, or 0 if not set.
+     */
+    public static function get_tier_pricing( $value_id, $tier_level ) {
+        $value = self::get_value( $value_id );
+        if ( ! $value || empty( $value->tier_price_overrides ) ) {
+            return 0.0;
+        }
+
+        $overrides = json_decode( $value->tier_price_overrides, true );
+        if ( is_array( $overrides ) && isset( $overrides[ $tier_level ] ) ) {
+            return floatval( $overrides[ $tier_level ] );
+        }
+
+        return 0.0;
+    }
 }

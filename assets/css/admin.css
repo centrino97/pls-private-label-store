@@ -128,3 +128,21 @@ body.pls-modal-open{overflow:hidden}
 .pls-manage-value-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc}
 .pls-manage-value-label{font-weight:600}
 .pls-manage-value-form .pls-chip-row{align-items:center}
+
+/* Tier-based UI elements */
+.pls-tier-badge{display:inline-flex;align-items:center;gap:4px;background:linear-gradient(135deg,#e0e7ff,#c7d2fe);color:#1e40af;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;border:1px solid #a5b4fc}
+.pls-tier-badge--tier1{background:linear-gradient(135deg,#fef3c7,#fde68a);color:#92400e;border-color:#fbbf24}
+.pls-tier-badge--tier2{background:linear-gradient(135deg,#fed7aa,#fdba74);color:#9a3412;border-color:#fb923c}
+.pls-tier-badge--tier3{background:linear-gradient(135deg,#c7d2fe,#a5b4fc);color:#1e3a8a;border-color:#6366f1}
+.pls-tier-badge--tier4{background:linear-gradient(135deg,#a5b4fc,#818cf8);color:#1e1b4b;border-color:#4f46e5}
+.pls-tier-badge--tier5{background:linear-gradient(135deg,#818cf8,#6366f1);color:#ffffff;border-color:#312e81}
+.pls-tier-restriction{display:inline-flex;align-items:center;gap:4px;color:#64748b;font-size:11px;margin-left:6px}
+.pls-tier-restriction::before{content:"🔒";font-size:10px}
+.pls-attribute-value-tier-info{display:flex;align-items:center;gap:6px;margin-top:4px;font-size:11px;color:#64748b}
+.pls-tier-pricing-indicator{display:inline-block;color:#059669;font-weight:600;font-size:12px;margin-left:4px}
+.pls-tier-pricing-indicator--free{color:#10b981}
+.pls-tier-pricing-indicator--extra{color:#dc2626}
+.pls-attribute-value-row[data-min-tier] .pls-attribute-value-label{position:relative}
+.pls-attribute-value-row[data-min-tier="3"] .pls-attribute-value-label::after{content:"Tier 3+";position:absolute;top:-2px;right:-40px;font-size:9px;background:#6366f1;color:#fff;padding:2px 6px;border-radius:4px;font-weight:600}
+.pls-attribute-value-row[data-min-tier="4"] .pls-attribute-value-label::after{content:"Tier 4+";position:absolute;top:-2px;right:-40px;font-size:9px;background:#4f46e5;color:#fff;padding:2px 6px;border-radius:4px;font-weight:600}
+.pls-attribute-value-row[data-min-tier="5"] .pls-attribute-value-label::after{content:"Tier 5";position:absolute;top:-2px;right:-40px;font-size:9px;background:#312e81;color:#fff;padding:2px 6px;border-radius:4px;font-weight:600}

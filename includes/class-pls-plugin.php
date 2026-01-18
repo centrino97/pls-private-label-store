@@ -55,6 +55,9 @@ final class PLS_Plugin {
         require_once PLS_PLS_DIR . 'includes/core/class-pls-logger.php';
         require_once PLS_PLS_DIR . 'includes/core/class-pls-capabilities.php';
         require_once PLS_PLS_DIR . 'includes/core/class-pls-taxonomies.php';
+        require_once PLS_PLS_DIR . 'includes/core/class-pls-tier-rules.php';
+        require_once PLS_PLS_DIR . 'includes/core/class-pls-default-attributes.php';
+        require_once PLS_PLS_DIR . 'includes/core/class-pls-migration-v080.php';
 
         require_once PLS_PLS_DIR . 'includes/admin/class-pls-admin-menu.php';
         require_once PLS_PLS_DIR . 'includes/admin/class-pls-admin-ajax.php';

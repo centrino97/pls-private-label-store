@@ -287,6 +287,24 @@
         });
       }
 
+      function getSelectedPackTierLevel(){
+        // Find selected pack tier from pack grid
+        var selectedTier = null;
+        $('#pls-pack-grid .pls-pack-row').each(function(){
+          var enabled = $(this).find('input[name*="[enabled]"]').is(':checked');
+          if (enabled){
+            var units = parseInt($(this).find('input[name*="[units]"]').val(), 10);
+            // Map units to tier level (50=1, 100=2, 250=3, 500=4, 1000=5)
+            if (units === 50) selectedTier = 1;
+            else if (units === 100) selectedTier = 2;
+            else if (units === 250) selectedTier = 3;
+            else if (units === 500) selectedTier = 4;
+            else if (units === 1000) selectedTier = 5;
+          }
+        });
+        return selectedTier || 1; // Default to tier 1 if none selected
+      }
+
       function populateValueOptions(attrRow){
         var attrId = parseInt(attrRow.find('.pls-attr-select').val(), 10);
         var selectEl = attrRow.find('.pls-attr-value-multi');
@@ -296,14 +314,28 @@
           return;
         }
         selectEl.prop('disabled', false);
+        
+        // Get current tier level for filtering
+        var currentTier = getSelectedPackTierLevel();
+        
         if (attrMap[attrId] && Array.isArray(attrMap[attrId].values)){
           attrMap[attrId].values.forEach(function(val){
+            // Filter by tier: only show values where min_tier_level <= currentTier
+            var minTier = val.min_tier_level || 1;
+            if (minTier > currentTier){
+              return; // Skip this value - not available for current tier
+            }
+            
             var opt = $('<option></option>').attr('value', val.id).text(val.label);
             if (typeof val.price !== 'undefined'){
               opt.attr('data-price', val.price);
               if (val.price !== ''){
                 valuePriceCache[val.id] = val.price;
               }
+            }
+            // Store tier info for display
+            if (minTier > 1){
+              opt.attr('data-min-tier', minTier);
             }
             selectEl.append(opt);
           });
@@ -336,7 +368,11 @@
             valObj = attrMap[attrId].values.find(function(v){ return parseInt(v.id, 10) === parsed; }) || null;
           }
           var label = valObj ? valObj.label : ('#'+valId);
+          var minTier = valObj && valObj.min_tier_level ? parseInt(valObj.min_tier_level, 10) : 1;
           var row = $('<div class="pls-attribute-value-detail"></div>').attr('data-value-id', valId);
+          if (minTier > 1){
+            row.attr('data-min-tier', minTier);
+          }
           row.append('<input type="hidden" class="pls-value-id" value="'+valId+'" />');
           row.append('<input type="hidden" class="pls-value-label" value="'+label.replace(/\"/g,'&quot;')+'" />');
           var priceInput = $('<input type="number" step="0.01" class="pls-attr-price pls-price-input" inputmode="decimal" />');
@@ -347,8 +383,12 @@
               priceInput.val(defaultPrice);
             }
           }
+          var labelEl = $('<label class="pls-attribute-value-label">'+label+'</label>');
+          if (minTier > 1){
+            labelEl.append('<span class="pls-tier-restriction">Tier '+minTier+'+</span>');
+          }
           row.append($('<div class="pls-price-inline"></div>').append(
-            $('<label>'+label+'</label>').append(priceInput)
+            labelEl.append(priceInput)
           ));
           details.append(row);
         });
@@ -1224,6 +1264,25 @@
         meta.text(formatSyncStatus(product.sync_status));
       }
     }
+
+    // Refresh attribute options when pack tier changes
+    $(document).on('change', '#pls-pack-grid input[name*="[enabled]"], #pls-pack-grid input[name*="[units]"]', function(){
+      // Refresh all attribute rows to filter by new tier level
+      $('.pls-attribute-row').each(function(){
+        var attrRow = $(this);
+        var currentSelected = attrRow.find('.pls-attr-value-multi').val() || [];
+        populateValueOptions(attrRow);
+        // Try to preserve selected values if they're still available
+        var availableOptions = attrRow.find('.pls-attr-value-multi option').map(function(){
+          return $(this).val();
+        }).get();
+        var preserved = currentSelected.filter(function(id){
+          return availableOptions.indexOf(id) !== -1;
+        });
+        attrRow.find('.pls-attr-value-multi').val(preserved);
+        renderValueDetails(attrRow);
+      });
+    });
 
     $('#pls-product-form').on('submit', function(e){
         e.preventDefault();

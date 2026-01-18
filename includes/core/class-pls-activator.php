@@ -13,7 +13,21 @@ final class PLS_Activator {
 
     public static function activate() {
         self::maybe_create_tables();
+        self::maybe_run_migrations();
         update_option( 'pls_pls_version', PLS_PLS_VERSION );
+    }
+
+    /**
+     * Run version-specific migrations.
+     */
+    private static function maybe_run_migrations() {
+        $stored_version = get_option( 'pls_pls_version', '0.0.0' );
+        
+        // Run v0.8.0 migration if upgrading from earlier version
+        if ( version_compare( $stored_version, '0.8.0', '<' ) ) {
+            require_once PLS_PLS_DIR . 'includes/core/class-pls-migration-v080.php';
+            PLS_Migration_V080::maybe_migrate();
+        }
     }
 
     private static function maybe_create_tables() {
@@ -141,10 +155,13 @@ final class PLS_Activator {
             seo_title VARCHAR(255) NULL,
             seo_description TEXT NULL,
             sort_order INT(11) NOT NULL DEFAULT 0,
+            min_tier_level INT(11) DEFAULT 1,
+            tier_price_overrides LONGTEXT NULL,
             PRIMARY KEY (id),
             UNIQUE KEY attr_value (attribute_id, value_key),
             KEY attribute_id (attribute_id),
-            KEY term_id (term_id)
+            KEY term_id (term_id),
+            KEY min_tier_level (min_tier_level)
         ) $charset_collate;";
 
         $tables[] = "CREATE TABLE {$p}pls_swatch (

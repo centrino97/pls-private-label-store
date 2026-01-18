@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.7.1
+Stable tag: 0.8.0
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,16 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 0.8.0 =
+* **Major Refactor:** Converted pack tiers from hardcoded system to flexible attribute-based system.
+* **New Features:** Tier-based restrictions and pricing rules for attribute values.
+* **Attributes Redesign:** Attributes page redesigned to match ingredients page style with tier rule management.
+* **Default Attributes:** Auto-creates Pack Tier, Package Type, and Package Colour attributes on activation.
+* **Tier Rules:** Implemented tier-based availability (min_tier_level) and tier-specific pricing overrides.
+* **WooCommerce Sync:** Refactored to use dynamic pack tier attribute instead of hardcoded values.
+* **Client Requirements:** Added Package Type (30ml, 50ml, 120ml, 50gr jar) and Package Colour options with silver pump upgrade.
+* **Database Migration:** Added min_tier_level and tier_price_overrides columns to pls_attribute_value table.
+
 = 0.7.1 =
 * Development release with improved update system.
 
