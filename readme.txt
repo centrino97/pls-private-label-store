@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.2.0
+Stable tag: 1.2.1
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,11 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 1.2.1 =
+* **Comprehensive Sample Data:** Complete sample data generator now includes WooCommerce orders, custom orders, and commission records.
+* **Full Feature Coverage:** Sample data covers all plugin features - products, bundles, orders, commissions, revenue tracking, and custom orders.
+* **Restored Sample Data Button:** Sample data generator button restored in Settings for complete testing environment setup.
+
 = 1.2.0 =
 * **Tutorial System Overhaul:** Complete redesign of onboarding into guided step-by-step tutorial for Raniya/Robert.
 * **Sequential Tutorial Flow:** Tutorial guides users through Product Options → Products → Bundles → Categories with clear step-by-step instructions.

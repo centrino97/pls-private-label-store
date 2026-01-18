@@ -12,6 +12,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class PLS_Sample_Data {
 
     /**
+     * Check if WooCommerce is active.
+     *
+     * @return bool
+     */
+    private static function is_woocommerce_active() {
+        return class_exists( 'WooCommerce' ) && function_exists( 'wc_create_order' );
+    }
+
+    /**
      * Clean up existing data and add sample data.
      */
     public static function generate() {
@@ -21,6 +30,14 @@ final class PLS_Sample_Data {
         self::add_product_options();
         self::add_products();
         self::add_bundles();
+        
+        // Sync products and bundles to WooCommerce
+        self::sync_to_woocommerce();
+        
+        // Create comprehensive sample data
+        self::add_woocommerce_orders();
+        self::add_custom_orders();
+        self::add_commissions();
     }
 
     /**
@@ -673,6 +690,464 @@ final class PLS_Sample_Data {
             );
 
             PLS_Repo_Bundle::insert( $data );
+        }
+    }
+
+    /**
+     * Sync products and bundles to WooCommerce.
+     */
+    private static function sync_to_woocommerce() {
+        if ( ! self::is_woocommerce_active() ) {
+            return;
+        }
+
+        require_once PLS_PLS_DIR . 'includes/wc/class-pls-wc-sync.php';
+
+        // Sync all products
+        $products = PLS_Repo_Base_Product::all();
+        foreach ( $products as $product ) {
+            PLS_WC_Sync::sync_base_product_to_wc( $product->id );
+        }
+
+        // Sync all bundles
+        $bundles = PLS_Repo_Bundle::all();
+        foreach ( $bundles as $bundle ) {
+            PLS_WC_Sync::sync_bundle_to_wc( $bundle->id );
+        }
+    }
+
+    /**
+     * Add sample WooCommerce orders with PLS products.
+     */
+    private static function add_woocommerce_orders() {
+        if ( ! class_exists( 'WooCommerce' ) || ! function_exists( 'wc_create_order' ) ) {
+            return;
+        }
+
+        $products = PLS_Repo_Base_Product::all();
+        if ( empty( $products ) ) {
+            return;
+        }
+
+        // Get pack tier variations for products
+        $orders_data = array(
+            array(
+                'date' => date( 'Y-m-d H:i:s', strtotime( '-5 days' ) ),
+                'status' => 'completed',
+                'customer' => array(
+                    'first_name' => 'Sarah',
+                    'last_name' => 'Johnson',
+                    'email' => 'sarah.johnson@example.com',
+                    'address' => '123 Main St',
+                    'city' => 'Sydney',
+                    'state' => 'NSW',
+                    'postcode' => '2000',
+                    'country' => 'AU',
+                ),
+                'items' => array(
+                    array( 'product_index' => 0, 'tier' => 'tier_2', 'quantity' => 2 ),
+                    array( 'product_index' => 1, 'tier' => 'tier_3', 'quantity' => 1 ),
+                ),
+            ),
+            array(
+                'date' => date( 'Y-m-d H:i:s', strtotime( '-3 days' ) ),
+                'status' => 'completed',
+                'customer' => array(
+                    'first_name' => 'Michael',
+                    'last_name' => 'Chen',
+                    'email' => 'michael.chen@example.com',
+                    'address' => '456 Collins St',
+                    'city' => 'Melbourne',
+                    'state' => 'VIC',
+                    'postcode' => '3000',
+                    'country' => 'AU',
+                ),
+                'items' => array(
+                    array( 'product_index' => 2, 'tier' => 'tier_1', 'quantity' => 3 ),
+                    array( 'product_index' => 3, 'tier' => 'tier_4', 'quantity' => 1 ),
+                ),
+            ),
+            array(
+                'date' => date( 'Y-m-d H:i:s', strtotime( '-1 day' ) ),
+                'status' => 'processing',
+                'customer' => array(
+                    'first_name' => 'Emma',
+                    'last_name' => 'Williams',
+                    'email' => 'emma.williams@example.com',
+                    'address' => '789 George St',
+                    'city' => 'Brisbane',
+                    'state' => 'QLD',
+                    'postcode' => '4000',
+                    'country' => 'AU',
+                ),
+                'items' => array(
+                    array( 'product_index' => 4, 'tier' => 'tier_3', 'quantity' => 2 ),
+                    array( 'product_index' => 5, 'tier' => 'tier_2', 'quantity' => 1 ),
+                ),
+            ),
+            array(
+                'date' => date( 'Y-m-d H:i:s', strtotime( '-10 days' ) ),
+                'status' => 'completed',
+                'customer' => array(
+                    'first_name' => 'David',
+                    'last_name' => 'Brown',
+                    'email' => 'david.brown@example.com',
+                    'address' => '321 King St',
+                    'city' => 'Perth',
+                    'state' => 'WA',
+                    'postcode' => '6000',
+                    'country' => 'AU',
+                ),
+                'items' => array(
+                    array( 'product_index' => 0, 'tier' => 'tier_5', 'quantity' => 5 ),
+                ),
+            ),
+            array(
+                'date' => date( 'Y-m-d H:i:s', strtotime( '-7 days' ) ),
+                'status' => 'completed',
+                'customer' => array(
+                    'first_name' => 'Lisa',
+                    'last_name' => 'Anderson',
+                    'email' => 'lisa.anderson@example.com',
+                    'address' => '654 Flinders St',
+                    'city' => 'Adelaide',
+                    'state' => 'SA',
+                    'postcode' => '5000',
+                    'country' => 'AU',
+                ),
+                'items' => array(
+                    array( 'product_index' => 1, 'tier' => 'tier_4', 'quantity' => 3 ),
+                    array( 'product_index' => 2, 'tier' => 'tier_3', 'quantity' => 2 ),
+                ),
+            ),
+        );
+
+        foreach ( $orders_data as $order_data ) {
+            $order = wc_create_order( array( 'status' => $order_data['status'] ) );
+            
+            if ( is_wp_error( $order ) ) {
+                continue;
+            }
+
+            // Set order date
+            $order->set_date_created( strtotime( $order_data['date'] ) );
+
+            // Set customer
+            $order->set_billing_first_name( $order_data['customer']['first_name'] );
+            $order->set_billing_last_name( $order_data['customer']['last_name'] );
+            $order->set_billing_email( $order_data['customer']['email'] );
+            $order->set_billing_address_1( $order_data['customer']['address'] );
+            $order->set_billing_city( $order_data['customer']['city'] );
+            $order->set_billing_state( $order_data['customer']['state'] );
+            $order->set_billing_postcode( $order_data['customer']['postcode'] );
+            $order->set_billing_country( $order_data['customer']['country'] );
+
+            $order->set_shipping_first_name( $order_data['customer']['first_name'] );
+            $order->set_shipping_last_name( $order_data['customer']['last_name'] );
+            $order->set_shipping_address_1( $order_data['customer']['address'] );
+            $order->set_shipping_city( $order_data['customer']['city'] );
+            $order->set_shipping_state( $order_data['customer']['state'] );
+            $order->set_shipping_postcode( $order_data['customer']['postcode'] );
+            $order->set_shipping_country( $order_data['customer']['country'] );
+
+            // Add products
+            foreach ( $order_data['items'] as $item_data ) {
+                $product_index = $item_data['product_index'];
+                if ( ! isset( $products[ $product_index ] ) ) {
+                    continue;
+                }
+
+                $base_product = $products[ $product_index ];
+                $wc_product_id = $base_product->wc_product_id;
+
+                if ( ! $wc_product_id ) {
+                    continue;
+                }
+
+                $wc_product = wc_get_product( $wc_product_id );
+                if ( ! $wc_product || ! $wc_product->is_type( 'variable' ) ) {
+                    continue;
+                }
+
+                // Get variation for tier
+                $variations = $wc_product->get_children();
+                $tier_key = $item_data['tier'];
+                $variation_id = null;
+
+                foreach ( $variations as $var_id ) {
+                    $variation = wc_get_product( $var_id );
+                    if ( ! $variation ) {
+                        continue;
+                    }
+
+                    $attributes = $variation->get_attributes();
+                    if ( isset( $attributes['pa_pack-tier'] ) ) {
+                        $term = get_term_by( 'slug', $tier_key, 'pa_pack-tier' );
+                        if ( $term && $attributes['pa_pack-tier'] === $term->slug ) {
+                            $variation_id = $var_id;
+                            break;
+                        }
+                    }
+                }
+
+                if ( ! $variation_id && ! empty( $variations ) ) {
+                    $variation_id = $variations[0]; // Fallback to first variation
+                }
+
+                if ( $variation_id ) {
+                    $variation = wc_get_product( $variation_id );
+                    $order->add_product( $variation, $item_data['quantity'] );
+                }
+            }
+
+            $order->calculate_totals();
+            $order->save();
+        }
+    }
+
+    /**
+     * Add sample custom orders.
+     */
+    private static function add_custom_orders() {
+        global $wpdb;
+        $table = $wpdb->prefix . 'pls_custom_order';
+
+        $categories = get_terms( array(
+            'taxonomy' => 'product_cat',
+            'hide_empty' => false,
+        ) );
+
+        $category_id = ! empty( $categories ) ? $categories[0]->term_id : null;
+
+        $custom_orders = array(
+            array(
+                'contact_name' => 'Jennifer Martinez',
+                'contact_email' => 'jennifer.martinez@example.com',
+                'contact_phone' => '+61 400 123 456',
+                'company_name' => 'Beauty Boutique Co.',
+                'category_id' => $category_id,
+                'quantity' => 500,
+                'budget' => 15000.00,
+                'timeline' => '4-6 weeks',
+                'message' => 'Looking for a custom face cleanser line for our boutique. Need professional label application.',
+                'status' => 'new_lead',
+                'created_at' => date( 'Y-m-d H:i:s', strtotime( '-2 days' ) ),
+            ),
+            array(
+                'contact_name' => 'Robert Thompson',
+                'contact_email' => 'robert.thompson@example.com',
+                'contact_phone' => '+61 400 234 567',
+                'company_name' => 'Wellness Solutions Ltd',
+                'category_id' => $category_id,
+                'quantity' => 1000,
+                'budget' => 25000.00,
+                'timeline' => '6-8 weeks',
+                'message' => 'Interested in a complete skincare line. Would like samples first.',
+                'status' => 'sampling',
+                'created_at' => date( 'Y-m-d H:i:s', strtotime( '-5 days' ) ),
+            ),
+            array(
+                'contact_name' => 'Amanda Lee',
+                'contact_email' => 'amanda.lee@example.com',
+                'contact_phone' => '+61 400 345 678',
+                'company_name' => 'Natural Skincare Co.',
+                'category_id' => $category_id,
+                'quantity' => 2000,
+                'budget' => 45000.00,
+                'timeline' => '8-10 weeks',
+                'message' => 'Large order for our new product launch. Need premium packaging options.',
+                'status' => 'production',
+                'created_at' => date( 'Y-m-d H:i:s', strtotime( '-10 days' ) ),
+                'production_cost' => 28000.00,
+                'total_value' => 45000.00,
+            ),
+            array(
+                'contact_name' => 'James Wilson',
+                'contact_email' => 'james.wilson@example.com',
+                'contact_phone' => '+61 400 456 789',
+                'company_name' => 'Retail Partners Inc',
+                'category_id' => $category_id,
+                'quantity' => 5000,
+                'budget' => 120000.00,
+                'timeline' => '10-12 weeks',
+                'message' => 'Bulk order for retail distribution. Need custom printed bottles.',
+                'status' => 'done',
+                'created_at' => date( 'Y-m-d H:i:s', strtotime( '-20 days' ) ),
+                'production_cost' => 75000.00,
+                'total_value' => 120000.00,
+                'nikola_commission_rate' => 5.00,
+                'nikola_commission_amount' => 6000.00,
+                'commission_confirmed' => 1,
+                'invoiced_at' => date( 'Y-m-d H:i:s', strtotime( '-15 days' ) ),
+                'paid_at' => date( 'Y-m-d H:i:s', strtotime( '-10 days' ) ),
+            ),
+            array(
+                'contact_name' => 'Sophie Taylor',
+                'contact_email' => 'sophie.taylor@example.com',
+                'contact_phone' => '+61 400 567 890',
+                'company_name' => 'Luxury Beauty Brands',
+                'category_id' => $category_id,
+                'quantity' => 3000,
+                'budget' => 85000.00,
+                'timeline' => '6-8 weeks',
+                'message' => 'Premium skincare line with custom fragrances and premium packaging.',
+                'status' => 'done',
+                'created_at' => date( 'Y-m-d H:i:s', strtotime( '-30 days' ) ),
+                'production_cost' => 55000.00,
+                'total_value' => 85000.00,
+                'nikola_commission_rate' => 3.00,
+                'nikola_commission_amount' => 2550.00,
+                'commission_confirmed' => 1,
+                'invoiced_at' => date( 'Y-m-d H:i:s', strtotime( '-25 days' ) ),
+                'paid_at' => date( 'Y-m-d H:i:s', strtotime( '-20 days' ) ),
+            ),
+            array(
+                'contact_name' => 'Mark Davis',
+                'contact_email' => 'mark.davis@example.com',
+                'contact_phone' => '+61 400 678 901',
+                'company_name' => 'Eco Beauty Solutions',
+                'category_id' => $category_id,
+                'quantity' => 1500,
+                'budget' => 35000.00,
+                'timeline' => '4-6 weeks',
+                'message' => 'Eco-friendly packaging required. Need samples before finalizing.',
+                'status' => 'on_hold',
+                'created_at' => date( 'Y-m-d H:i:s', strtotime( '-8 days' ) ),
+            ),
+        );
+
+        foreach ( $custom_orders as $order_data ) {
+            $wpdb->insert(
+                $table,
+                $order_data,
+                array( '%s', '%s', '%s', '%s', '%d', '%d', '%f', '%s', '%s', '%s', '%s', '%f', '%f', '%f', '%f', '%d', '%s', '%s' )
+            );
+        }
+    }
+
+    /**
+     * Add sample commission records.
+     */
+    private static function add_commissions() {
+        if ( ! self::is_woocommerce_active() ) {
+            return;
+        }
+
+        require_once PLS_PLS_DIR . 'includes/data/repo-commission.php';
+
+        // Get WooCommerce orders with PLS products
+        $orders_query = new WC_Order_Query( array(
+            'limit' => -1,
+            'status' => array( 'wc-completed', 'wc-processing' ),
+        ) );
+        $orders = $orders_query->get_orders();
+
+        foreach ( $orders as $order ) {
+            // Check if order has PLS products
+            $has_pls_product = false;
+            $pls_products = PLS_Repo_Base_Product::all();
+            $pls_wc_ids = array();
+            foreach ( $pls_products as $product ) {
+                if ( $product->wc_product_id ) {
+                    $pls_wc_ids[] = $product->wc_product_id;
+                }
+            }
+
+            foreach ( $order->get_items() as $item ) {
+                $product_id = $item->get_product_id();
+                if ( in_array( $product_id, $pls_wc_ids, true ) ) {
+                    $has_pls_product = true;
+                    break;
+                }
+            }
+
+            if ( ! $has_pls_product ) {
+                continue;
+            }
+
+            // Commission should already be created by check_order_payment hook
+            // But we'll create some manually for demonstration
+            $existing_commissions = PLS_Repo_Commission::get_by_order( $order->get_id() );
+            if ( ! empty( $existing_commissions ) ) {
+                continue; // Skip if already exists
+            }
+
+            // Create commission record
+            $total = $order->get_total();
+            $date_created = $order->get_date_created();
+            
+            // Calculate commission based on items
+            foreach ( $order->get_items() as $item_id => $item ) {
+                $product_id = $item->get_product_id();
+                if ( ! in_array( $product_id, $pls_wc_ids, true ) ) {
+                    continue;
+                }
+
+                $variation_id = $item->get_variation_id();
+                $quantity = $item->get_quantity();
+
+                // Get units from variation
+                $units = $quantity;
+                if ( $variation_id ) {
+                    $variation_units = get_post_meta( $variation_id, '_pls_units', true );
+                    if ( $variation_units ) {
+                        $units = $quantity * intval( $variation_units );
+                    } else {
+                        // Try to get from pack tier term
+                        $variation = wc_get_product( $variation_id );
+                        if ( $variation ) {
+                            $attributes = $variation->get_attributes();
+                            if ( isset( $attributes['pa_pack-tier'] ) ) {
+                                $term = get_term_by( 'slug', $attributes['pa_pack-tier'], 'pa_pack-tier' );
+                                if ( $term ) {
+                                    $default_units = get_term_meta( $term->term_id, '_pls_default_units', true );
+                                    if ( $default_units ) {
+                                        $units = $quantity * intval( $default_units );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Get commission rate from pack tier
+                $commission_rate = 0.80; // Default tier 1
+                $tier_key = null;
+                if ( $variation_id ) {
+                    $variation = wc_get_product( $variation_id );
+                    if ( $variation ) {
+                        $attributes = $variation->get_attributes();
+                        if ( isset( $attributes['pa_pack-tier'] ) ) {
+                            $term = get_term_by( 'slug', $attributes['pa_pack-tier'], 'pa_pack-tier' );
+                            if ( $term ) {
+                                $tier_level = get_term_meta( $term->term_id, '_pls_tier_level', true );
+                                if ( $tier_level ) {
+                                    $tier_key = 'tier_' . $tier_level;
+                                    $rates = get_option( 'pls_commission_rates', array() );
+                                    $tier_rates = isset( $rates['tiers'] ) ? $rates['tiers'] : array();
+                                    if ( isset( $tier_rates[ $tier_key ] ) ) {
+                                        $commission_rate = floatval( $tier_rates[ $tier_key ] );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                $commission_amount = $units * $commission_rate;
+
+                if ( $commission_amount > 0 ) {
+                    PLS_Repo_Commission::create( array(
+                        'wc_order_id' => $order->get_id(),
+                        'wc_order_item_id' => $item_id,
+                        'product_id' => $product_id,
+                        'tier_key' => $tier_key,
+                        'units' => $units,
+                        'commission_rate_per_unit' => $commission_rate,
+                        'commission_amount' => $commission_amount,
+                    ) );
+                }
+            }
         }
     }
 }
