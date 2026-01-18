@@ -3,16 +3,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-// Handle sample data generation
-if ( isset( $_POST['pls_generate_sample_data'] ) && check_admin_referer( 'pls_generate_sample_data', 'pls_sample_data_nonce' ) ) {
-    if ( current_user_can( 'manage_options' ) ) {
-        require_once PLS_PLS_DIR . 'includes/core/class-pls-sample-data.php';
-        PLS_Sample_Data::generate();
-        $message = 'sample-data-generated';
-        wp_safe_redirect( add_query_arg( 'message', $message, admin_url( 'admin.php?page=pls-settings' ) ) );
-        exit;
-    }
-}
+// Sample data generation removed in v1.2.0 - data is already configured
 
 // Handle form submission
 if ( isset( $_POST['pls_save_settings'] ) && check_admin_referer( 'pls_save_settings', 'pls_settings_nonce' ) ) {
@@ -30,7 +21,11 @@ if ( isset( $_POST['pls_save_settings'] ) && check_admin_referer( 'pls_save_sett
             'growth_line'  => isset( $_POST['bundle_growth_line'] ) ? floatval( $_POST['bundle_growth_line'] ) : 0.32,
             'premium_line' => isset( $_POST['bundle_premium_line'] ) ? floatval( $_POST['bundle_premium_line'] ) : 0.25,
         ),
-        'custom_order_percent' => isset( $_POST['custom_order_percent'] ) ? floatval( $_POST['custom_order_percent'] ) : 3.00,
+        'custom_order' => array(
+            'threshold' => isset( $_POST['custom_order_threshold'] ) ? floatval( $_POST['custom_order_threshold'] ) : 100000.00,
+            'rate_below' => isset( $_POST['custom_order_rate_below'] ) ? floatval( $_POST['custom_order_rate_below'] ) : 3.00,
+            'rate_above' => isset( $_POST['custom_order_rate_above'] ) ? floatval( $_POST['custom_order_rate_above'] ) : 5.00,
+        ),
     );
 
     update_option( 'pls_commission_rates', $commission_rates );
@@ -73,7 +68,26 @@ if ( isset( $_POST['pls_save_settings'] ) && check_admin_referer( 'pls_save_sett
 $commission_rates = get_option( 'pls_commission_rates', array() );
 $tier_rates       = isset( $commission_rates['tiers'] ) ? $commission_rates['tiers'] : array();
 $bundle_rates     = isset( $commission_rates['bundles'] ) ? $commission_rates['bundles'] : array();
-$custom_order_percent = isset( $commission_rates['custom_order_percent'] ) ? $commission_rates['custom_order_percent'] : 3.00;
+
+// Handle migration from old single percentage to new tiered structure
+$custom_order_config = isset( $commission_rates['custom_order'] ) ? $commission_rates['custom_order'] : array();
+if ( empty( $custom_order_config ) && isset( $commission_rates['custom_order_percent'] ) ) {
+    // Migrate old single rate to new structure
+    $old_rate = floatval( $commission_rates['custom_order_percent'] );
+    $custom_order_config = array(
+        'threshold' => 100000.00,
+        'rate_below' => $old_rate,
+        'rate_above' => $old_rate,
+    );
+    // Update option
+    $commission_rates['custom_order'] = $custom_order_config;
+    unset( $commission_rates['custom_order_percent'] );
+    update_option( 'pls_commission_rates', $commission_rates );
+}
+
+$custom_order_threshold = isset( $custom_order_config['threshold'] ) ? floatval( $custom_order_config['threshold'] ) : 100000.00;
+$custom_order_rate_below = isset( $custom_order_config['rate_below'] ) ? floatval( $custom_order_config['rate_below'] ) : 3.00;
+$custom_order_rate_above = isset( $custom_order_config['rate_above'] ) ? floatval( $custom_order_config['rate_above'] ) : 5.00;
 $label_price      = get_option( 'pls_label_price_tier_1_2', '0.50' );
 $email_recipients = get_option( 'pls_commission_email_recipients', array() );
 $email_recipients_string = is_array( $email_recipients ) ? implode( ', ', $email_recipients ) : '';
@@ -208,15 +222,38 @@ if ( isset( $_GET['message'] ) && 'settings-saved' === $_GET['message'] ) {
 
                     <div>
                         <h3 style="margin-top: 0; margin-bottom: 12px; font-size: 14px; font-weight: 600;"><?php esc_html_e( 'Custom Order Commission', 'pls-private-label-store' ); ?></h3>
-                        <div class="pls-input-group" style="max-width: 300px;">
-                            <label for="custom_order_percent"><?php esc_html_e( 'Commission Percentage', 'pls-private-label-store' ); ?></label>
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <input type="number" step="0.01" id="custom_order_percent" name="custom_order_percent" 
-                                       value="<?php echo esc_attr( $custom_order_percent ); ?>" 
-                                       class="pls-input" style="width: 100px;" min="0" max="100" />
-                                <span style="color: var(--pls-gray-600);">%</span>
+                        <p class="description" style="margin-bottom: 16px;"><?php esc_html_e( 'Tiered commission rates based on final order value. Commission is calculated when custom order status is set to "Done".', 'pls-private-label-store' ); ?></p>
+                        <div class="pls-field-grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
+                            <div class="pls-input-group">
+                                <label for="custom_order_threshold"><?php esc_html_e( 'Threshold Amount (AUD)', 'pls-private-label-store' ); ?></label>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span style="color: var(--pls-gray-600);">$</span>
+                                    <input type="number" step="0.01" id="custom_order_threshold" name="custom_order_threshold" 
+                                           value="<?php echo esc_attr( $custom_order_threshold ); ?>" 
+                                           class="pls-input" style="width: 150px;" min="0" />
+                                </div>
+                                <p class="description" style="margin-top: 4px;"><?php esc_html_e( 'Orders at or above this amount use the higher rate.', 'pls-private-label-store' ); ?></p>
                             </div>
-                            <p class="description" style="margin-top: 4px;"><?php esc_html_e( 'Percentage of total order value for custom orders.', 'pls-private-label-store' ); ?></p>
+                            <div class="pls-input-group">
+                                <label for="custom_order_rate_below"><?php esc_html_e( 'Rate Below Threshold', 'pls-private-label-store' ); ?></label>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="number" step="0.01" id="custom_order_rate_below" name="custom_order_rate_below" 
+                                           value="<?php echo esc_attr( $custom_order_rate_below ); ?>" 
+                                           class="pls-input" style="width: 100px;" min="0" max="100" />
+                                    <span style="color: var(--pls-gray-600);">%</span>
+                                </div>
+                                <p class="description" style="margin-top: 4px;"><?php esc_html_e( 'Commission rate for orders under threshold.', 'pls-private-label-store' ); ?></p>
+                            </div>
+                            <div class="pls-input-group">
+                                <label for="custom_order_rate_above"><?php esc_html_e( 'Rate At/Above Threshold', 'pls-private-label-store' ); ?></label>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="number" step="0.01" id="custom_order_rate_above" name="custom_order_rate_above" 
+                                           value="<?php echo esc_attr( $custom_order_rate_above ); ?>" 
+                                           class="pls-input" style="width: 100px;" min="0" max="100" />
+                                    <span style="color: var(--pls-gray-600);">%</span>
+                                </div>
+                                <p class="description" style="margin-top: 4px;"><?php esc_html_e( 'Commission rate for orders at or above threshold.', 'pls-private-label-store' ); ?></p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -269,25 +306,6 @@ if ( isset( $_GET['message'] ) && 'settings-saved' === $_GET['message'] ) {
                 </div>
             </div>
 
-            <!-- Sample Data -->
-            <?php if ( current_user_can( 'manage_options' ) ) : ?>
-                <div class="pls-accordion__item is-collapsed">
-                    <button type="button" class="pls-accordion__header">
-                        <?php esc_html_e( 'Sample Data', 'pls-private-label-store' ); ?>
-                    </button>
-                    <div class="pls-accordion__content">
-                        <p class="description" style="margin-top: 0;"><?php esc_html_e( 'Generate sample products, categories, ingredients, and product options for testing. This will clean up existing data and add sample data.', 'pls-private-label-store' ); ?></p>
-                        
-                        <form method="post" action="" style="margin-top: 16px;">
-                            <?php wp_nonce_field( 'pls_generate_sample_data', 'pls_sample_data_nonce' ); ?>
-                            <button type="submit" name="pls_generate_sample_data" value="1" class="button button-secondary pls-btn--danger" 
-                                    onclick="return confirm('<?php esc_attr_e( 'This will DELETE all existing products, custom orders, commissions, and attributes (except Pack Tiers). Are you sure?', 'pls-private-label-store' ); ?>');">
-                                <?php esc_html_e( 'Generate Sample Data', 'pls-private-label-store' ); ?>
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            <?php endif; ?>
 
             <!-- Onboarding Settings -->
             <div class="pls-accordion__item is-collapsed">

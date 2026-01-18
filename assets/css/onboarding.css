@@ -2,6 +2,174 @@
  * Onboarding system styles.
  */
 
+/* New Tutorial Panel (v1.2.0) */
+.pls-tutorial-panel {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    margin-bottom: 24px;
+    overflow: hidden;
+}
+
+.pls-tutorial-panel__header {
+    background: linear-gradient(135deg, #2271b1 0%, #1e5a8e 100%);
+    color: #fff;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.pls-tutorial-panel__header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.pls-tutorial-panel__step-badge {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.pls-tutorial-panel__title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.pls-tutorial-panel__progress {
+    font-size: 13px;
+    opacity: 0.9;
+}
+
+.pls-tutorial-panel__body {
+    padding: 20px;
+}
+
+.pls-tutorial-panel__description {
+    margin: 0 0 16px;
+    color: #64748b;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.pls-tutorial-panel__steps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.pls-tutorial-panel__step-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    transition: background 0.2s;
+}
+
+.pls-tutorial-panel__step-item:hover {
+    background: #f8fafc;
+}
+
+.pls-tutorial-panel__step-item.is-completed {
+    opacity: 0.6;
+}
+
+.pls-tutorial-panel__step-checkbox {
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.pls-tutorial-panel__step-text {
+    flex: 1;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #334155;
+}
+
+.pls-tutorial-panel__step-item.is-completed .pls-tutorial-panel__step-text {
+    text-decoration: line-through;
+    color: #94a3b8;
+}
+
+.pls-tutorial-panel__footer {
+    padding: 16px 20px;
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.pls-tutorial-panel__nav-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.pls-tutorial-panel__skip-btn {
+    background: transparent;
+    border: 1px solid #cbd5e1;
+    color: #64748b;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.pls-tutorial-panel__skip-btn:hover {
+    background: #fff;
+    border-color: #94a3b8;
+    color: #475569;
+}
+
+.pls-tutorial-panel__next-btn {
+    background: #2271b1;
+    border: none;
+    color: #fff;
+    padding: 8px 20px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.pls-tutorial-panel__next-btn:hover:not(:disabled) {
+    background: #1e5a8e;
+}
+
+.pls-tutorial-panel__next-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.pls-tutorial-panel__prev-btn {
+    background: #fff;
+    border: 1px solid #cbd5e1;
+    color: #475569;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.pls-tutorial-panel__prev-btn:hover {
+    background: #f8fafc;
+    border-color: #94a3b8;
+}
+
+/* Legacy floating card (for backward compatibility) */
 .pls-onboarding-card {
     position: fixed;
     right: 20px;

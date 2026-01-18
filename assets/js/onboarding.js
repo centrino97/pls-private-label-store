@@ -31,8 +31,12 @@
                     action: 'pls_start_onboarding',
                     nonce: PLS_Onboarding.nonce
                 },
-                success: function() {
-                    location.reload();
+                success: function(resp) {
+                    if (resp && resp.success && resp.data && resp.data.redirect) {
+                        window.location.href = resp.data.redirect;
+                    } else {
+                        location.reload();
+                    }
                 }
             });
         });
@@ -40,19 +44,21 @@
         // Inject help buttons into modals
         injectModalHelpButtons();
 
-        // Show onboarding card if active (only when not in modal)
-        function checkAndShowOnboarding() {
+        // Show tutorial panel if active (only when not in modal)
+        function checkAndShowTutorial() {
             if ( onboardingData.is_active && !$('.pls-modal.is-active').length ) {
-                if (!$('#pls-onboarding-card').length) {
-                    initOnboardingCard();
+                if (!$('#pls-tutorial-panel').length) {
+                    initTutorialPanel();
                 }
-                $('#pls-onboarding-card').show();
-            } else {
+                $('#pls-tutorial-panel').show();
+                // Hide old floating card if it exists
                 $('#pls-onboarding-card').hide();
+            } else {
+                $('#pls-tutorial-panel').hide();
             }
         }
 
-        checkAndShowOnboarding();
+        checkAndShowTutorial();
 
         // Show Help button in page header if onboarding not active
         if ( !onboardingData.is_active ) {
@@ -63,7 +69,7 @@
         $(document).on('click', '.pls-modal__close, .pls-modal-cancel, [data-pls-open-modal]', function() {
             setTimeout(function() {
                 injectModalHelpButtons();
-                checkAndShowOnboarding();
+                checkAndShowTutorial();
             }, 300);
         });
 
@@ -76,7 +82,7 @@
                         if ($target.hasClass('pls-modal')) {
                             setTimeout(function() {
                                 injectModalHelpButtons();
-                                checkAndShowOnboarding();
+                                checkAndShowTutorial();
                             }, 100);
                         }
                     }
@@ -281,6 +287,211 @@
         };
 
         return contentMap[page] && contentMap[page][section] ? contentMap[page][section] : null;
+    }
+
+    function initTutorialPanel() {
+        if (!onboardingData.tutorial_flow) {
+            return;
+        }
+
+        const currentPage = onboardingData.current_page || 'attributes';
+        const tutorialFlow = onboardingData.tutorial_flow;
+        const currentStep = tutorialFlow[currentPage];
+        
+        if (!currentStep) {
+            return;
+        }
+
+        // Get completed steps from progress
+        const completedSteps = onboardingData.progress && onboardingData.progress.completed_steps 
+            ? JSON.parse( onboardingData.progress.completed_steps ) 
+            : [];
+
+        // Calculate overall progress
+        const totalSteps = Object.keys(tutorialFlow).length;
+        const currentStepNum = currentStep.step_number;
+        const progressPercent = ((currentStepNum - 1) / totalSteps) * 100;
+
+        // Count completed sub-steps for current section
+        const stepKey = currentPage + '_';
+        const currentCompleted = completedSteps.filter(s => s.startsWith(stepKey)).length;
+        const totalSubSteps = currentStep.steps.length;
+        const canProceed = currentCompleted >= Math.min(3, totalSubSteps); // At least 3 key steps done
+
+        // Build step items HTML
+        const stepsHtml = currentStep.steps.map((step, index) => {
+            const subStepKey = stepKey + index;
+            const isCompleted = completedSteps.includes(subStepKey);
+            return `
+                <li class="pls-tutorial-panel__step-item ${isCompleted ? 'is-completed' : ''}" data-step-index="${index}">
+                    <input type="checkbox" class="pls-tutorial-panel__step-checkbox" ${isCompleted ? 'checked' : ''} />
+                    <span class="pls-tutorial-panel__step-text">${step}</span>
+                </li>
+            `;
+        }).join('');
+
+        // Build panel HTML
+        const panelHtml = `
+            <div class="pls-tutorial-panel" id="pls-tutorial-panel">
+                <div class="pls-tutorial-panel__header">
+                    <div class="pls-tutorial-panel__header-left">
+                        <span class="pls-tutorial-panel__step-badge">Step ${currentStepNum} of ${totalSteps}</span>
+                        <h3 class="pls-tutorial-panel__title">${currentStep.title}</h3>
+                    </div>
+                    <div class="pls-tutorial-panel__progress">${currentStepNum} / ${totalSteps}</div>
+                </div>
+                <div class="pls-tutorial-panel__body">
+                    <p class="pls-tutorial-panel__description">
+                        ${currentStep.page === 'attributes' ? 'Review and configure your product options before creating products.' : ''}
+                        ${currentStep.page === 'products' ? 'Create your first product with all the options you configured.' : ''}
+                        ${currentStep.page === 'bundles' ? 'Create bundles to offer special pricing for multiple products.' : ''}
+                        ${currentStep.page === 'categories' ? 'Review and organize your product categories.' : ''}
+                    </p>
+                    <ul class="pls-tutorial-panel__steps">
+                        ${stepsHtml}
+                    </ul>
+                </div>
+                <div class="pls-tutorial-panel__footer">
+                    <button type="button" class="pls-tutorial-panel__skip-btn" id="pls-tutorial-skip">Skip Tutorial</button>
+                    <div class="pls-tutorial-panel__nav-buttons">
+                        ${currentStepNum > 1 ? `<button type="button" class="pls-tutorial-panel__prev-btn" data-prev-page="${getPreviousPage(currentPage, tutorialFlow)}">Previous</button>` : ''}
+                        <button type="button" class="pls-tutorial-panel__next-btn" id="pls-tutorial-next" 
+                                data-next-page="${currentStep.next_page || ''}" 
+                                ${!canProceed ? 'disabled' : ''}>
+                            ${currentStep.next_title || 'Complete'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Insert at top of page content (after page head if exists)
+        const $pageHead = $('.pls-page-head');
+        if ($pageHead.length) {
+            $pageHead.after(panelHtml);
+        } else {
+            $('.pls-wrap').prepend(panelHtml);
+        }
+
+        // Attach event handlers
+        attachTutorialHandlers(currentPage, tutorialFlow, completedSteps);
+    }
+
+    function getPreviousPage(currentPage, tutorialFlow) {
+        const pages = Object.keys(tutorialFlow);
+        const currentIndex = pages.indexOf(currentPage);
+        return currentIndex > 0 ? pages[currentIndex - 1] : null;
+    }
+
+    function attachTutorialHandlers(currentPage, tutorialFlow, completedSteps) {
+        const stepKey = currentPage + '_';
+
+        // Step checkbox handlers
+        $('.pls-tutorial-panel__step-item').on('click', function() {
+            const $item = $(this);
+            const stepIndex = $item.data('step-index');
+            const subStepKey = stepKey + stepIndex;
+            const isCompleted = $item.hasClass('is-completed');
+
+            $.ajax({
+                url: PLS_Onboarding.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'pls_update_onboarding_step',
+                    nonce: PLS_Onboarding.nonce,
+                    page: currentPage,
+                    step_index: stepIndex,
+                    mark_completed: !isCompleted
+                },
+                success: function() {
+                    $item.toggleClass('is-completed');
+                    $item.find('input').prop('checked', !isCompleted);
+                    updateNextButton();
+                }
+            });
+        });
+
+        // Next button handler
+        $('#pls-tutorial-next').on('click', function() {
+            const nextPage = $(this).data('next-page');
+            if (!nextPage) {
+                // Complete tutorial
+                completeTutorial();
+            } else {
+                // Navigate to next page
+                const nextUrl = getAdminUrlForPage(nextPage);
+                if (nextUrl) {
+                    window.location.href = nextUrl;
+                }
+            }
+        });
+
+        // Previous button handler
+        $('.pls-tutorial-panel__prev-btn').on('click', function() {
+            const prevPage = $(this).data('prev-page');
+            if (prevPage) {
+                const prevUrl = getAdminUrlForPage(prevPage);
+                if (prevUrl) {
+                    window.location.href = prevUrl;
+                }
+            }
+        });
+
+        // Skip button handler
+        $('#pls-tutorial-skip').on('click', function() {
+            if (confirm('Skip the tutorial? You can restart it anytime from the dashboard.')) {
+                $.ajax({
+                    url: PLS_Onboarding.ajax_url,
+                    type: 'POST',
+                    data: {
+                        action: 'pls_skip_onboarding',
+                        nonce: PLS_Onboarding.nonce
+                    },
+                    success: function() {
+                        $('#pls-tutorial-panel').fadeOut(300, function() {
+                            $(this).remove();
+                        });
+                    }
+                });
+            }
+        });
+
+        function updateNextButton() {
+            const currentCompleted = $('.pls-tutorial-panel__step-item.is-completed').length;
+            const totalSubSteps = $('.pls-tutorial-panel__step-item').length;
+            const canProceed = currentCompleted >= Math.min(3, totalSubSteps);
+            $('#pls-tutorial-next').prop('disabled', !canProceed);
+        }
+    }
+
+    function getAdminUrlForPage(page) {
+        const pageMap = {
+            'attributes': 'admin.php?page=pls-attributes',
+            'products': 'admin.php?page=pls-products',
+            'bundles': 'admin.php?page=pls-bundles',
+            'categories': 'admin.php?page=pls-categories'
+        };
+        const adminBase = PLS_Onboarding.admin_url || (window.location.origin + '/wp-admin/');
+        return pageMap[page] ? adminBase + pageMap[page] : null;
+    }
+
+    function completeTutorial() {
+        $.ajax({
+            url: PLS_Onboarding.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'pls_complete_onboarding',
+                nonce: PLS_Onboarding.nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    $('#pls-tutorial-panel').fadeOut(300, function() {
+                        alert('Tutorial completed! You\'re all set to start creating products.');
+                        location.reload();
+                    });
+                }
+            }
+        });
     }
 
     function initOnboardingCard() {

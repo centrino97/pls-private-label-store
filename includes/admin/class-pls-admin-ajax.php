@@ -1859,6 +1859,42 @@ final class PLS_Admin_Ajax {
 
         $result = PLS_Repo_Custom_Order::update_status( $order_id, $status );
 
+        // Auto-calculate commission when status changes to 'done'
+        if ( $result && 'done' === $status ) {
+            $order = PLS_Repo_Custom_Order::get( $order_id );
+            if ( $order && $order->total_value && ! $order->nikola_commission_amount ) {
+                $final_value = floatval( $order->total_value );
+                $commission_rate = get_option( 'pls_commission_rates', array() );
+                $custom_order_config = isset( $commission_rate['custom_order'] ) ? $commission_rate['custom_order'] : array();
+                
+                if ( empty( $custom_order_config ) && isset( $commission_rate['custom_order_percent'] ) ) {
+                    // Migrate old single rate
+                    $old_rate = floatval( $commission_rate['custom_order_percent'] );
+                    $custom_order_config = array(
+                        'threshold' => 100000.00,
+                        'rate_below' => $old_rate,
+                        'rate_above' => $old_rate,
+                    );
+                }
+                
+                $threshold = isset( $custom_order_config['threshold'] ) ? floatval( $custom_order_config['threshold'] ) : 100000.00;
+                $rate_below = isset( $custom_order_config['rate_below'] ) ? floatval( $custom_order_config['rate_below'] ) : 3.00;
+                $rate_above = isset( $custom_order_config['rate_above'] ) ? floatval( $custom_order_config['rate_above'] ) : 5.00;
+                
+                $rate_to_use = ( $final_value >= $threshold ) ? $rate_above : $rate_below;
+                $calculated_commission = $final_value * ( $rate_to_use / 100 );
+                
+                // Update order with calculated commission
+                PLS_Repo_Custom_Order::update_financials(
+                    $order_id,
+                    $order->production_cost,
+                    $order->final_value,
+                    $rate_to_use,
+                    $calculated_commission
+                );
+            }
+        }
+
         if ( $result ) {
             wp_send_json_success();
         } else {
@@ -1895,7 +1931,21 @@ final class PLS_Admin_Ajax {
         }
 
         $commission_rate = get_option( 'pls_commission_rates', array() );
-        $custom_order_percent = isset( $commission_rate['custom_order_percent'] ) ? $commission_rate['custom_order_percent'] : 3.00;
+        
+        // Get tiered custom order commission rates
+        $custom_order_config = isset( $commission_rate['custom_order'] ) ? $commission_rate['custom_order'] : array();
+        if ( empty( $custom_order_config ) && isset( $commission_rate['custom_order_percent'] ) ) {
+            // Migrate old single rate
+            $old_rate = floatval( $commission_rate['custom_order_percent'] );
+            $custom_order_config = array(
+                'threshold' => 100000.00,
+                'rate_below' => $old_rate,
+                'rate_above' => $old_rate,
+            );
+        }
+        $custom_order_threshold = isset( $custom_order_config['threshold'] ) ? floatval( $custom_order_config['threshold'] ) : 100000.00;
+        $custom_order_rate_below = isset( $custom_order_config['rate_below'] ) ? floatval( $custom_order_config['rate_below'] ) : 3.00;
+        $custom_order_rate_above = isset( $custom_order_config['rate_above'] ) ? floatval( $custom_order_config['rate_above'] ) : 5.00;
 
         ob_start();
         ?>
@@ -1992,11 +2042,35 @@ final class PLS_Admin_Ajax {
                         </td>
                     </tr>
                     <tr>
-                        <th><label for="pls-order-total-value"><?php esc_html_e( 'Total Value', 'pls-private-label-store' ); ?></label></th>
+                        <th><label for="pls-order-total-value"><?php esc_html_e( 'Final Value', 'pls-private-label-store' ); ?></label></th>
                         <td>
                             <input type="number" step="0.01" id="pls-order-total-value" class="regular-text" 
                                    value="<?php echo esc_attr( $order->total_value ?: '' ); ?>" />
-                            <p class="description"><?php printf( esc_html__( 'Commission rate: %s%%', 'pls-private-label-store' ), number_format( $custom_order_percent, 2 ) ); ?></p>
+                            <?php
+                            // Calculate commission rate based on final value (stored in total_value)
+                            $final_value = $order->total_value ? floatval( $order->total_value ) : 0;
+                            $commission_rate_to_use = ( $final_value >= $custom_order_threshold ) ? $custom_order_rate_above : $custom_order_rate_below;
+                            $commission_amount_calc = $final_value > 0 ? ( $final_value * ( $commission_rate_to_use / 100 ) ) : 0;
+                            ?>
+                            <p class="description">
+                                <?php 
+                                if ( $final_value > 0 ) {
+                                    printf( 
+                                        esc_html__( 'Commission rate: %s%% (%s threshold: %s)', 'pls-private-label-store' ), 
+                                        number_format( $commission_rate_to_use, 2 ),
+                                        ( $final_value >= $custom_order_threshold ) ? esc_html__( 'above', 'pls-private-label-store' ) : esc_html__( 'below', 'pls-private-label-store' ),
+                                        wc_price( $custom_order_threshold )
+                                    );
+                                } else {
+                                    esc_html_e( 'Enter final value to see commission calculation.', 'pls-private-label-store' );
+                                }
+                                ?>
+                            </p>
+                            <?php if ( $final_value > 0 ) : ?>
+                                <p class="description" style="margin-top: 4px; font-weight: 600; color: var(--pls-accent);">
+                                    <?php printf( esc_html__( 'Calculated commission: %s', 'pls-private-label-store' ), wc_price( $commission_amount_calc ) ); ?>
+                                </p>
+                            <?php endif; ?>
                         </td>
                     </tr>
                     <?php if ( $order->nikola_commission_amount ) : ?>
@@ -2067,14 +2141,48 @@ final class PLS_Admin_Ajax {
         $result = PLS_Repo_Custom_Order::update_financials(
             $order_id,
             $production_cost,
-            $total_value,
+            $final_value,
             $nikola_commission_rate,
             $nikola_commission_amount
         );
 
-        // Handle commission confirmation if status is 'done'
+        // Auto-calculate commission when status changes to 'done'
         $order = PLS_Repo_Custom_Order::get( $order_id );
         if ( $order && 'done' === $order->status ) {
+            // Auto-calculate commission if not already set
+            if ( ! $order->nikola_commission_amount && $order->total_value ) {
+                $final_value = floatval( $order->total_value );
+                $commission_rate = get_option( 'pls_commission_rates', array() );
+                $custom_order_config = isset( $commission_rate['custom_order'] ) ? $commission_rate['custom_order'] : array();
+                
+                if ( empty( $custom_order_config ) && isset( $commission_rate['custom_order_percent'] ) ) {
+                    // Migrate old single rate
+                    $old_rate = floatval( $commission_rate['custom_order_percent'] );
+                    $custom_order_config = array(
+                        'threshold' => 100000.00,
+                        'rate_below' => $old_rate,
+                        'rate_above' => $old_rate,
+                    );
+                }
+                
+                $threshold = isset( $custom_order_config['threshold'] ) ? floatval( $custom_order_config['threshold'] ) : 100000.00;
+                $rate_below = isset( $custom_order_config['rate_below'] ) ? floatval( $custom_order_config['rate_below'] ) : 3.00;
+                $rate_above = isset( $custom_order_config['rate_above'] ) ? floatval( $custom_order_config['rate_above'] ) : 5.00;
+                
+                $rate_to_use = ( $final_value >= $threshold ) ? $rate_above : $rate_below;
+                $calculated_commission = $final_value * ( $rate_to_use / 100 );
+                
+                // Update order with calculated commission
+                PLS_Repo_Custom_Order::update_financials(
+                    $order_id,
+                    $order->production_cost,
+                    $order->final_value,
+                    $rate_to_use,
+                    $calculated_commission
+                );
+            }
+            
+            // Handle commission confirmation
             $commission_confirmed = isset( $_POST['commission_confirmed'] ) ? absint( $_POST['commission_confirmed'] ) : 0;
             global $wpdb;
             $table = $wpdb->prefix . 'pls_custom_order';

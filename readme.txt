@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,17 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 1.2.0 =
+* **Tutorial System Overhaul:** Complete redesign of onboarding into guided step-by-step tutorial for Raniya/Robert.
+* **Sequential Tutorial Flow:** Tutorial guides users through Product Options → Products → Bundles → Categories with clear step-by-step instructions.
+* **Tutorial UI:** New tutorial panel at top of page with progress indicator, checkboxes for each step, and Next/Previous navigation.
+* **Auto-Navigation:** Tutorial automatically navigates to next page when section is complete.
+* **Tiered Custom Order Commission:** Commission rates now based on order value thresholds (3% below 100k AUD, 5% above 100k AUD).
+* **Auto-Commission Calculation:** Commission automatically calculated when custom order status changes to "Done" based on final order value.
+* **Commission Settings:** New settings UI for configuring threshold amount and both commission rates.
+* **Sample Data Removed:** Sample data generator button removed from Settings (data already configured).
+* **Settings & Commission:** These sections excluded from tutorial (for Nikola only).
+
 = 1.1.0 =
 * **Product Sync State Detection:** Intelligent sync state detection with 4 states (Synced/Active, Synced/Inactive, Update Available, Not Synced) and visual badges.
 * **Product Status Control:** Activate/Deactivate buttons for quick product visibility control. Update button appears when product changes need syncing.

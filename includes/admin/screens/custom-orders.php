@@ -26,7 +26,18 @@ foreach ( $all_orders as $order ) {
 }
 
 $commission_rate = get_option( 'pls_commission_rates', array() );
-$custom_order_percent = isset( $commission_rate['custom_order_percent'] ) ? $commission_rate['custom_order_percent'] : 3.00;
+$custom_order_config = isset( $commission_rate['custom_order'] ) ? $commission_rate['custom_order'] : array();
+if ( empty( $custom_order_config ) && isset( $commission_rate['custom_order_percent'] ) ) {
+    $old_rate = floatval( $commission_rate['custom_order_percent'] );
+    $custom_order_config = array(
+        'threshold' => 100000.00,
+        'rate_below' => $old_rate,
+        'rate_above' => $old_rate,
+    );
+}
+$custom_order_threshold = isset( $custom_order_config['threshold'] ) ? floatval( $custom_order_config['threshold'] ) : 100000.00;
+$custom_order_rate_below = isset( $custom_order_config['rate_below'] ) ? floatval( $custom_order_config['rate_below'] ) : 3.00;
+$custom_order_rate_above = isset( $custom_order_config['rate_above'] ) ? floatval( $custom_order_config['rate_above'] ) : 5.00;
 ?>
 <div class="wrap pls-wrap pls-page-custom-orders">
     <div class="pls-page-head">
@@ -120,6 +131,8 @@ $custom_order_percent = isset( $commission_rate['custom_order_percent'] ) ? $com
 var PLS_CustomOrders = {
     nonce: '<?php echo wp_create_nonce( 'pls_custom_orders_nonce' ); ?>',
     ajax_url: '<?php echo admin_url( 'admin-ajax.php' ); ?>',
-    commission_percent: <?php echo floatval( $custom_order_percent ); ?>
+    commission_threshold: <?php echo floatval( $custom_order_threshold ); ?>,
+    commission_rate_below: <?php echo floatval( $custom_order_rate_below ); ?>,
+    commission_rate_above: <?php echo floatval( $custom_order_rate_above ); ?>
 };
 </script>

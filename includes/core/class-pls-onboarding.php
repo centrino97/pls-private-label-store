@@ -58,9 +58,11 @@ final class PLS_Onboarding {
             array(
                 'nonce' => wp_create_nonce( 'pls_onboarding_nonce' ),
                 'ajax_url' => admin_url( 'admin-ajax.php' ),
+                'admin_url' => admin_url(),
                 'progress' => $progress,
                 'current_page' => $current_page,
                 'steps' => self::get_steps_definition(),
+                'tutorial_flow' => self::get_tutorial_flow(),
                 'is_active' => $progress && ! $progress->completed_at,
             )
         );
@@ -142,93 +144,88 @@ final class PLS_Onboarding {
      *
      * @return array
      */
-    public static function get_steps_definition() {
+    /**
+     * Get tutorial flow definition (sequential steps for guided tutorial).
+     *
+     * @return array Sequential tutorial steps.
+     */
+    public static function get_tutorial_flow() {
         return array(
-            'dashboard' => array(
-                'title' => __( 'Dashboard Overview', 'pls-private-label-store' ),
+            'attributes' => array(
+                'step_number' => 1,
+                'title' => __( 'Step 1: Product Options', 'pls-private-label-store' ),
+                'page' => 'attributes',
                 'steps' => array(
-                    __( 'Review summary cards showing key metrics', 'pls-private-label-store' ),
-                    __( 'Explore quick links to all sections', 'pls-private-label-store' ),
+                    __( 'Review Pack Tier settings (units and prices)', 'pls-private-label-store' ),
+                    __( 'Modify pricing if needed, or confirm defaults are OK', 'pls-private-label-store' ),
+                    __( 'Review Package Type options (30ml, 50ml, 120ml, 50gr jar)', 'pls-private-label-store' ),
+                    __( 'Review Package Color options (Standard, Frosted, Amber)', 'pls-private-label-store' ),
+                    __( 'Review Package Cap options (Pump, Lid, Dropper)', 'pls-private-label-store' ),
+                    __( 'Review Fragrances (available for Tier 3+)', 'pls-private-label-store' ),
+                    __( 'Review Ingredients as product options', 'pls-private-label-store' ),
                 ),
+                'next_page' => 'products',
+                'next_title' => __( 'Next: Create Your First Product', 'pls-private-label-store' ),
             ),
             'products' => array(
-                'title' => __( 'Products & Packs', 'pls-private-label-store' ),
+                'step_number' => 2,
+                'title' => __( 'Step 2: Create Products', 'pls-private-label-store' ),
+                'page' => 'products',
                 'steps' => array(
-                    __( 'Click "Add product" to create a test product', 'pls-private-label-store' ),
-                    __( 'Fill in General info (name, categories, images)', 'pls-private-label-store' ),
-                    __( 'Add Pack Tiers with units and pricing', 'pls-private-label-store' ),
-                    __( 'Configure Product Options (Package Type, Color, Cap)', 'pls-private-label-store' ),
+                    __( 'Click "Add Product" button', 'pls-private-label-store' ),
+                    __( 'Fill in General info: product name, select category, upload images', 'pls-private-label-store' ),
+                    __( 'Configure Pack Tiers: enable/disable tiers, set units and prices', 'pls-private-label-store' ),
+                    __( 'Select Product Options: Package Type, Color, and Cap', 'pls-private-label-store' ),
+                    __( 'Add Fragrances (if using Tier 3 or higher)', 'pls-private-label-store' ),
+                    __( 'Add Ingredients (if using Tier 3 or higher)', 'pls-private-label-store' ),
+                    __( 'Configure Label Application settings', 'pls-private-label-store' ),
                     __( 'Save product and sync to WooCommerce', 'pls-private-label-store' ),
                     __( 'Understand sync states: Active, Inactive, Update Available, Not Synced', 'pls-private-label-store' ),
                     __( 'Use Activate/Deactivate buttons to control product visibility', 'pls-private-label-store' ),
-                    __( 'Use Update button when product changes need syncing', 'pls-private-label-store' ),
                     __( 'Click [?] help buttons in modals for contextual guidance', 'pls-private-label-store' ),
                 ),
-            ),
-            'orders' => array(
-                'title' => __( 'Orders', 'pls-private-label-store' ),
-                'steps' => array(
-                    __( 'View orders containing PLS products', 'pls-private-label-store' ),
-                    __( 'Understand commission calculation', 'pls-private-label-store' ),
-                ),
-            ),
-            'custom-orders' => array(
-                'title' => __( 'Custom Orders', 'pls-private-label-store' ),
-                'steps' => array(
-                    __( 'Explore the Kanban board with stages', 'pls-private-label-store' ),
-                    __( 'Drag and drop cards between stages', 'pls-private-label-store' ),
-                    __( 'Click a card to view order details', 'pls-private-label-store' ),
-                    __( 'Update financials and commission', 'pls-private-label-store' ),
-                ),
-            ),
-            'revenue' => array(
-                'title' => __( 'Revenue', 'pls-private-label-store' ),
-                'steps' => array(
-                    __( 'View sales revenue summary', 'pls-private-label-store' ),
-                    __( 'Explore revenue charts and trends', 'pls-private-label-store' ),
-                    __( 'Filter orders by date and product', 'pls-private-label-store' ),
-                ),
-            ),
-            'commission' => array(
-                'title' => __( 'Commission', 'pls-private-label-store' ),
-                'steps' => array(
-                    __( 'View monthly commission summary', 'pls-private-label-store' ),
-                    __( 'Switch to detailed list view', 'pls-private-label-store' ),
-                    __( 'Commissions are auto-calculated when orders are completed', 'pls-private-label-store' ),
-                    __( 'Review and approve pending commissions', 'pls-private-label-store' ),
-                    __( 'Mark commissions as invoiced or paid', 'pls-private-label-store' ),
-                    __( 'Send monthly commission reports', 'pls-private-label-store' ),
-                ),
-            ),
-            'categories' => array(
-                'title' => __( 'Categories', 'pls-private-label-store' ),
-                'steps' => array(
-                    __( 'Manage product categories', 'pls-private-label-store' ),
-                ),
-            ),
-            'attributes' => array(
-                'title' => __( 'Product Options', 'pls-private-label-store' ),
-                'steps' => array(
-                    __( 'Create and manage product attributes', 'pls-private-label-store' ),
-                    __( 'Set tier-based pricing rules', 'pls-private-label-store' ),
-                ),
+                'next_page' => 'bundles',
+                'next_title' => __( 'Next: Create Bundles', 'pls-private-label-store' ),
             ),
             'bundles' => array(
-                'title' => __( 'Bundles', 'pls-private-label-store' ),
+                'step_number' => 3,
+                'title' => __( 'Step 3: Create Bundles', 'pls-private-label-store' ),
+                'page' => 'bundles',
                 'steps' => array(
-                    __( 'Create bundle products', 'pls-private-label-store' ),
-                    __( 'Configure bundle pricing', 'pls-private-label-store' ),
+                    __( 'Click "Create Bundle" button', 'pls-private-label-store' ),
+                    __( 'Select bundle type (Mini Line, Starter Line, Growth Line, Premium Line)', 'pls-private-label-store' ),
+                    __( 'Set SKU count (number of different products)', 'pls-private-label-store' ),
+                    __( 'Set units per SKU (quantity for each product)', 'pls-private-label-store' ),
+                    __( 'Configure price per unit', 'pls-private-label-store' ),
+                    __( 'Set commission per unit', 'pls-private-label-store' ),
+                    __( 'Save bundle and sync to WooCommerce', 'pls-private-label-store' ),
+                    __( 'Understand that cart automatically detects bundle qualification', 'pls-private-label-store' ),
                 ),
+                'next_page' => 'categories',
+                'next_title' => __( 'Next: Review Categories', 'pls-private-label-store' ),
             ),
-            'settings' => array(
-                'title' => __( 'Settings', 'pls-private-label-store' ),
+            'categories' => array(
+                'step_number' => 4,
+                'title' => __( 'Step 4: Review Categories', 'pls-private-label-store' ),
+                'page' => 'categories',
                 'steps' => array(
-                    __( 'Configure commission rates for tiers and bundles', 'pls-private-label-store' ),
-                    __( 'Set custom order commission percentage', 'pls-private-label-store' ),
-                    __( 'Configure label pricing', 'pls-private-label-store' ),
+                    __( 'Review existing product categories', 'pls-private-label-store' ),
+                    __( 'Create a new category if needed for your products', 'pls-private-label-store' ),
                 ),
+                'next_page' => null,
+                'next_title' => __( 'Tutorial Complete!', 'pls-private-label-store' ),
             ),
         );
+    }
+
+    /**
+     * Get steps definition (legacy - for backward compatibility).
+     *
+     * @return array
+     */
+    public static function get_steps_definition() {
+        // Return tutorial flow for active tutorial, otherwise return empty
+        return self::get_tutorial_flow();
     }
 
     /**
@@ -321,7 +318,11 @@ final class PLS_Onboarding {
             );
         }
 
-        wp_send_json_success( array( 'message' => __( 'Onboarding started.', 'pls-private-label-store' ) ) );
+        // Redirect to first tutorial page (attributes)
+        wp_send_json_success( array( 
+            'message' => __( 'Tutorial started.', 'pls-private-label-store' ),
+            'redirect' => admin_url( 'admin.php?page=pls-attributes' )
+        ) );
     }
 
     /**
@@ -337,6 +338,7 @@ final class PLS_Onboarding {
         $user_id = get_current_user_id();
         $page = isset( $_POST['page'] ) ? sanitize_text_field( wp_unslash( $_POST['page'] ) ) : '';
         $step_index = isset( $_POST['step_index'] ) ? absint( $_POST['step_index'] ) : 0;
+        $mark_completed = isset( $_POST['mark_completed'] ) ? (bool) $_POST['mark_completed'] : true;
 
         if ( ! $page ) {
             wp_send_json_error( array( 'message' => __( 'Invalid page.', 'pls-private-label-store' ) ) );
@@ -349,8 +351,10 @@ final class PLS_Onboarding {
         $completed_steps = $progress && $progress->completed_steps ? json_decode( $progress->completed_steps, true ) : array();
 
         $step_key = $page . '_' . $step_index;
-        if ( ! in_array( $step_key, $completed_steps, true ) ) {
+        if ( $mark_completed && ! in_array( $step_key, $completed_steps, true ) ) {
             $completed_steps[] = $step_key;
+        } elseif ( ! $mark_completed && in_array( $step_key, $completed_steps, true ) ) {
+            $completed_steps = array_values( array_diff( $completed_steps, array( $step_key ) ) );
         }
 
         $wpdb->update(
