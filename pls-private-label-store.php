@@ -35,6 +35,11 @@ add_action( 'plugins_loaded', function() {
         'version'     => PLS_PLS_VERSION,
         'server'      => 'https://raw.githubusercontent.com/centrino97/pls-private-label-store/main/uupd/index.json',
     ] );
+    
+    // Override remote URL to fetch JSON directly (bypass GitHub API detection)
+    add_filter( 'uupd/remote_url/pls-private-label-store', function( $url, $slug ) {
+        return 'https://raw.githubusercontent.com/centrino97/pls-private-label-store/main/uupd/index.json';
+    }, 10, 2 );
 }, 20 );
 
 require_once PLS_PLS_DIR . 'includes/class-pls-plugin.php';
