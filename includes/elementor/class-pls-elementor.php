@@ -25,9 +25,11 @@ final class PLS_Elementor {
 
         require_once PLS_PLS_DIR . 'includes/elementor/widgets/class-pls-widget-configurator.php';
         require_once PLS_PLS_DIR . 'includes/elementor/widgets/class-pls-widget-bundle-offer.php';
+        require_once PLS_PLS_DIR . 'includes/elementor/widgets/class-pls-widget-product-info.php';
 
         $widgets_manager->register( new \PLS_Widget_Configurator() );
         $widgets_manager->register( new \PLS_Widget_Bundle_Offer() );
+        $widgets_manager->register( new \PLS_Widget_Product_Info() );
     }
 
     public static function register_dynamic_tags( $dynamic_tags ) {
