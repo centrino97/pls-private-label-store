@@ -71,11 +71,29 @@ require_once PLS_PLS_DIR . 'includes/core/class-pls-tier-rules.php';
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ( $tier_values as $tier_value ) : ?>
+                                <?php 
+                                // Fallback defaults matching product creation modal
+                                $fallback_defaults = array(
+                                    1 => array( 'units' => 50, 'price' => 15.90 ),
+                                    2 => array( 'units' => 100, 'price' => 14.50 ),
+                                    3 => array( 'units' => 250, 'price' => 12.50 ),
+                                    4 => array( 'units' => 500, 'price' => 9.50 ),
+                                    5 => array( 'units' => 1000, 'price' => 7.90 ),
+                                );
+                                foreach ( $tier_values as $tier_value ) : ?>
                                     <?php
                                     $tier_level = PLS_Tier_Rules::get_tier_level_from_value( $tier_value->id );
                                     $default_units = PLS_Tier_Rules::get_default_units_for_tier( $tier_value->id );
                                     $default_price = PLS_Tier_Rules::get_default_price_per_unit( $tier_value->id );
+                                    
+                                    // Use fallback defaults if values not found in database
+                                    if ( false === $default_units && $tier_level && isset( $fallback_defaults[ $tier_level ] ) ) {
+                                        $default_units = $fallback_defaults[ $tier_level ]['units'];
+                                    }
+                                    if ( false === $default_price && $tier_level && isset( $fallback_defaults[ $tier_level ] ) ) {
+                                        $default_price = $fallback_defaults[ $tier_level ]['price'];
+                                    }
+                                    
                                     $total_price = ( $default_units && $default_price ) ? $default_units * $default_price : 0;
                                     ?>
                                     <tr>
