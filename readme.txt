@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.8.9
+Stable tag: 0.8.91
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,12 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 0.8.91 =
+* **Product Preview System:** Added frontend preview functionality in admin to see how Elementor widgets render.
+* **Preview Button:** Added "Preview Frontend" button next to each synced product in Products page.
+* **Elementor Template Guide:** Created comprehensive guide for building Elementor Theme Builder templates.
+* **Documentation:** Added workflow documentation for GitHub Actions and UUPD system.
+
 = 0.8.9 =
 * **Pack Tier Defaults Fix:** Added fallback defaults to Pack Tier Defaults modal to ensure values always display correctly.
 * **Perfect Alignment:** Pack Tier Defaults modal now shows the same default values as product creation modal.
