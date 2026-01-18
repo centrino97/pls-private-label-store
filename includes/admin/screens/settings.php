@@ -3,6 +3,17 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+// Handle sample data generation
+if ( isset( $_POST['pls_generate_sample_data'] ) && check_admin_referer( 'pls_generate_sample_data', 'pls_sample_data_nonce' ) ) {
+    if ( current_user_can( 'manage_options' ) ) {
+        require_once PLS_PLS_DIR . 'includes/core/class-pls-sample-data.php';
+        PLS_Sample_Data::generate();
+        $message = 'sample-data-generated';
+        wp_safe_redirect( add_query_arg( 'message', $message, admin_url( 'admin.php?page=pls-settings' ) ) );
+        exit;
+    }
+}
+
 // Handle form submission
 if ( isset( $_POST['pls_save_settings'] ) && check_admin_referer( 'pls_save_settings', 'pls_settings_nonce' ) ) {
     $commission_rates = array(
@@ -246,6 +257,22 @@ if ( isset( $_GET['message'] ) && 'settings-saved' === $_GET['message'] ) {
                 </tr>
             </table>
         </div>
+
+        <!-- Sample Data -->
+        <?php if ( current_user_can( 'manage_options' ) ) : ?>
+            <div class="pls-settings-section">
+                <h2><?php esc_html_e( 'Sample Data', 'pls-private-label-store' ); ?></h2>
+                <p class="description"><?php esc_html_e( 'Generate sample products, categories, ingredients, and product options for testing. This will clean up existing data and add sample data.', 'pls-private-label-store' ); ?></p>
+                
+                <form method="post" action="" style="margin-top: 16px;">
+                    <?php wp_nonce_field( 'pls_generate_sample_data', 'pls_sample_data_nonce' ); ?>
+                    <button type="submit" name="pls_generate_sample_data" value="1" class="button button-secondary" 
+                            onclick="return confirm('<?php esc_attr_e( 'This will DELETE all existing products, custom orders, commissions, and attributes (except Pack Tiers). Are you sure?', 'pls-private-label-store' ); ?>');">
+                        <?php esc_html_e( 'Generate Sample Data', 'pls-private-label-store' ); ?>
+                    </button>
+                </form>
+            </div>
+        <?php endif; ?>
 
         <!-- Onboarding Settings -->
         <div class="pls-settings-section">
