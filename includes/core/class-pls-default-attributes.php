@@ -29,6 +29,9 @@ final class PLS_Default_Attributes {
         // 3. Create Package Colour attribute
         self::create_package_colour_attribute();
 
+        // 4. Create Tier 4+ options (Custom Bottles, Box Packaging)
+        self::create_tier4_options();
+
         // Mark as created
         update_option( 'pls_default_attributes_created', true );
     }
@@ -264,5 +267,89 @@ final class PLS_Default_Attributes {
         }
 
         return $attr_id;
+    }
+
+    /**
+     * Create additional Tier 4+ options (Custom Bottles, Box Packaging).
+     */
+    private static function create_tier4_options() {
+        global $wpdb;
+
+        // Custom Printed Bottles attribute
+        $table = PLS_Repositories::table( 'attribute' );
+        $existing_bottles = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT id FROM {$table} WHERE attr_key = %s",
+                'custom-bottles'
+            )
+        );
+
+        if ( ! $existing_bottles ) {
+            $bottles_attr_id = PLS_Repo_Attributes::insert_attr(
+                array(
+                    'label'        => 'Custom Printed Bottles',
+                    'attr_key'     => 'custom-bottles',
+                    'is_variation' => 1,
+                    'sort_order'   => 30,
+                )
+            );
+
+            if ( $bottles_attr_id ) {
+                $value_id = PLS_Repo_Attributes::insert_value(
+                    array(
+                        'attribute_id' => $bottles_attr_id,
+                        'label'        => 'Custom Printed Bottle',
+                        'value_key'    => 'custom-printed-bottle',
+                        'sort_order'   => 1,
+                    )
+                );
+
+                if ( $value_id ) {
+                    PLS_Repo_Attributes::update_value_tier_rules( $value_id, 4, null );
+                    $value = PLS_Repo_Attributes::get_value( $value_id );
+                    if ( $value && $value->term_id ) {
+                        update_term_meta( $value->term_id, '_pls_default_price_impact', 15.00 );
+                    }
+                }
+            }
+        }
+
+        // External Box Packaging attribute
+        $existing_box = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT id FROM {$table} WHERE attr_key = %s",
+                'box-packaging'
+            )
+        );
+
+        if ( ! $existing_box ) {
+            $box_attr_id = PLS_Repo_Attributes::insert_attr(
+                array(
+                    'label'        => 'External Box Packaging',
+                    'attr_key'     => 'box-packaging',
+                    'is_variation' => 1,
+                    'sort_order'   => 40,
+                )
+            );
+
+            if ( $box_attr_id ) {
+                $value_id = PLS_Repo_Attributes::insert_value(
+                    array(
+                        'attribute_id' => $box_attr_id,
+                        'label'        => 'External Box Packaging',
+                        'value_key'    => 'external-box-packaging',
+                        'sort_order'   => 1,
+                    )
+                );
+
+                if ( $value_id ) {
+                    PLS_Repo_Attributes::update_value_tier_rules( $value_id, 4, null );
+                    $value = PLS_Repo_Attributes::get_value( $value_id );
+                    if ( $value && $value->term_id ) {
+                        update_term_meta( $value->term_id, '_pls_default_price_impact', 8.00 );
+                    }
+                }
+            }
+        }
     }
 }

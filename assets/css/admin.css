@@ -129,27 +129,18 @@ body.pls-modal-open{overflow:hidden}
 .pls-manage-value-label{font-weight:600}
 .pls-manage-value-form .pls-chip-row{align-items:center}
 
-/* Modern Product Options UI */
-.pls-product-options .pls-page-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #e1e4e8}
-.pls-product-options .pls-page-header h1{margin:0 0 8px 0;font-size:28px;font-weight:700;color:#111827}
-.pls-product-options .pls-page-header .description{margin:0;font-size:14px;color:#6b7280}
-.pls-product-options .pls-tabs-nav{display:flex;gap:0;border-bottom:2px solid #e1e4e8;margin:0 0 24px}
-.pls-product-options .nav-tab{position:relative;padding:12px 20px;border:none;border-bottom:3px solid transparent;background:none;font-weight:500;color:#6b7280;transition:all 0.2s;display:flex;align-items:center;gap:8px}
-.pls-product-options .nav-tab:hover{color:#111827;background:#f9fafb}
-.pls-product-options .nav-tab-active{color:#2563eb;border-bottom-color:#2563eb;font-weight:600}
-.pls-product-options .pls-badge{background:#e5e7eb;color:#374151;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600}
-.pls-product-options .nav-tab-active .pls-badge{background:#dbeafe;color:#1e40af}
-.pls-card-modern{background:#fff;border-radius:12px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,0.08);border:1px solid #e1e4e8}
-.pls-option-card{background:#fff;border-radius:12px;padding:24px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,0.08);border:1px solid #e1e4e8;transition:box-shadow 0.2s}
-.pls-option-card:hover{box-shadow:0 4px 12px rgba(0,0,0,0.12)}
-.pls-empty-state{text-align:center;padding:60px 20px;background:#f9fafb;border-radius:12px;border:2px dashed #e1e4e8}
-.pls-values-table{overflow-x:auto;margin:16px 0}
-.pls-form-modern .pls-form-group{margin-bottom:16px}
-.pls-form-modern label{display:block;margin-bottom:6px;font-weight:500;font-size:13px;color:#374151}
-.pls-input-modern{width:100%;padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;transition:all 0.2s;background:#fff}
-.pls-input-modern:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.1)}
-.pls-checkbox-label{display:flex;align-items:center;gap:8px;font-weight:normal!important;cursor:pointer}
-.pls-checkbox-label input[type=checkbox]{margin:0}
+/* Compact Product Options UI */
+.pls-product-options .tab-content{margin-top:20px}
+.pls-product-options table{margin-top:0}
+.pls-product-options .wp-list-table tbody tr{cursor:pointer}
+.pls-product-options .wp-list-table tbody tr:hover{background:#f6f7f7}
+.pls-badge-small{display:inline-block;padding:2px 6px;border-radius:3px;font-size:10px;font-weight:600}
+.pls-tier-badge-small{display:inline-block;padding:1px 4px;border-radius:2px;font-size:9px;font-weight:600}
+.pls-attr-edit-panel{display:none}
+@media (max-width:782px){
+    .pls-product-options form[style*="grid"]{grid-template-columns:1fr!important}
+    .pls-product-options .wp-list-table{font-size:13px}
+}
 
 /* Tier-based UI elements */
 .pls-tier-badge{display:inline-flex;align-items:center;gap:4px;background:linear-gradient(135deg,#e0e7ff,#c7d2fe);color:#1e40af;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;border:1px solid #a5b4fc}
