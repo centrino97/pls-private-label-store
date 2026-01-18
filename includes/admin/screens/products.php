@@ -138,9 +138,16 @@ wp_localize_script(
                   <p class="description"><?php echo esc_html( $product['short_description'] ); ?></p>
               <?php endif; ?>
               <p class="description pls-sync-meta" data-product-id="<?php echo esc_attr( $product['id'] ); ?>"><?php echo esc_html( $sync_label ); ?></p>
-              <button class="button pls-edit-product" data-product-id="<?php echo esc_attr( $product['id'] ); ?>"><?php esc_html_e( 'Open editor', 'pls-private-label-store' ); ?></button>
-              <button class="button pls-sync-product" data-product-id="<?php echo esc_attr( $product['id'] ); ?>" data-wc-product-id="<?php echo esc_attr( isset( $product['wc_product_id'] ) ? $product['wc_product_id'] : 0 ); ?>"><?php esc_html_e( 'Sync', 'pls-private-label-store' ); ?></button>
-              <button class="button-link-delete pls-delete-product" data-product-id="<?php echo esc_attr( $product['id'] ); ?>"><?php esc_html_e( 'Delete', 'pls-private-label-store' ); ?></button>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button class="button pls-edit-product" data-product-id="<?php echo esc_attr( $product['id'] ); ?>"><?php esc_html_e( 'Open editor', 'pls-private-label-store' ); ?></button>
+                <?php if ( ! empty( $product['wc_product_id'] ) ) : ?>
+                  <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-product-preview&product_id=' . $product['id'] . '&wc_id=' . $product['wc_product_id'] ) ); ?>" class="button" target="_blank"><?php esc_html_e( 'Preview Frontend', 'pls-private-label-store' ); ?></a>
+                <?php else : ?>
+                  <button class="button" disabled title="<?php esc_attr_e( 'Sync product first to preview', 'pls-private-label-store' ); ?>"><?php esc_html_e( 'Preview Frontend', 'pls-private-label-store' ); ?></button>
+                <?php endif; ?>
+                <button class="button pls-sync-product" data-product-id="<?php echo esc_attr( $product['id'] ); ?>" data-wc-product-id="<?php echo esc_attr( isset( $product['wc_product_id'] ) ? $product['wc_product_id'] : 0 ); ?>"><?php esc_html_e( 'Sync', 'pls-private-label-store' ); ?></button>
+                <button class="button-link-delete pls-delete-product" data-product-id="<?php echo esc_attr( $product['id'] ); ?>"><?php esc_html_e( 'Delete', 'pls-private-label-store' ); ?></button>
+              </div>
             </div>
         <?php endforeach; ?>
     <?php endif; ?>

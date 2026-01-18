@@ -71,6 +71,16 @@ final class PLS_Admin_Menu {
             'pls-bundles',
             array( __CLASS__, 'render_bundles' )
         );
+
+        // Hidden preview page (accessed via direct link)
+        add_submenu_page(
+            null, // Hidden from menu
+            __( 'Product Preview', 'pls-private-label-store' ),
+            __( 'Product Preview', 'pls-private-label-store' ),
+            'manage_woocommerce',
+            'pls-product-preview',
+            array( __CLASS__, 'render_product_preview' )
+        );
     }
 
     public static function assets( $hook ) {
@@ -127,5 +137,9 @@ final class PLS_Admin_Menu {
 
     public static function render_categories() {
         require PLS_PLS_DIR . 'includes/admin/screens/categories.php';
+    }
+
+    public static function render_product_preview() {
+        require PLS_PLS_DIR . 'includes/admin/screens/product-preview.php';
     }
 }
