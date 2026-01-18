@@ -31,7 +31,30 @@ if ( isset( $_POST['pls_save_settings'] ) && check_admin_referer( 'pls_save_sett
     }
     update_option( 'pls_label_price_tier_1_2', $label_price );
 
-    $message = 'settings-saved';
+    // Save commission email recipients
+    $email_recipients = isset( $_POST['commission_email_recipients'] ) ? sanitize_text_field( wp_unslash( $_POST['commission_email_recipients'] ) ) : '';
+    if ( $email_recipients ) {
+        $emails = array_map( 'trim', explode( ',', $email_recipients ) );
+        $emails = array_filter( array_map( 'sanitize_email', $emails ) );
+        update_option( 'pls_commission_email_recipients', $emails );
+    }
+
+    // Handle onboarding reset
+    if ( isset( $_POST['reset_onboarding'] ) ) {
+        $user_id = get_current_user_id();
+        global $wpdb;
+        $table = $wpdb->prefix . 'pls_onboarding_progress';
+        $wpdb->delete( $table, array( 'user_id' => $user_id ), array( '%d' ) );
+        $message = 'onboarding-reset';
+    } elseif ( isset( $_POST['reset_onboarding_all'] ) && current_user_can( 'manage_options' ) ) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'pls_onboarding_progress';
+        $wpdb->query( "TRUNCATE TABLE {$table}" );
+        $message = 'onboarding-reset-all';
+    } else {
+        $message = 'settings-saved';
+    }
+
     wp_safe_redirect( add_query_arg( 'message', $message, admin_url( 'admin.php?page=pls-settings' ) ) );
     exit;
 }
@@ -206,8 +229,51 @@ if ( isset( $_GET['message'] ) && 'settings-saved' === $_GET['message'] ) {
             </table>
         </div>
 
+        <!-- Commission Email Settings -->
+        <div class="pls-settings-section">
+            <h2><?php esc_html_e( 'Commission Email Settings', 'pls-private-label-store' ); ?></h2>
+            <p class="description"><?php esc_html_e( 'Configure email notifications for commission reports.', 'pls-private-label-store' ); ?></p>
+            
+            <table class="form-table">
+                <tr>
+                    <th><label for="commission_email_recipients"><?php esc_html_e( 'Recipient Email(s)', 'pls-private-label-store' ); ?></label></th>
+                    <td>
+                        <input type="text" id="commission_email_recipients" name="commission_email_recipients" 
+                               value="<?php echo esc_attr( $email_recipients_string ); ?>" 
+                               class="regular-text" />
+                        <p class="description"><?php esc_html_e( 'Comma-separated list of email addresses to receive monthly commission reports.', 'pls-private-label-store' ); ?></p>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Onboarding Settings -->
+        <div class="pls-settings-section">
+            <h2><?php esc_html_e( 'Onboarding', 'pls-private-label-store' ); ?></h2>
+            <p class="description"><?php esc_html_e( 'Reset onboarding progress to restart the tutorial.', 'pls-private-label-store' ); ?></p>
+            
+            <table class="form-table">
+                <tr>
+                    <th><?php esc_html_e( 'Reset Onboarding', 'pls-private-label-store' ); ?></th>
+                    <td>
+                        <button type="submit" name="reset_onboarding" value="1" class="button" 
+                                onclick="return confirm('<?php esc_attr_e( 'Reset onboarding for your account?', 'pls-private-label-store' ); ?>');">
+                            <?php esc_html_e( 'Reset for Current User', 'pls-private-label-store' ); ?>
+                        </button>
+                        <?php if ( current_user_can( 'manage_options' ) ) : ?>
+                            <button type="submit" name="reset_onboarding_all" value="1" class="button" 
+                                    onclick="return confirm('<?php esc_attr_e( 'Reset onboarding for ALL users? This cannot be undone.', 'pls-private-label-store' ); ?>');">
+                                <?php esc_html_e( 'Reset for All Users', 'pls-private-label-store' ); ?>
+                            </button>
+                        <?php endif; ?>
+                        <p class="description"><?php esc_html_e( 'This will allow you to restart the onboarding tutorial.', 'pls-private-label-store' ); ?></p>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
         <p class="submit">
-            <button type="submit" class="button button-primary"><?php esc_html_e( 'Save Settings', 'pls-private-label-store' ); ?></button>
+            <button type="submit" class="button button-primary" name="pls_save_settings" value="1"><?php esc_html_e( 'Save Settings', 'pls-private-label-store' ); ?></button>
         </p>
     </form>
 </div>

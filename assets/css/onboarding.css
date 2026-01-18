@@ -1,0 +1,152 @@
+/**
+ * Onboarding system styles.
+ */
+
+.pls-onboarding-card {
+    position: fixed;
+    right: 20px;
+    top: 100px;
+    width: 320px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    z-index: 99998;
+    cursor: move;
+}
+
+.pls-onboarding-card.is-minimized {
+    width: 60px;
+    height: 60px;
+    overflow: hidden;
+}
+
+.pls-onboarding-card.is-minimized .pls-onboarding-card__body,
+.pls-onboarding-card.is-minimized .pls-onboarding-card__footer {
+    display: none;
+}
+
+.pls-onboarding-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: #2271b1;
+    color: #fff;
+    border-radius: 12px 12px 0 0;
+    cursor: move;
+}
+
+.pls-onboarding-card__header h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.pls-onboarding-card__minimize,
+.pls-onboarding-card__close {
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pls-onboarding-card__body {
+    padding: 16px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.pls-onboarding-progress {
+    margin-bottom: 16px;
+}
+
+.pls-onboarding-progress__bar {
+    height: 8px;
+    background: #e2e8f0;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.pls-onboarding-progress__fill {
+    height: 100%;
+    background: #2271b1;
+    transition: width 0.3s;
+}
+
+.pls-onboarding-progress__text {
+    font-size: 12px;
+    color: #64748b;
+}
+
+.pls-onboarding-checklist h4 {
+    margin: 0 0 12px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.pls-onboarding-checklist__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.pls-onboarding-checklist__item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 0;
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.pls-onboarding-checklist__item.is-completed {
+    opacity: 0.6;
+}
+
+.pls-onboarding-checklist__item input[type="checkbox"] {
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.pls-onboarding-card__footer {
+    display: flex;
+    gap: 8px;
+    padding: 12px 16px;
+    border-top: 1px solid #e2e8f0;
+    background: #f8fafc;
+    border-radius: 0 0 12px 12px;
+}
+
+.pls-help-button {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    padding: 0;
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1;
+    margin-left: 8px;
+}
+
+.pls-help-card {
+    position: fixed;
+    right: 20px;
+    top: 100px;
+    width: 300px;
+}
+
+.pls-help-card .pls-onboarding-checklist__list li {
+    padding: 6px 0;
+    list-style: disc;
+    margin-left: 20px;
+}

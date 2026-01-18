@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.10.0
+Stable tag: 0.11.0
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,21 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 0.11.0 =
+* **Onboarding, Revenue & Commission Overhaul:** Complete separation of Revenue and Commission, plus comprehensive onboarding system.
+* **Revenue Page:** Dedicated revenue tracking page with sales summary, orders list, charts (monthly trends, top products, revenue by tier), and comprehensive filters (date range, product, status).
+* **Commission Page:** Separate commission tracking page with monthly summary view and detailed list view. Status flow: Pending → Invoiced → Paid with bulk actions.
+* **Commission Auto-Tracking:** WooCommerce orders automatically create commission records when payment is received (processing/completed status).
+* **Monthly Commission Email:** Automated WP Cron sends monthly commission report on 2nd of each month to n.nikolic97@gmail.com (configurable). Manual send button available.
+* **Payment Notifications:** Email notifications sent to Nikola when commissions are marked as paid by owners.
+* **Onboarding System:** Comprehensive tutorial system with floating guide card, per-page checklists, progress tracking, and test product creation/deletion.
+* **Help Button:** "Help" button on each page shows relevant tips after onboarding completion. "Start Tutorial" button on dashboard.
+* **Custom Order Commission Confirmation:** Checkbox appears when custom order stage is "Done" to manually confirm commission payment.
+* **Settings Updates:** Commission email recipients configuration and onboarding reset options (per user or all users).
+* **Menu Restructure:** Revenue and Commission grouped together in menu for better organization.
+* **Database:** New tables for onboarding progress (`pls_onboarding_progress`) and commission reports (`pls_commission_reports`). Added `status` column to `pls_order_commission` and `commission_confirmed` to `pls_custom_order`.
+* **UI/UX:** Enhanced commission page with monthly summary, detailed list, bulk actions, and improved status badges.
+
 = 0.10.0 =
 * **Client Self-Service Edition:** Complete order management and revenue tracking system.
 * **Frontend Custom Order Page:** New `/custom-order` page with detailed lead capture form (name, email, phone, company, category, quantity, budget, timeline, message).

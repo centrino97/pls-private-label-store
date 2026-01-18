@@ -35,6 +35,12 @@ final class PLS_Admin_Ajax {
         add_action( 'wp_ajax_pls_update_custom_order_financials', array( __CLASS__, 'update_custom_order_financials' ) );
         add_action( 'wp_ajax_pls_mark_custom_order_invoiced', array( __CLASS__, 'mark_custom_order_invoiced' ) );
         add_action( 'wp_ajax_pls_mark_custom_order_paid', array( __CLASS__, 'mark_custom_order_paid' ) );
+        add_action( 'wp_ajax_pls_mark_commission_invoiced', array( __CLASS__, 'mark_commission_invoiced' ) );
+        add_action( 'wp_ajax_pls_mark_commission_paid', array( __CLASS__, 'mark_commission_paid' ) );
+        add_action( 'wp_ajax_pls_mark_commission_invoiced_monthly', array( __CLASS__, 'mark_commission_invoiced_monthly' ) );
+        add_action( 'wp_ajax_pls_mark_commission_paid_monthly', array( __CLASS__, 'mark_commission_paid_monthly' ) );
+        add_action( 'wp_ajax_pls_bulk_update_commission', array( __CLASS__, 'bulk_update_commission' ) );
+        add_action( 'wp_ajax_pls_send_monthly_report', array( __CLASS__, 'send_monthly_report' ) );
     }
 
     /**
@@ -565,6 +571,16 @@ final class PLS_Admin_Ajax {
         }
 
         $sync_result = self::sync_single_product( $persisted['id'] );
+
+        // Track test product if created during onboarding
+        $product_name = isset( $payload['name'] ) ? $payload['name'] : '';
+        if ( strpos( strtolower( $product_name ), '[test]' ) !== false || strpos( strtolower( $product_name ), 'test' ) !== false ) {
+            $user_id = get_current_user_id();
+            $progress = PLS_Onboarding::get_progress( $user_id );
+            if ( $progress && ! $progress->completed_at ) {
+                PLS_Onboarding::set_test_product( $user_id, $persisted['id'] );
+            }
+        }
         if ( is_wp_error( $sync_result ) ) {
             if ( $persisted['created'] ) {
                 self::delete_product_records( $persisted['id'] );
@@ -1773,6 +1789,17 @@ final class PLS_Admin_Ajax {
                             </select>
                         </td>
                     </tr>
+                    <?php if ( 'done' === $order->status ) : ?>
+                        <tr>
+                            <th><?php esc_html_e( 'Commission Confirmed', 'pls-private-label-store' ); ?></th>
+                            <td>
+                                <label>
+                                    <input type="checkbox" id="pls-commission-confirmed" value="1" <?php checked( $order->commission_confirmed, 1 ); ?> />
+                                    <?php esc_html_e( 'Mark commission as paid (order is complete and payment received)', 'pls-private-label-store' ); ?>
+                                </label>
+                            </td>
+                        </tr>
+                    <?php endif; ?>
                     <tr>
                         <th><?php esc_html_e( 'Message', 'pls-private-label-store' ); ?></th>
                         <td><?php echo nl2br( esc_html( $order->message ) ); ?></td>
@@ -1871,6 +1898,40 @@ final class PLS_Admin_Ajax {
             $nikola_commission_amount
         );
 
+        // Handle commission confirmation if status is 'done'
+        $order = PLS_Repo_Custom_Order::get( $order_id );
+        if ( $order && 'done' === $order->status ) {
+            $commission_confirmed = isset( $_POST['commission_confirmed'] ) ? absint( $_POST['commission_confirmed'] ) : 0;
+            global $wpdb;
+            $table = $wpdb->prefix . 'pls_custom_order';
+            $wpdb->update(
+                $table,
+                array( 'commission_confirmed' => $commission_confirmed ),
+                array( 'id' => $order_id ),
+                array( '%d' ),
+                array( '%d' )
+            );
+
+            // If confirmed, mark as paid
+            if ( $commission_confirmed && ! $order->paid_at ) {
+                PLS_Repo_Custom_Order::mark_paid( $order_id );
+                
+                // Send notification email
+                $recipients = get_option( 'pls_commission_email_recipients', array( 'n.nikolic97@gmail.com' ) );
+                $to = is_array( $recipients ) ? $recipients[0] : $recipients;
+                $user = wp_get_current_user();
+                $subject = __( 'PLS Commission Payment Confirmed', 'pls-private-label-store' );
+                $message = sprintf(
+                    __( "Custom order commission payment has been confirmed.\n\nOrder #%d\nAmount: %s\nMarked as paid by: %s\n\nView details: %s", 'pls-private-label-store' ),
+                    $order_id,
+                    wc_price( $order->nikola_commission_amount ),
+                    $user->user_email,
+                    admin_url( 'admin.php?page=pls-custom-orders' )
+                );
+                wp_mail( $to, $subject, $message );
+            }
+        }
+
         if ( $result ) {
             wp_send_json_success();
         } else {
@@ -1921,6 +1982,299 @@ final class PLS_Admin_Ajax {
             wp_send_json_success();
         } else {
             wp_send_json_error( array( 'message' => __( 'Failed to mark as paid.', 'pls-private-label-store' ) ) );
+        }
+    }
+
+    /**
+     * Mark commission item as invoiced.
+     */
+    public static function mark_commission_invoiced() {
+        check_ajax_referer( 'pls_commission_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $id = isset( $_POST['id'] ) ? sanitize_text_field( wp_unslash( $_POST['id'] ) ) : '';
+        $type = isset( $_POST['type'] ) ? sanitize_text_field( wp_unslash( $_POST['type'] ) ) : '';
+
+        if ( ! $id || ! $type ) {
+            wp_send_json_error( array( 'message' => __( 'Invalid data.', 'pls-private-label-store' ) ) );
+        }
+
+        if ( 'product' === $type ) {
+            $result = PLS_Repo_Commission::mark_invoiced( absint( $id ) );
+        } else {
+            $result = PLS_Repo_Custom_Order::mark_invoiced( absint( str_replace( 'custom_', '', $id ) ) );
+        }
+
+        if ( $result ) {
+            wp_send_json_success();
+        } else {
+            wp_send_json_error( array( 'message' => __( 'Failed to mark as invoiced.', 'pls-private-label-store' ) ) );
+        }
+    }
+
+    /**
+     * Mark commission item as paid.
+     */
+    public static function mark_commission_paid() {
+        check_ajax_referer( 'pls_commission_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $id = isset( $_POST['id'] ) ? sanitize_text_field( wp_unslash( $_POST['id'] ) ) : '';
+        $type = isset( $_POST['type'] ) ? sanitize_text_field( wp_unslash( $_POST['type'] ) ) : '';
+
+        if ( ! $id || ! $type ) {
+            wp_send_json_error( array( 'message' => __( 'Invalid data.', 'pls-private-label-store' ) ) );
+        }
+
+        $user = wp_get_current_user();
+        $marked_by = $user->user_email;
+
+        if ( 'product' === $type ) {
+            $result = PLS_Repo_Commission::mark_paid( absint( $id ) );
+        } else {
+            $result = PLS_Repo_Custom_Order::mark_paid( absint( str_replace( 'custom_', '', $id ) ) );
+        }
+
+        if ( $result ) {
+            // Send notification email to Nikola
+            $recipients = get_option( 'pls_commission_email_recipients', array( 'n.nikolic97@gmail.com' ) );
+            $to = is_array( $recipients ) ? $recipients[0] : $recipients;
+            
+            $subject = __( 'PLS Commission Payment Confirmed', 'pls-private-label-store' );
+            $message = sprintf(
+                __( "Commission payment has been confirmed.\n\nMarked as paid by: %s\n\nView details: %s", 'pls-private-label-store' ),
+                $marked_by,
+                admin_url( 'admin.php?page=pls-commission' )
+            );
+            
+            wp_mail( $to, $subject, $message );
+
+            wp_send_json_success();
+        } else {
+            wp_send_json_error( array( 'message' => __( 'Failed to mark as paid.', 'pls-private-label-store' ) ) );
+        }
+    }
+
+    /**
+     * Mark monthly commission as invoiced.
+     */
+    public static function mark_commission_invoiced_monthly() {
+        check_ajax_referer( 'pls_commission_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $month = isset( $_POST['month'] ) ? sanitize_text_field( wp_unslash( $_POST['month'] ) ) : '';
+        if ( ! $month ) {
+            wp_send_json_error( array( 'message' => __( 'Invalid month.', 'pls-private-label-store' ) ) );
+        }
+
+        $month_start = $month . '-01';
+        $month_end = date( 'Y-m-t', strtotime( $month_start ) );
+
+        // Mark all commissions for this month as invoiced
+        $commissions = PLS_Repo_Commission::query(
+            array(
+                'date_from' => $month_start,
+                'date_to'   => $month_end,
+                'invoiced'  => false,
+                'limit'     => 1000,
+            )
+        );
+
+        foreach ( $commissions as $comm ) {
+            PLS_Repo_Commission::mark_invoiced( $comm->id );
+        }
+
+        // Mark custom orders
+        $custom_orders = PLS_Repo_Custom_Order::all();
+        foreach ( $custom_orders as $order ) {
+            if ( $order->nikola_commission_amount ) {
+                $order_month = date( 'Y-m', strtotime( $order->created_at ) );
+                if ( $order_month === $month && ! $order->invoiced_at ) {
+                    PLS_Repo_Custom_Order::mark_invoiced( $order->id );
+                }
+            }
+        }
+
+        // Update report
+        $report = PLS_Repo_Commission_Report::get_by_month( $month );
+        if ( ! $report ) {
+            // Calculate total
+            $product_total = PLS_Repo_Commission::get_total(
+                array(
+                    'date_from' => $month_start,
+                    'date_to'   => $month_end,
+                )
+            );
+            $custom_total = 0;
+            foreach ( $custom_orders as $order ) {
+                if ( $order->nikola_commission_amount ) {
+                    $order_month = date( 'Y-m', strtotime( $order->created_at ) );
+                    if ( $order_month === $month ) {
+                        $custom_total += floatval( $order->nikola_commission_amount );
+                    }
+                }
+            }
+            PLS_Repo_Commission_Report::create_or_update( $month, $product_total + $custom_total );
+        }
+        PLS_Repo_Commission_Report::mark_sent( $month );
+
+        wp_send_json_success();
+    }
+
+    /**
+     * Mark monthly commission as paid.
+     */
+    public static function mark_commission_paid_monthly() {
+        check_ajax_referer( 'pls_commission_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $month = isset( $_POST['month'] ) ? sanitize_text_field( wp_unslash( $_POST['month'] ) ) : '';
+        if ( ! $month ) {
+            wp_send_json_error( array( 'message' => __( 'Invalid month.', 'pls-private-label-store' ) ) );
+        }
+
+        $month_start = $month . '-01';
+        $month_end = date( 'Y-m-t', strtotime( $month_start ) );
+
+        // Mark all commissions for this month as paid
+        $commissions = PLS_Repo_Commission::query(
+            array(
+                'date_from' => $month_start,
+                'date_to'   => $month_end,
+                'paid'      => false,
+                'limit'     => 1000,
+            )
+        );
+
+        foreach ( $commissions as $comm ) {
+            PLS_Repo_Commission::mark_paid( $comm->id );
+        }
+
+        // Mark custom orders
+        $custom_orders = PLS_Repo_Custom_Order::all();
+        foreach ( $custom_orders as $order ) {
+            if ( $order->nikola_commission_amount ) {
+                $order_month = date( 'Y-m', strtotime( $order->created_at ) );
+                if ( $order_month === $month && ! $order->paid_at ) {
+                    PLS_Repo_Custom_Order::mark_paid( $order->id );
+                }
+            }
+        }
+
+        // Update report
+        $user_id = get_current_user_id();
+        PLS_Repo_Commission_Report::mark_paid( $month, $user_id );
+
+        // Send notification email to Nikola
+        $recipients = get_option( 'pls_commission_email_recipients', array( 'n.nikolic97@gmail.com' ) );
+        $to = is_array( $recipients ) ? $recipients[0] : $recipients;
+        
+        $user = wp_get_current_user();
+        $subject = __( 'PLS Commission Payment Confirmed', 'pls-private-label-store' );
+        $message = sprintf(
+            __( "Commission payment for %s has been confirmed.\n\nMarked as paid by: %s\n\nView details: %s", 'pls-private-label-store' ),
+            date( 'F Y', strtotime( $month_start ) ),
+            $user->user_email,
+            admin_url( 'admin.php?page=pls-commission' )
+        );
+        
+        wp_mail( $to, $subject, $message );
+
+        wp_send_json_success();
+    }
+
+    /**
+     * Bulk update commission status.
+     */
+    public static function bulk_update_commission() {
+        check_ajax_referer( 'pls_commission_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $ids = isset( $_POST['ids'] ) ? array_map( 'sanitize_text_field', wp_unslash( (array) $_POST['ids'] ) ) : array();
+        $action = isset( $_POST['action_type'] ) ? sanitize_text_field( wp_unslash( $_POST['action_type'] ) ) : '';
+
+        if ( empty( $ids ) || ! $action ) {
+            wp_send_json_error( array( 'message' => __( 'Invalid data.', 'pls-private-label-store' ) ) );
+        }
+
+        $product_ids = array();
+        $custom_ids = array();
+
+        foreach ( $ids as $id ) {
+            if ( strpos( $id, 'custom_' ) === 0 ) {
+                $custom_ids[] = absint( str_replace( 'custom_', '', $id ) );
+            } else {
+                $product_ids[] = absint( $id );
+            }
+        }
+
+        if ( 'mark_invoiced' === $action ) {
+            if ( ! empty( $product_ids ) ) {
+                PLS_Repo_Commission::bulk_update_status( $product_ids, 'invoiced' );
+            }
+            foreach ( $custom_ids as $custom_id ) {
+                PLS_Repo_Custom_Order::mark_invoiced( $custom_id );
+            }
+        } elseif ( 'mark_paid' === $action ) {
+            if ( ! empty( $product_ids ) ) {
+                PLS_Repo_Commission::bulk_update_status( $product_ids, 'paid' );
+            }
+            foreach ( $custom_ids as $custom_id ) {
+                PLS_Repo_Custom_Order::mark_paid( $custom_id );
+            }
+
+            // Send notification email
+            $recipients = get_option( 'pls_commission_email_recipients', array( 'n.nikolic97@gmail.com' ) );
+            $to = is_array( $recipients ) ? $recipients[0] : $recipients;
+            $user = wp_get_current_user();
+            $subject = __( 'PLS Commission Payment Confirmed', 'pls-private-label-store' );
+            $message = sprintf(
+                __( "Commission payments have been confirmed.\n\nMarked as paid by: %s\n\nView details: %s", 'pls-private-label-store' ),
+                $user->user_email,
+                admin_url( 'admin.php?page=pls-commission' )
+            );
+            wp_mail( $to, $subject, $message );
+        }
+
+        wp_send_json_success();
+    }
+
+    /**
+     * Send monthly commission report manually.
+     */
+    public static function send_monthly_report() {
+        check_ajax_referer( 'pls_commission_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $month = isset( $_POST['month'] ) ? sanitize_text_field( wp_unslash( $_POST['month'] ) ) : '';
+        if ( ! $month ) {
+            wp_send_json_error( array( 'message' => __( 'Invalid month.', 'pls-private-label-store' ) ) );
+        }
+
+        $sent = PLS_Commission_Email::send_manual_report( $month );
+
+        if ( $sent ) {
+            wp_send_json_success( array( 'message' => __( 'Monthly report sent successfully.', 'pls-private-label-store' ) ) );
+        } else {
+            wp_send_json_error( array( 'message' => __( 'Failed to send report.', 'pls-private-label-store' ) ) );
         }
     }
 }

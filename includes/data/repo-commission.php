@@ -75,9 +75,12 @@ final class PLS_Repo_Commission {
 
         return (bool) $wpdb->update(
             $table,
-            array( 'invoiced_at' => current_time( 'mysql' ) ),
+            array(
+                'invoiced_at' => current_time( 'mysql' ),
+                'status' => 'invoiced',
+            ),
             array( 'id' => $id ),
-            array( '%s' ),
+            array( '%s', '%s' ),
             array( '%d' )
         );
     }
@@ -94,11 +97,82 @@ final class PLS_Repo_Commission {
 
         return (bool) $wpdb->update(
             $table,
-            array( 'paid_at' => current_time( 'mysql' ) ),
+            array(
+                'paid_at' => current_time( 'mysql' ),
+                'status' => 'paid',
+            ),
+            array( 'id' => $id ),
+            array( '%s', '%s' ),
+            array( '%d' )
+        );
+    }
+
+    /**
+     * Update commission status.
+     *
+     * @param int    $id     Commission ID.
+     * @param string $status Status: pending, invoiced, paid.
+     * @return bool
+     */
+    public static function update_status( $id, $status ) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'pls_order_commission';
+
+        $data = array( 'status' => $status );
+        if ( 'invoiced' === $status && ! $wpdb->get_var( $wpdb->prepare( "SELECT invoiced_at FROM {$table} WHERE id = %d", $id ) ) ) {
+            $data['invoiced_at'] = current_time( 'mysql' );
+        }
+        if ( 'paid' === $status && ! $wpdb->get_var( $wpdb->prepare( "SELECT paid_at FROM {$table} WHERE id = %d", $id ) ) ) {
+            $data['paid_at'] = current_time( 'mysql' );
+        }
+
+        return (bool) $wpdb->update(
+            $table,
+            $data,
             array( 'id' => $id ),
             array( '%s' ),
             array( '%d' )
         );
+    }
+
+    /**
+     * Bulk update commission status.
+     *
+     * @param array  $ids    Commission IDs.
+     * @param string $status Status: pending, invoiced, paid.
+     * @return int Number of rows updated.
+     */
+    public static function bulk_update_status( $ids, $status ) {
+        if ( empty( $ids ) ) {
+            return 0;
+        }
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'pls_order_commission';
+
+        $ids_placeholders = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
+        $ids_array = array_merge( array( $status ), $ids );
+
+        $data = array( 'status' => $status );
+        if ( 'invoiced' === $status ) {
+            $data['invoiced_at'] = current_time( 'mysql' );
+        }
+        if ( 'paid' === $status ) {
+            $data['paid_at'] = current_time( 'mysql' );
+        }
+
+        $set_clause = array();
+        $set_values = array();
+        foreach ( $data as $key => $value ) {
+            $set_clause[] = "{$key} = %s";
+            $set_values[] = $value;
+        }
+        $set_clause = implode( ', ', $set_clause );
+        $set_values = array_merge( $set_values, $ids );
+
+        $query = "UPDATE {$table} SET {$set_clause} WHERE id IN ({$ids_placeholders})";
+        
+        return $wpdb->query( $wpdb->prepare( $query, $set_values ) );
     }
 
     /**

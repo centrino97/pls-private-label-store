@@ -76,6 +76,7 @@
             const totalValue = parseFloat($('#pls-order-total-value').val()) || 0;
             const commissionRate = PLS_CustomOrders.commission_percent;
             const commissionAmount = totalValue > 0 ? (totalValue * commissionRate / 100) : 0;
+            const commissionConfirmed = $('#pls-commission-confirmed').is(':checked') ? 1 : 0;
 
             $.ajax({
                 url: PLS_CustomOrders.ajax_url,
@@ -87,7 +88,8 @@
                     production_cost: productionCost,
                     total_value: totalValue,
                     nikola_commission_rate: commissionRate,
-                    nikola_commission_amount: commissionAmount
+                    nikola_commission_amount: commissionAmount,
+                    commission_confirmed: commissionConfirmed
                 },
                 success: function(response) {
                     if ( response.success ) {
@@ -101,6 +103,25 @@
                     alert( 'Network error. Please try again.' );
                 }
             });
+        });
+
+        // Handle status change - show/hide commission confirmation checkbox
+        $(document).on('change', '#pls-order-status', function() {
+            const status = $(this).val();
+            const $commissionRow = $(this).closest('tr').next('tr');
+            
+            if (status === 'done') {
+                // Show commission confirmation checkbox if not already present
+                if (!$commissionRow.find('#pls-commission-confirmed').length) {
+                    const $newRow = $('<tr><th>Commission Confirmed</th><td><label><input type="checkbox" id="pls-commission-confirmed" value="1" /> Mark commission as paid (order is complete and payment received)</label></td></tr>');
+                    $(this).closest('tr').after($newRow);
+                }
+            } else {
+                // Hide commission confirmation checkbox
+                if ($commissionRow.find('#pls-commission-confirmed').length) {
+                    $commissionRow.remove();
+                }
+            }
         });
 
         // Mark as invoiced/paid

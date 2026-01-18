@@ -75,6 +75,15 @@ final class PLS_Admin_Menu {
 
         add_submenu_page(
             'pls-dashboard',
+            __( 'PLS – Commission', 'pls-private-label-store' ),
+            __( 'Commission', 'pls-private-label-store' ),
+            'manage_woocommerce',
+            'pls-commission',
+            array( __CLASS__, 'render_commission' )
+        );
+
+        add_submenu_page(
+            'pls-dashboard',
             __( 'PLS – Categories', 'pls-private-label-store' ),
             __( 'Categories', 'pls-private-label-store' ),
             PLS_Capabilities::CAP_PRODUCTS,
@@ -154,6 +163,17 @@ final class PLS_Admin_Menu {
             );
         }
 
+        // Enqueue commission script on commission page
+        if ( 'pls-commission' === $hook ) {
+            wp_enqueue_script(
+                'pls-commission',
+                PLS_PLS_URL . 'assets/js/commission.js',
+                array( 'jquery' ),
+                PLS_PLS_VERSION,
+                true
+            );
+        }
+
         wp_localize_script(
             'pls-admin',
             'PLS_Admin',
@@ -201,6 +221,10 @@ final class PLS_Admin_Menu {
 
     public static function render_revenue() {
         require PLS_PLS_DIR . 'includes/admin/screens/revenue.php';
+    }
+
+    public static function render_commission() {
+        require PLS_PLS_DIR . 'includes/admin/screens/commission.php';
     }
 
     public static function render_settings() {

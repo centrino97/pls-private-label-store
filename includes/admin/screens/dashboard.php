@@ -40,12 +40,24 @@ $pending_commission = PLS_Repo_Commission::get_total(
 );
 ?>
 <div class="wrap pls-wrap pls-page-dashboard">
+    <?php
+    $current_user_id = get_current_user_id();
+    $onboarding_progress = PLS_Onboarding::get_progress( $current_user_id );
+    $has_completed_onboarding = $onboarding_progress && $onboarding_progress->completed_at;
+    ?>
     <div class="pls-page-head">
         <div>
             <p class="pls-label"><?php esc_html_e( 'Dashboard', 'pls-private-label-store' ); ?></p>
             <h1><?php esc_html_e( 'PLS Overview', 'pls-private-label-store' ); ?></h1>
             <p class="description"><?php esc_html_e( 'Quick overview of your PLS operations.', 'pls-private-label-store' ); ?></p>
         </div>
+        <?php if ( ! $has_completed_onboarding ) : ?>
+            <div>
+                <button type="button" class="button button-primary" id="pls-start-tutorial">
+                    <?php esc_html_e( 'Start Tutorial', 'pls-private-label-store' ); ?>
+                </button>
+            </div>
+        <?php endif; ?>
     </div>
 
     <!-- Summary Cards -->
