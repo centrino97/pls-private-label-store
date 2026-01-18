@@ -1,0 +1,236 @@
+<?php
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
+
+// Get PLS products to identify which WooCommerce orders contain them
+$pls_products = PLS_Repo_Base_Product::all();
+$pls_wc_ids   = array();
+foreach ( $pls_products as $product ) {
+    if ( $product->wc_product_id ) {
+        $pls_wc_ids[] = $product->wc_product_id;
+    }
+}
+
+// Get WooCommerce orders
+$orders_query = new WC_Order_Query(
+    array(
+        'limit'    => 50,
+        'orderby'  => 'date',
+        'order'    => 'DESC',
+        'status'   => array( 'wc-completed', 'wc-processing', 'wc-on-hold' ),
+    )
+);
+$orders = $orders_query->get_orders();
+
+// Filter orders that contain PLS products
+$pls_orders = array();
+foreach ( $orders as $order ) {
+    $items = $order->get_items();
+    foreach ( $items as $item ) {
+        $product_id = $item->get_product_id();
+        if ( in_array( $product_id, $pls_wc_ids, true ) ) {
+            $pls_orders[] = $order;
+            break;
+        }
+    }
+}
+
+// Get commission rates
+$commission_rates = get_option( 'pls_commission_rates', array() );
+$tier_rates       = isset( $commission_rates['tiers'] ) ? $commission_rates['tiers'] : array();
+$bundle_rates     = isset( $commission_rates['bundles'] ) ? $commission_rates['bundles'] : array();
+?>
+<div class="wrap pls-wrap pls-page-orders">
+    <div class="pls-page-head">
+        <div>
+            <p class="pls-label"><?php esc_html_e( 'Orders', 'pls-private-label-store' ); ?></p>
+            <h1><?php esc_html_e( 'PLS Product Orders', 'pls-private-label-store' ); ?></h1>
+            <p class="description"><?php esc_html_e( 'WooCommerce orders containing PLS-synced products with commission tracking.', 'pls-private-label-store' ); ?></p>
+        </div>
+    </div>
+
+    <?php if ( empty( $pls_orders ) ) : ?>
+        <div class="pls-card">
+            <p><?php esc_html_e( 'No orders found containing PLS products.', 'pls-private-label-store' ); ?></p>
+        </div>
+    <?php else : ?>
+        <table class="wp-list-table widefat fixed striped">
+            <thead>
+                <tr>
+                    <th><?php esc_html_e( 'Order #', 'pls-private-label-store' ); ?></th>
+                    <th><?php esc_html_e( 'Date', 'pls-private-label-store' ); ?></th>
+                    <th><?php esc_html_e( 'Customer', 'pls-private-label-store' ); ?></th>
+                    <th><?php esc_html_e( 'Products', 'pls-private-label-store' ); ?></th>
+                    <th><?php esc_html_e( 'Total', 'pls-private-label-store' ); ?></th>
+                    <th><?php esc_html_e( 'Commission', 'pls-private-label-store' ); ?></th>
+                    <th><?php esc_html_e( 'Status', 'pls-private-label-store' ); ?></th>
+                    <th><?php esc_html_e( 'Actions', 'pls-private-label-store' ); ?></th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ( $pls_orders as $order ) : ?>
+                    <?php
+                    $order_id        = $order->get_id();
+                    $order_date      = $order->get_date_created()->date_i18n( get_option( 'date_format' ) );
+                    $customer_name   = $order->get_billing_first_name() . ' ' . $order->get_billing_last_name();
+                    $order_total     = $order->get_total();
+                    $order_status    = $order->get_status();
+                    $order_items     = $order->get_items();
+                    $total_commission = 0;
+                    $product_names   = array();
+
+                    // Calculate commission for each item
+                    foreach ( $order_items as $item_id => $item ) {
+                        $product_id = $item->get_product_id();
+                        if ( ! in_array( $product_id, $pls_wc_ids, true ) ) {
+                            continue;
+                        }
+
+                        $product = $item->get_product();
+                        $product_names[] = $product->get_name();
+                        $quantity = $item->get_quantity();
+
+                        // Check if it's a variation (pack tier)
+                        if ( $item->get_variation_id() ) {
+                            $variation = wc_get_product( $item->get_variation_id() );
+                            $attributes = $variation->get_attributes();
+                            
+                            // Find tier key from attributes
+                            $tier_key = null;
+                            if ( isset( $attributes['pa_pack-tier'] ) ) {
+                                $tier_term = get_term_by( 'slug', $attributes['pa_pack-tier'], 'pa_pack-tier' );
+                                if ( $tier_term ) {
+                                    // Map tier term to tier key (tier_1, tier_2, etc.)
+                                    $tier_key = self::get_tier_key_from_term( $tier_term->name );
+                                }
+                            }
+
+                            if ( $tier_key && isset( $tier_rates[ $tier_key ] ) ) {
+                                $rate_per_unit = $tier_rates[ $tier_key ];
+                                $commission    = $rate_per_unit * $quantity;
+                                $total_commission += $commission;
+
+                                // Store commission if not already stored
+                                $existing = PLS_Repo_Commission::get_by_order( $order_id );
+                                $found = false;
+                                foreach ( $existing as $comm ) {
+                                    if ( $comm->wc_order_item_id == $item_id ) {
+                                        $found = true;
+                                        break;
+                                    }
+                                }
+                                if ( ! $found ) {
+                                    PLS_Repo_Commission::create(
+                                        array(
+                                            'wc_order_id'            => $order_id,
+                                            'wc_order_item_id'       => $item_id,
+                                            'product_id'              => $product_id,
+                                            'tier_key'                => $tier_key,
+                                            'units'                   => $quantity,
+                                            'commission_rate_per_unit' => $rate_per_unit,
+                                            'commission_amount'      => $commission,
+                                        )
+                                    );
+                                }
+                            }
+                        } else {
+                            // Check if it's a bundle
+                            $bundle_key = pls_get_bundle_key_from_product( $product_id );
+                            if ( $bundle_key && isset( $bundle_rates[ $bundle_key ] ) ) {
+                                $rate_per_unit = $bundle_rates[ $bundle_key ];
+                                $commission    = $rate_per_unit * $quantity;
+                                $total_commission += $commission;
+
+                                // Store commission if not already stored
+                                $existing = PLS_Repo_Commission::get_by_order( $order_id );
+                                $found = false;
+                                foreach ( $existing as $comm ) {
+                                    if ( $comm->wc_order_item_id == $item_id ) {
+                                        $found = true;
+                                        break;
+                                    }
+                                }
+                                if ( ! $found ) {
+                                    PLS_Repo_Commission::create(
+                                        array(
+                                            'wc_order_id'            => $order_id,
+                                            'wc_order_item_id'       => $item_id,
+                                            'product_id'              => $product_id,
+                                            'bundle_key'              => $bundle_key,
+                                            'units'                   => $quantity,
+                                            'commission_rate_per_unit' => $rate_per_unit,
+                                            'commission_amount'      => $commission,
+                                        )
+                                    );
+                                }
+                            }
+                        }
+                    }
+                    ?>
+                    <tr>
+                        <td>
+                            <a href="<?php echo esc_url( admin_url( 'post.php?post=' . $order_id . '&action=edit' ) ); ?>">
+                                #<?php echo esc_html( $order_id ); ?>
+                            </a>
+                        </td>
+                        <td><?php echo esc_html( $order_date ); ?></td>
+                        <td><?php echo esc_html( $customer_name ); ?></td>
+                        <td><?php echo esc_html( implode( ', ', array_slice( $product_names, 0, 3 ) ) ); ?></td>
+                        <td><?php echo wc_price( $order_total ); ?></td>
+                        <td><strong><?php echo wc_price( $total_commission ); ?></strong></td>
+                        <td><span class="pls-status-badge pls-status-<?php echo esc_attr( $order_status ); ?>">
+                            <?php echo esc_html( wc_get_order_status_name( $order_status ) ); ?>
+                        </span></td>
+                        <td>
+                            <a href="<?php echo esc_url( admin_url( 'post.php?post=' . $order_id . '&action=edit' ) ); ?>" class="button button-small">
+                                <?php esc_html_e( 'View', 'pls-private-label-store' ); ?>
+                            </a>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    <?php endif; ?>
+</div>
+<?php
+/**
+ * Helper function to get tier key from term name.
+ */
+function pls_get_tier_key_from_term( $term_name ) {
+    $mapping = array(
+        'Trial Pack'      => 'tier_1',
+        'Starter Pack'    => 'tier_2',
+        'Brand Entry'    => 'tier_3',
+        'Growth Brand'    => 'tier_4',
+        'Wholesale Launch' => 'tier_5',
+    );
+    
+    foreach ( $mapping as $name => $key ) {
+        if ( stripos( $term_name, $name ) !== false ) {
+            return $key;
+        }
+    }
+    
+    return null;
+}
+
+/**
+ * Helper function to get bundle key from product.
+ */
+function pls_get_bundle_key_from_product( $product_id ) {
+    global $wpdb;
+    $table = $wpdb->prefix . 'pls_bundle';
+    
+    $bundle = $wpdb->get_row(
+        $wpdb->prepare( "SELECT bundle_key FROM {$table} WHERE wc_product_id = %d", $product_id ),
+        OBJECT
+    );
+    
+    if ( $bundle ) {
+        return $bundle->bundle_key;
+    }
+    
+    return null;
+}
+?>

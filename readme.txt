@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.9.1
+Stable tag: 0.10.0
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,19 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 0.10.0 =
+* **Client Self-Service Edition:** Complete order management and revenue tracking system.
+* **Frontend Custom Order Page:** New `/custom-order` page with detailed lead capture form (name, email, phone, company, category, quantity, budget, timeline, message).
+* **Custom Orders Management:** Kanban-style board with drag-and-drop to manage leads through stages (New Leads → Sampling → Production → On-hold → Done).
+* **PLS Orders Screen:** View all WooCommerce orders containing PLS products with automatic commission calculation based on tier/bundle rates.
+* **Revenue Tracking:** Comprehensive commission tracking with invoiced/paid status, date filters, and separate tabs for product orders and custom orders.
+* **Commission System:** Per-unit rates for pack tiers and bundles, plus percentage-based commission for custom orders (configurable in Settings).
+* **Settings Screen:** Centralized settings for commission rates (tiers, bundles, custom order %), plus label pricing moved from dashboard.
+* **Dashboard Redesign:** Summary cards showing total products, active orders, pending custom orders, monthly revenue, and pending commission.
+* **Access Control:** robertbodoci@gmail.com sees full WordPress admin, bodocibiophysics.com users see only PLS plugin and WooCommerce.
+* **Database:** New tables for custom orders (`pls_custom_order`) and commission tracking (`pls_order_commission`).
+* **UI Improvements:** Compact, aligned layouts throughout all admin pages with consistent spacing and modern design.
+
 = 0.9.1 =
 * **Simplified Custom Product Request:** Changed to simple contact form with category selection instead of complex form.
 * **Admin Dashboard Filter:** Automatically hides all WordPress menus except PLS and WooCommerce for bodocibiophysics.com users.

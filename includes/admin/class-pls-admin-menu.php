@@ -48,6 +48,33 @@ final class PLS_Admin_Menu {
 
         add_submenu_page(
             'pls-dashboard',
+            __( 'PLS – Orders', 'pls-private-label-store' ),
+            __( 'Orders', 'pls-private-label-store' ),
+            'manage_woocommerce',
+            'pls-orders',
+            array( __CLASS__, 'render_orders' )
+        );
+
+        add_submenu_page(
+            'pls-dashboard',
+            __( 'PLS – Custom Orders', 'pls-private-label-store' ),
+            __( 'Custom Orders', 'pls-private-label-store' ),
+            'manage_woocommerce',
+            'pls-custom-orders',
+            array( __CLASS__, 'render_custom_orders' )
+        );
+
+        add_submenu_page(
+            'pls-dashboard',
+            __( 'PLS – Revenue', 'pls-private-label-store' ),
+            __( 'Revenue', 'pls-private-label-store' ),
+            'manage_woocommerce',
+            'pls-revenue',
+            array( __CLASS__, 'render_revenue' )
+        );
+
+        add_submenu_page(
+            'pls-dashboard',
             __( 'PLS – Categories', 'pls-private-label-store' ),
             __( 'Categories', 'pls-private-label-store' ),
             PLS_Capabilities::CAP_PRODUCTS,
@@ -71,6 +98,15 @@ final class PLS_Admin_Menu {
             PLS_Capabilities::CAP_BUNDLES,
             'pls-bundles',
             array( __CLASS__, 'render_bundles' )
+        );
+
+        add_submenu_page(
+            'pls-dashboard',
+            __( 'PLS – Settings', 'pls-private-label-store' ),
+            __( 'Settings', 'pls-private-label-store' ),
+            'manage_woocommerce',
+            'pls-settings',
+            array( __CLASS__, 'render_settings' )
         );
 
         // Hidden preview page (accessed via direct link)
@@ -102,10 +138,21 @@ final class PLS_Admin_Menu {
         wp_enqueue_script(
             'pls-admin',
             PLS_PLS_URL . 'assets/js/admin.js',
-            array( 'jquery' ),
+            array( 'jquery', 'jquery-ui-sortable' ),
             PLS_PLS_VERSION,
             true
         );
+
+        // Enqueue custom orders script on custom orders page
+        if ( 'pls-custom-orders' === $hook ) {
+            wp_enqueue_script(
+                'pls-custom-orders',
+                PLS_PLS_URL . 'assets/js/custom-orders.js',
+                array( 'jquery', 'jquery-ui-sortable' ),
+                PLS_PLS_VERSION,
+                true
+            );
+        }
 
         wp_localize_script(
             'pls-admin',
@@ -142,6 +189,22 @@ final class PLS_Admin_Menu {
 
     public static function render_product_preview() {
         require PLS_PLS_DIR . 'includes/admin/screens/product-preview.php';
+    }
+
+    public static function render_orders() {
+        require PLS_PLS_DIR . 'includes/admin/screens/orders.php';
+    }
+
+    public static function render_custom_orders() {
+        require PLS_PLS_DIR . 'includes/admin/screens/custom-orders.php';
+    }
+
+    public static function render_revenue() {
+        require PLS_PLS_DIR . 'includes/admin/screens/revenue.php';
+    }
+
+    public static function render_settings() {
+        require PLS_PLS_DIR . 'includes/admin/screens/settings.php';
     }
 
     /**

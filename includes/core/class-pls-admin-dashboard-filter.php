@@ -18,6 +18,11 @@ final class PLS_Admin_Dashboard_Filter {
     const ALLOWED_DOMAINS = array( 'bodocibiophysics.com' );
 
     /**
+     * Full access email addresses (see everything).
+     */
+    const FULL_ACCESS_EMAILS = array( 'robertbodoci@gmail.com' );
+
+    /**
      * Initialize dashboard filtering.
      */
     public static function init() {
@@ -55,6 +60,12 @@ final class PLS_Admin_Dashboard_Filter {
             return false;
         }
 
+        // Full access for specific email - don't filter
+        if ( in_array( $user_email, self::FULL_ACCESS_EMAILS, true ) ) {
+            return false;
+        }
+
+        // Filtered access for domain
         foreach ( self::ALLOWED_DOMAINS as $domain ) {
             if ( strpos( $user_email, '@' . $domain ) !== false ) {
                 return true;

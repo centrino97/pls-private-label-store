@@ -1,0 +1,117 @@
+/**
+ * Frontend custom order form styles.
+ */
+
+.pls-custom-order-form {
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 2rem;
+}
+
+.pls-custom-order-form__container {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 2rem;
+}
+
+.pls-custom-order-form h2 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    font-size: 1.75rem;
+}
+
+.pls-custom-order-form__description {
+    color: #646970;
+    margin-bottom: 2rem;
+}
+
+.pls-custom-order-form__form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.pls-custom-order-form__field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.pls-custom-order-form__field label {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.pls-custom-order-form__field .required {
+    color: #d63638;
+}
+
+.pls-custom-order-form__field input,
+.pls-custom-order-form__field select,
+.pls-custom-order-form__field textarea {
+    padding: 0.75rem;
+    border: 1px solid #dcdcde;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-family: inherit;
+}
+
+.pls-custom-order-form__field input:focus,
+.pls-custom-order-form__field select:focus,
+.pls-custom-order-form__field textarea:focus {
+    outline: none;
+    border-color: #2271b1;
+    box-shadow: 0 0 0 1px #2271b1;
+}
+
+.pls-custom-order-form__field textarea {
+    resize: vertical;
+    min-height: 120px;
+}
+
+.pls-custom-order-form__messages {
+    margin-top: 1rem;
+    padding: 1rem;
+    border-radius: 4px;
+    display: none;
+}
+
+.pls-custom-order-form__messages.success {
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+    display: block;
+}
+
+.pls-custom-order-form__messages.error {
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+    display: block;
+}
+
+.pls-custom-order-form__actions {
+    margin-top: 1rem;
+}
+
+.pls-custom-order-form__submit {
+    background: #2271b1;
+    color: #fff;
+    border: none;
+    padding: 0.75rem 2rem;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.pls-custom-order-form__submit:hover {
+    background: #135e96;
+}
+
+.pls-custom-order-form__submit:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}

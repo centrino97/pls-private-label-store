@@ -1,86 +1,160 @@
 <?php
-if ( ! defined( 'ABSPATH' ) ) { exit; }
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
+
+// Get statistics
+$total_products = count( PLS_Repo_Base_Product::all() );
+
+// Get active orders (last 30 days)
+$orders_query = new WC_Order_Query(
+    array(
+        'limit'    => -1,
+        'date_created' => '>' . ( time() - 30 * DAY_IN_SECONDS ),
+        'status'   => array( 'wc-completed', 'wc-processing', 'wc-on-hold' ),
+    )
+);
+$active_orders = count( $orders_query->get_orders() );
+
+// Get pending custom orders
+$pending_custom_orders = PLS_Repo_Custom_Order::count_by_status( 'new_lead' ) + 
+                         PLS_Repo_Custom_Order::count_by_status( 'sampling' );
+
+// Get monthly revenue (current month)
+$date_from = date( 'Y-m-01' );
+$date_to   = date( 'Y-m-d' );
+$monthly_revenue = PLS_Repo_Commission::get_total(
+    array(
+        'date_from' => $date_from,
+        'date_to'   => $date_to,
+    )
+);
+
+// Get pending commission
+$pending_commission = PLS_Repo_Commission::get_total(
+    array(
+        'date_from' => $date_from,
+        'date_to'   => $date_to,
+        'invoiced'  => false,
+    )
+);
 ?>
-<div class="wrap pls-wrap">
-  <h1>Private Label (PLS)</h1>
-  <p>This plugin is designed to sit on top of WooCommerce + Elementor Pro (Hello Elementor theme). It stores your internal model in custom tables and syncs into WooCommerce products/variations/attributes so Elementor templates can render them natively.</p>
-
-  <div class="pls-cards">
-    <div class="pls-card">
-      <h2>1) Products & Packs</h2>
-      <p>Create base products and pack tiers (Trial/Starter/Brand Entry/Growth/Wholesale), then sync to Woo variable products + variations.</p>
-      <a class="button button-primary" href="<?php echo esc_url( admin_url('admin.php?page=pls-products') ); ?>">Open Products & Packs</a>
+<div class="wrap pls-wrap pls-page-dashboard">
+    <div class="pls-page-head">
+        <div>
+            <p class="pls-label"><?php esc_html_e( 'Dashboard', 'pls-private-label-store' ); ?></p>
+            <h1><?php esc_html_e( 'PLS Overview', 'pls-private-label-store' ); ?></h1>
+            <p class="description"><?php esc_html_e( 'Quick overview of your PLS operations.', 'pls-private-label-store' ); ?></p>
+        </div>
     </div>
 
-    <div class="pls-card">
-      <h2>2) Attributes & Swatches</h2>
-      <p>Manage a central attribute/value library with swatch styling and SEO fields. Sync to Woo global attributes + terms.</p>
-      <a class="button" href="<?php echo esc_url( admin_url('admin.php?page=pls-attributes') ); ?>">Open Attributes & Swatches</a>
-    </div>
-
-    <div class="pls-card">
-      <h2>3) Bundles & Deals</h2>
-      <p>Define Business Line bundles and deal surfaces (PDP / Cart upgrades). Bundles can add multiple pack items to cart.</p>
-      <a class="button" href="<?php echo esc_url( admin_url('admin.php?page=pls-bundles') ); ?>">Open Bundles & Deals</a>
-    </div>
-  </div>
-
-  <hr />
-  
-  <h2><?php esc_html_e( 'Label Application Pricing', 'pls-private-label-store' ); ?></h2>
-  <?php if ( isset( $_GET['settings-updated'] ) && $_GET['settings-updated'] === 'true' ) : ?>
-    <div class="notice notice-success is-dismissible" style="margin: 20px 0;">
-      <p><?php esc_html_e( 'Label pricing settings saved successfully.', 'pls-private-label-store' ); ?></p>
-    </div>
-  <?php endif; ?>
-  <div class="pls-settings-section" style="background: #fff; border: 1px solid #dcdcde; border-radius: 8px; padding: 20px; margin: 20px 0; max-width: 600px;">
-    <h3 style="margin-top: 0;"><?php esc_html_e( 'Global Label Pricing Rules', 'pls-private-label-store' ); ?></h3>
-    <p class="description"><?php esc_html_e( 'Set automatic pricing for label application based on tier. Tier 3-5 are automatically FREE.', 'pls-private-label-store' ); ?></p>
-    
-    <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-      <?php wp_nonce_field( 'pls_save_label_settings', 'pls_label_settings_nonce' ); ?>
-      <input type="hidden" name="action" value="pls_save_label_settings" />
-      
-      <table class="pls-settings-table" style="width: 100%; border-collapse: collapse;">
-        <tr style="border-bottom: 1px solid #e2e8f0;">
-          <td style="padding: 12px 0; font-weight: 600;"><?php esc_html_e( 'Tier 1-2:', 'pls-private-label-store' ); ?></td>
-          <td style="padding: 12px 0;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span>$</span>
-              <input type="number" step="0.01" name="label_price_tier_1_2" 
-                     value="<?php echo esc_attr( get_option( 'pls_label_price_tier_1_2', '0.50' ) ); ?>" 
-                     style="width: 100px; padding: 6px;" min="0" />
-              <span><?php esc_html_e( 'per unit', 'pls-private-label-store' ); ?></span>
+    <!-- Summary Cards -->
+    <div class="pls-dashboard-summary">
+        <div class="pls-summary-card">
+            <div class="pls-summary-card__icon">
+                <span class="dashicons dashicons-products"></span>
             </div>
-            <p class="description" style="margin: 4px 0 0; font-size: 12px; color: #646970;">
-              <?php esc_html_e( 'This price will be multiplied by the number of units in the pack tier.', 'pls-private-label-store' ); ?>
-            </p>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding: 12px 0; font-weight: 600;"><?php esc_html_e( 'Tier 3-5:', 'pls-private-label-store' ); ?></td>
-          <td style="padding: 12px 0;">
-            <strong style="color: #00a32a;"><?php esc_html_e( 'FREE', 'pls-private-label-store' ); ?></strong>
-            <span style="margin-left: 8px; color: #646970; font-size: 13px;">
-              <?php esc_html_e( '(automatically applied)', 'pls-private-label-store' ); ?>
-            </span>
-          </td>
-        </tr>
-      </table>
-      
-      <p style="margin-top: 16px;">
-        <button type="submit" class="button button-primary"><?php esc_html_e( 'Save Settings', 'pls-private-label-store' ); ?></button>
-      </p>
-    </form>
-  </div>
+            <div class="pls-summary-card__content">
+                <h3><?php esc_html_e( 'Total Products', 'pls-private-label-store' ); ?></h3>
+                <div class="pls-summary-card__value"><?php echo esc_html( $total_products ); ?></div>
+                <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-products' ) ); ?>" class="pls-summary-card__link">
+                    <?php esc_html_e( 'View Products', 'pls-private-label-store' ); ?>
+                </a>
+            </div>
+        </div>
 
-  <hr />
-  <h2>Elementor Integration</h2>
-  <p>In Elementor Theme Builder, use the provided widgets:</p>
-  <ul>
-    <li><strong>PLS Configurator</strong> – pack tiers and swatches on Single Product templates</li>
-    <li><strong>PLS Bundle Offer</strong> – upgrade/offer card on PDP or Cart templates</li>
-  </ul>
+        <div class="pls-summary-card">
+            <div class="pls-summary-card__icon">
+                <span class="dashicons dashicons-cart"></span>
+            </div>
+            <div class="pls-summary-card__content">
+                <h3><?php esc_html_e( 'Active Orders', 'pls-private-label-store' ); ?></h3>
+                <div class="pls-summary-card__value"><?php echo esc_html( $active_orders ); ?></div>
+                <p class="pls-summary-card__description"><?php esc_html_e( 'Last 30 days', 'pls-private-label-store' ); ?></p>
+                <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-orders' ) ); ?>" class="pls-summary-card__link">
+                    <?php esc_html_e( 'View Orders', 'pls-private-label-store' ); ?>
+                </a>
+            </div>
+        </div>
 
-  <p>Docs are included in <code>/docs</code> inside this plugin folder.</p>
+        <div class="pls-summary-card">
+            <div class="pls-summary-card__icon">
+                <span class="dashicons dashicons-email-alt"></span>
+            </div>
+            <div class="pls-summary-card__content">
+                <h3><?php esc_html_e( 'Pending Custom Orders', 'pls-private-label-store' ); ?></h3>
+                <div class="pls-summary-card__value"><?php echo esc_html( $pending_custom_orders ); ?></div>
+                <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-custom-orders' ) ); ?>" class="pls-summary-card__link">
+                    <?php esc_html_e( 'Manage Custom Orders', 'pls-private-label-store' ); ?>
+                </a>
+            </div>
+        </div>
+
+        <div class="pls-summary-card">
+            <div class="pls-summary-card__icon">
+                <span class="dashicons dashicons-money-alt"></span>
+            </div>
+            <div class="pls-summary-card__content">
+                <h3><?php esc_html_e( 'Monthly Revenue', 'pls-private-label-store' ); ?></h3>
+                <div class="pls-summary-card__value"><?php echo wc_price( $monthly_revenue ); ?></div>
+                <p class="pls-summary-card__description"><?php esc_html_e( 'Current month', 'pls-private-label-store' ); ?></p>
+                <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-revenue' ) ); ?>" class="pls-summary-card__link">
+                    <?php esc_html_e( 'View Revenue', 'pls-private-label-store' ); ?>
+                </a>
+            </div>
+        </div>
+
+        <div class="pls-summary-card">
+            <div class="pls-summary-card__icon">
+                <span class="dashicons dashicons-clock"></span>
+            </div>
+            <div class="pls-summary-card__content">
+                <h3><?php esc_html_e( 'Pending Commission', 'pls-private-label-store' ); ?></h3>
+                <div class="pls-summary-card__value"><?php echo wc_price( $pending_commission ); ?></div>
+                <p class="pls-summary-card__description"><?php esc_html_e( 'Not yet invoiced', 'pls-private-label-store' ); ?></p>
+                <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-revenue' ) ); ?>" class="pls-summary-card__link">
+                    <?php esc_html_e( 'View Details', 'pls-private-label-store' ); ?>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Links -->
+    <div class="pls-dashboard-links">
+        <h2><?php esc_html_e( 'Quick Links', 'pls-private-label-store' ); ?></h2>
+        <div class="pls-dashboard-links__grid">
+            <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-products' ) ); ?>" class="pls-dashboard-link">
+                <span class="dashicons dashicons-products"></span>
+                <?php esc_html_e( 'Products', 'pls-private-label-store' ); ?>
+            </a>
+            <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-orders' ) ); ?>" class="pls-dashboard-link">
+                <span class="dashicons dashicons-cart"></span>
+                <?php esc_html_e( 'Orders', 'pls-private-label-store' ); ?>
+            </a>
+            <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-custom-orders' ) ); ?>" class="pls-dashboard-link">
+                <span class="dashicons dashicons-email-alt"></span>
+                <?php esc_html_e( 'Custom Orders', 'pls-private-label-store' ); ?>
+            </a>
+            <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-revenue' ) ); ?>" class="pls-dashboard-link">
+                <span class="dashicons dashicons-money-alt"></span>
+                <?php esc_html_e( 'Revenue', 'pls-private-label-store' ); ?>
+            </a>
+            <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-categories' ) ); ?>" class="pls-dashboard-link">
+                <span class="dashicons dashicons-category"></span>
+                <?php esc_html_e( 'Categories', 'pls-private-label-store' ); ?>
+            </a>
+            <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-attributes' ) ); ?>" class="pls-dashboard-link">
+                <span class="dashicons dashicons-admin-settings"></span>
+                <?php esc_html_e( 'Product Options', 'pls-private-label-store' ); ?>
+            </a>
+            <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-bundles' ) ); ?>" class="pls-dashboard-link">
+                <span class="dashicons dashicons-groups"></span>
+                <?php esc_html_e( 'Bundles', 'pls-private-label-store' ); ?>
+            </a>
+            <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-settings' ) ); ?>" class="pls-dashboard-link">
+                <span class="dashicons dashicons-admin-generic"></span>
+                <?php esc_html_e( 'Settings', 'pls-private-label-store' ); ?>
+            </a>
+        </div>
+    </div>
 </div>

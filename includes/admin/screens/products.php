@@ -91,7 +91,6 @@ wp_localize_script(
     </div>
     <div>
       <button class="button" id="pls-sync-all"><?php esc_html_e( 'Sync all to Woo', 'pls-private-label-store' ); ?></button>
-      <button class="button" id="pls-open-custom-request-modal"><?php esc_html_e( 'Request Custom Product', 'pls-private-label-store' ); ?></button>
       <button class="button button-primary button-hero" id="pls-open-product-modal"><?php esc_html_e( 'Add product', 'pls-private-label-store' ); ?></button>
     </div>
   </div>
@@ -725,48 +724,3 @@ wp_localize_script(
   </div>
 </div>
 
-<!-- Custom Product Request Modal -->
-<div class="pls-modal" id="pls-custom-request-modal">
-  <div class="pls-modal__dialog">
-    <div class="pls-modal__head">
-      <div>
-        <h2><?php esc_html_e( 'Request Custom Product', 'pls-private-label-store' ); ?></h2>
-        <p class="description"><?php esc_html_e( 'Submit a custom product inquiry. We will contact you to discuss your requirements.', 'pls-private-label-store' ); ?></p>
-      </div>
-      <button type="button" class="pls-modal__close" aria-label="<?php esc_attr_e( 'Close', 'pls-private-label-store' ); ?>">×</button>
-    </div>
-    <form class="pls-modern-form" id="pls-custom-request-form">
-      <div class="pls-modal__section">
-        <label><?php esc_html_e( 'Product Category', 'pls-private-label-store' ); ?>
-          <select name="product_category" id="pls-custom-product-category" required>
-            <option value=""><?php esc_html_e( 'Select category', 'pls-private-label-store' ); ?></option>
-            <?php foreach ( $categories as $category ) : ?>
-              <option value="<?php echo esc_attr( $category->term_id ); ?>"><?php echo esc_html( $category->name ); ?></option>
-            <?php endforeach; ?>
-            <option value="other"><?php esc_html_e( 'Other', 'pls-private-label-store' ); ?></option>
-          </select>
-        </label>
-        
-        <label><?php esc_html_e( 'Your Message', 'pls-private-label-store' ); ?>
-          <textarea name="message" id="pls-custom-message" rows="6" required 
-                    placeholder="<?php esc_attr_e( 'Tell us about your custom product needs, quantities, timeline, special requirements, etc.', 'pls-private-label-store' ); ?>"></textarea>
-        </label>
-        
-        <label><?php esc_html_e( 'Your Name', 'pls-private-label-store' ); ?>
-          <input type="text" name="contact_name" id="pls-custom-contact-name" required 
-                 value="<?php echo esc_attr( wp_get_current_user()->display_name ); ?>" />
-        </label>
-        
-        <label><?php esc_html_e( 'Your Email', 'pls-private-label-store' ); ?>
-          <input type="email" name="contact_email" id="pls-custom-contact-email" required 
-                 value="<?php echo esc_attr( wp_get_current_user()->user_email ); ?>" />
-        </label>
-      </div>
-      
-      <div class="pls-modal__footer">
-        <button type="button" class="button" id="pls-cancel-custom-request"><?php esc_html_e( 'Cancel', 'pls-private-label-store' ); ?></button>
-        <button type="submit" class="button button-primary"><?php esc_html_e( 'Send Request', 'pls-private-label-store' ); ?></button>
-      </div>
-    </form>
-  </div>
-</div>

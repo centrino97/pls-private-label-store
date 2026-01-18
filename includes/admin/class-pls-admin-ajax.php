@@ -30,6 +30,11 @@ final class PLS_Admin_Ajax {
         add_action( 'wp_ajax_pls_get_product_options_data', array( __CLASS__, 'get_product_options_data' ) );
         add_action( 'wp_ajax_pls_preview_product', array( __CLASS__, 'preview_product' ) );
         add_action( 'wp_ajax_pls_custom_product_request', array( __CLASS__, 'custom_product_request' ) );
+        add_action( 'wp_ajax_pls_update_custom_order_status', array( __CLASS__, 'update_custom_order_status' ) );
+        add_action( 'wp_ajax_pls_get_custom_order_details', array( __CLASS__, 'get_custom_order_details' ) );
+        add_action( 'wp_ajax_pls_update_custom_order_financials', array( __CLASS__, 'update_custom_order_financials' ) );
+        add_action( 'wp_ajax_pls_mark_custom_order_invoiced', array( __CLASS__, 'mark_custom_order_invoiced' ) );
+        add_action( 'wp_ajax_pls_mark_custom_order_paid', array( __CLASS__, 'mark_custom_order_paid' ) );
     }
 
     /**
@@ -1638,5 +1643,284 @@ final class PLS_Admin_Ajax {
                 'order_url' => $order_url,
             )
         );
+    }
+
+    /**
+     * Update custom order status.
+     */
+    public static function update_custom_order_status() {
+        check_ajax_referer( 'pls_custom_orders_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $order_id = isset( $_POST['order_id'] ) ? absint( $_POST['order_id'] ) : 0;
+        $status   = isset( $_POST['status'] ) ? sanitize_text_field( wp_unslash( $_POST['status'] ) ) : '';
+
+        if ( ! $order_id || ! $status ) {
+            wp_send_json_error( array( 'message' => __( 'Invalid data.', 'pls-private-label-store' ) ) );
+        }
+
+        $valid_statuses = array( 'new_lead', 'sampling', 'production', 'on_hold', 'done', 'cancelled' );
+        if ( ! in_array( $status, $valid_statuses, true ) ) {
+            wp_send_json_error( array( 'message' => __( 'Invalid status.', 'pls-private-label-store' ) ) );
+        }
+
+        $result = PLS_Repo_Custom_Order::update_status( $order_id, $status );
+
+        if ( $result ) {
+            wp_send_json_success();
+        } else {
+            wp_send_json_error( array( 'message' => __( 'Failed to update status.', 'pls-private-label-store' ) ) );
+        }
+    }
+
+    /**
+     * Get custom order details for modal.
+     */
+    public static function get_custom_order_details() {
+        check_ajax_referer( 'pls_custom_orders_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $order_id = isset( $_POST['order_id'] ) ? absint( $_POST['order_id'] ) : 0;
+        if ( ! $order_id ) {
+            wp_send_json_error( array( 'message' => __( 'Invalid order ID.', 'pls-private-label-store' ) ) );
+        }
+
+        $order = PLS_Repo_Custom_Order::get( $order_id );
+        if ( ! $order ) {
+            wp_send_json_error( array( 'message' => __( 'Order not found.', 'pls-private-label-store' ) ) );
+        }
+
+        $category_name = '';
+        if ( $order->category_id ) {
+            $category = get_term( $order->category_id, 'product_cat' );
+            if ( $category && ! is_wp_error( $category ) ) {
+                $category_name = $category->name;
+            }
+        }
+
+        $commission_rate = get_option( 'pls_commission_rates', array() );
+        $custom_order_percent = isset( $commission_rate['custom_order_percent'] ) ? $commission_rate['custom_order_percent'] : 3.00;
+
+        ob_start();
+        ?>
+        <div class="pls-order-detail">
+            <div class="pls-order-detail__section">
+                <h3><?php esc_html_e( 'Contact Information', 'pls-private-label-store' ); ?></h3>
+                <table class="form-table">
+                    <tr>
+                        <th><?php esc_html_e( 'Name', 'pls-private-label-store' ); ?></th>
+                        <td><?php echo esc_html( $order->contact_name ); ?></td>
+                    </tr>
+                    <tr>
+                        <th><?php esc_html_e( 'Email', 'pls-private-label-store' ); ?></th>
+                        <td><a href="mailto:<?php echo esc_attr( $order->contact_email ); ?>"><?php echo esc_html( $order->contact_email ); ?></a></td>
+                    </tr>
+                    <?php if ( $order->contact_phone ) : ?>
+                        <tr>
+                            <th><?php esc_html_e( 'Phone', 'pls-private-label-store' ); ?></th>
+                            <td><?php echo esc_html( $order->contact_phone ); ?></td>
+                        </tr>
+                    <?php endif; ?>
+                    <?php if ( $order->company_name ) : ?>
+                        <tr>
+                            <th><?php esc_html_e( 'Company', 'pls-private-label-store' ); ?></th>
+                            <td><?php echo esc_html( $order->company_name ); ?></td>
+                        </tr>
+                    <?php endif; ?>
+                </table>
+            </div>
+
+            <div class="pls-order-detail__section">
+                <h3><?php esc_html_e( 'Order Details', 'pls-private-label-store' ); ?></h3>
+                <table class="form-table">
+                    <tr>
+                        <th><?php esc_html_e( 'Category', 'pls-private-label-store' ); ?></th>
+                        <td><?php echo esc_html( $category_name ?: __( 'Other', 'pls-private-label-store' ) ); ?></td>
+                    </tr>
+                    <?php if ( $order->quantity_needed ) : ?>
+                        <tr>
+                            <th><?php esc_html_e( 'Quantity Needed', 'pls-private-label-store' ); ?></th>
+                            <td><?php echo esc_html( number_format( $order->quantity_needed ) ); ?></td>
+                        </tr>
+                    <?php endif; ?>
+                    <?php if ( $order->budget ) : ?>
+                        <tr>
+                            <th><?php esc_html_e( 'Budget', 'pls-private-label-store' ); ?></th>
+                            <td><?php echo wc_price( $order->budget ); ?></td>
+                        </tr>
+                    <?php endif; ?>
+                    <?php if ( $order->timeline ) : ?>
+                        <tr>
+                            <th><?php esc_html_e( 'Timeline', 'pls-private-label-store' ); ?></th>
+                            <td><?php echo esc_html( $order->timeline ); ?></td>
+                        </tr>
+                    <?php endif; ?>
+                    <tr>
+                        <th><?php esc_html_e( 'Status', 'pls-private-label-store' ); ?></th>
+                        <td>
+                            <select id="pls-order-status" class="regular-text">
+                                <option value="new_lead" <?php selected( $order->status, 'new_lead' ); ?>><?php esc_html_e( 'New Lead', 'pls-private-label-store' ); ?></option>
+                                <option value="sampling" <?php selected( $order->status, 'sampling' ); ?>><?php esc_html_e( 'Sampling', 'pls-private-label-store' ); ?></option>
+                                <option value="production" <?php selected( $order->status, 'production' ); ?>><?php esc_html_e( 'Production', 'pls-private-label-store' ); ?></option>
+                                <option value="on_hold" <?php selected( $order->status, 'on_hold' ); ?>><?php esc_html_e( 'On-hold', 'pls-private-label-store' ); ?></option>
+                                <option value="done" <?php selected( $order->status, 'done' ); ?>><?php esc_html_e( 'Done', 'pls-private-label-store' ); ?></option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><?php esc_html_e( 'Message', 'pls-private-label-store' ); ?></th>
+                        <td><?php echo nl2br( esc_html( $order->message ) ); ?></td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="pls-order-detail__section">
+                <h3><?php esc_html_e( 'Financial Information', 'pls-private-label-store' ); ?></h3>
+                <table class="form-table">
+                    <tr>
+                        <th><label for="pls-order-production-cost"><?php esc_html_e( 'Production Cost', 'pls-private-label-store' ); ?></label></th>
+                        <td>
+                            <input type="number" step="0.01" id="pls-order-production-cost" class="regular-text" 
+                                   value="<?php echo esc_attr( $order->production_cost ?: '' ); ?>" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><label for="pls-order-total-value"><?php esc_html_e( 'Total Value', 'pls-private-label-store' ); ?></label></th>
+                        <td>
+                            <input type="number" step="0.01" id="pls-order-total-value" class="regular-text" 
+                                   value="<?php echo esc_attr( $order->total_value ?: '' ); ?>" />
+                            <p class="description"><?php printf( esc_html__( 'Commission rate: %s%%', 'pls-private-label-store' ), number_format( $custom_order_percent, 2 ) ); ?></p>
+                        </td>
+                    </tr>
+                    <?php if ( $order->nikola_commission_amount ) : ?>
+                        <tr>
+                            <th><?php esc_html_e( 'Nikola Commission', 'pls-private-label-store' ); ?></th>
+                            <td><strong><?php echo wc_price( $order->nikola_commission_amount ); ?></strong></td>
+                        </tr>
+                    <?php endif; ?>
+                    <tr>
+                        <th><?php esc_html_e( 'Invoiced', 'pls-private-label-store' ); ?></th>
+                        <td>
+                            <?php if ( $order->invoiced_at ) : ?>
+                                <span class="pls-status-badge pls-status-success"><?php esc_html_e( 'Yes', 'pls-private-label-store' ); ?></span>
+                                <span class="description"><?php echo esc_html( date_i18n( get_option( 'date_format' ), strtotime( $order->invoiced_at ) ) ); ?></span>
+                            <?php else : ?>
+                                <button type="button" class="button button-small pls-mark-invoiced" data-order-id="<?php echo esc_attr( $order->id ); ?>">
+                                    <?php esc_html_e( 'Mark as Invoiced', 'pls-private-label-store' ); ?>
+                                </button>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><?php esc_html_e( 'Paid', 'pls-private-label-store' ); ?></th>
+                        <td>
+                            <?php if ( $order->paid_at ) : ?>
+                                <span class="pls-status-badge pls-status-success"><?php esc_html_e( 'Yes', 'pls-private-label-store' ); ?></span>
+                                <span class="description"><?php echo esc_html( date_i18n( get_option( 'date_format' ), strtotime( $order->paid_at ) ) ); ?></span>
+                            <?php else : ?>
+                                <button type="button" class="button button-small pls-mark-paid" data-order-id="<?php echo esc_attr( $order->id ); ?>">
+                                    <?php esc_html_e( 'Mark as Paid', 'pls-private-label-store' ); ?>
+                                </button>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                </table>
+                <p>
+                    <button type="button" class="button button-primary" id="pls-save-order-financials" data-order-id="<?php echo esc_attr( $order->id ); ?>">
+                        <?php esc_html_e( 'Save Financials', 'pls-private-label-store' ); ?>
+                    </button>
+                </p>
+            </div>
+        </div>
+        <?php
+        $html = ob_get_clean();
+        wp_send_json_success( array( 'html' => $html ) );
+    }
+
+    /**
+     * Update custom order financials.
+     */
+    public static function update_custom_order_financials() {
+        check_ajax_referer( 'pls_custom_orders_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $order_id = isset( $_POST['order_id'] ) ? absint( $_POST['order_id'] ) : 0;
+        $production_cost = isset( $_POST['production_cost'] ) ? floatval( $_POST['production_cost'] ) : 0;
+        $total_value = isset( $_POST['total_value'] ) ? floatval( $_POST['total_value'] ) : 0;
+        $nikola_commission_rate = isset( $_POST['nikola_commission_rate'] ) ? floatval( $_POST['nikola_commission_rate'] ) : 0;
+        $nikola_commission_amount = isset( $_POST['nikola_commission_amount'] ) ? floatval( $_POST['nikola_commission_amount'] ) : 0;
+
+        if ( ! $order_id ) {
+            wp_send_json_error( array( 'message' => __( 'Invalid order ID.', 'pls-private-label-store' ) ) );
+        }
+
+        $result = PLS_Repo_Custom_Order::update_financials(
+            $order_id,
+            $production_cost,
+            $total_value,
+            $nikola_commission_rate,
+            $nikola_commission_amount
+        );
+
+        if ( $result ) {
+            wp_send_json_success();
+        } else {
+            wp_send_json_error( array( 'message' => __( 'Failed to update financials.', 'pls-private-label-store' ) ) );
+        }
+    }
+
+    /**
+     * Mark custom order as invoiced.
+     */
+    public static function mark_custom_order_invoiced() {
+        check_ajax_referer( 'pls_custom_orders_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $order_id = isset( $_POST['order_id'] ) ? absint( $_POST['order_id'] ) : 0;
+        if ( ! $order_id ) {
+            wp_send_json_error( array( 'message' => __( 'Invalid order ID.', 'pls-private-label-store' ) ) );
+        }
+
+        $result = PLS_Repo_Custom_Order::mark_invoiced( $order_id );
+        if ( $result ) {
+            wp_send_json_success();
+        } else {
+            wp_send_json_error( array( 'message' => __( 'Failed to mark as invoiced.', 'pls-private-label-store' ) ) );
+        }
+    }
+
+    /**
+     * Mark custom order as paid.
+     */
+    public static function mark_custom_order_paid() {
+        check_ajax_referer( 'pls_custom_orders_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $order_id = isset( $_POST['order_id'] ) ? absint( $_POST['order_id'] ) : 0;
+        if ( ! $order_id ) {
+            wp_send_json_error( array( 'message' => __( 'Invalid order ID.', 'pls-private-label-store' ) ) );
+        }
+
+        $result = PLS_Repo_Custom_Order::mark_paid( $order_id );
+        if ( $result ) {
+            wp_send_json_success();
+        } else {
+            wp_send_json_error( array( 'message' => __( 'Failed to mark as paid.', 'pls-private-label-store' ) ) );
+        }
     }
 }
