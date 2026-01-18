@@ -28,6 +28,8 @@ final class PLS_Admin_Ajax {
         add_action( 'wp_ajax_pls_update_attribute_value', array( __CLASS__, 'update_attribute_value' ) );
         add_action( 'wp_ajax_pls_update_pack_tier_defaults', array( __CLASS__, 'update_pack_tier_defaults' ) );
         add_action( 'wp_ajax_pls_get_product_options_data', array( __CLASS__, 'get_product_options_data' ) );
+        add_action( 'wp_ajax_pls_preview_product', array( __CLASS__, 'preview_product' ) );
+        add_action( 'wp_ajax_pls_custom_product_request', array( __CLASS__, 'custom_product_request' ) );
     }
 
     /**
@@ -774,6 +776,97 @@ final class PLS_Admin_Ajax {
 
         $payload['attributes'] = array();
 
+        // Handle Package Type (single selection - value ID is submitted)
+        $package_type_value_id = isset( $data['package_type_attr'] ) ? absint( $data['package_type_attr'] ) : 0;
+        if ( $package_type_value_id ) {
+            $package_type_value = PLS_Repo_Attributes::get_value( $package_type_value_id );
+            if ( $package_type_value ) {
+                $package_type_attr = PLS_Repo_Attributes::get_attr( $package_type_value->attribute_id );
+                if ( $package_type_attr ) {
+                    $payload['attributes'][] = array(
+                        'attribute_id'    => $package_type_attr->id,
+                        'attribute_label' => $package_type_attr->label,
+                        'values'          => array(
+                            array(
+                                'value_id'    => $package_type_value_id,
+                                'value_label' => $package_type_value->label,
+                                'price'       => 0,
+                            ),
+                        ),
+                    );
+                }
+            }
+        }
+
+        // Handle Package Colors (multiple checkboxes)
+        $package_colors = isset( $data['package_colors'] ) && is_array( $data['package_colors'] ) ? array_map( 'absint', $data['package_colors'] ) : array();
+        if ( ! empty( $package_colors ) ) {
+            // Find Package Color attribute
+            $package_color_attr = null;
+            $all_attrs = PLS_Repo_Attributes::attrs_all();
+            foreach ( $all_attrs as $attr ) {
+                if ( isset( $attr->attr_key ) && ( $attr->attr_key === 'package-color' || $attr->attr_key === 'package-colour' ) ) {
+                    $package_color_attr = $attr;
+                    break;
+                }
+            }
+            if ( $package_color_attr ) {
+                $value_payload = array();
+                foreach ( $package_colors as $value_id ) {
+                    $value_obj = PLS_Repo_Attributes::get_value( $value_id );
+                    if ( $value_obj ) {
+                        $value_payload[] = array(
+                            'value_id'    => $value_id,
+                            'value_label' => $value_obj->label,
+                            'price'       => 0, // Price calculated from tier_price_overrides
+                        );
+                    }
+                }
+                if ( ! empty( $value_payload ) ) {
+                    $payload['attributes'][] = array(
+                        'attribute_id'    => $package_color_attr->id,
+                        'attribute_label' => $package_color_attr->label,
+                        'values'          => $value_payload,
+                    );
+                }
+            }
+        }
+
+        // Handle Package Caps (multiple checkboxes)
+        $package_caps = isset( $data['package_caps'] ) && is_array( $data['package_caps'] ) ? array_map( 'absint', $data['package_caps'] ) : array();
+        if ( ! empty( $package_caps ) ) {
+            // Find Package Cap attribute
+            $package_cap_attr = null;
+            $all_attrs = PLS_Repo_Attributes::attrs_all();
+            foreach ( $all_attrs as $attr ) {
+                if ( isset( $attr->attr_key ) && $attr->attr_key === 'package-cap' ) {
+                    $package_cap_attr = $attr;
+                    break;
+                }
+            }
+            if ( $package_cap_attr ) {
+                $value_payload = array();
+                foreach ( $package_caps as $value_id ) {
+                    $value_obj = PLS_Repo_Attributes::get_value( $value_id );
+                    if ( $value_obj ) {
+                        $value_payload[] = array(
+                            'value_id'    => $value_id,
+                            'value_label' => $value_obj->label,
+                            'price'       => 0, // Price calculated from tier_price_overrides
+                        );
+                    }
+                }
+                if ( ! empty( $value_payload ) ) {
+                    $payload['attributes'][] = array(
+                        'attribute_id'    => $package_cap_attr->id,
+                        'attribute_label' => $package_cap_attr->label,
+                        'values'          => $value_payload,
+                    );
+                }
+            }
+        }
+
+        // Handle additional product options (existing logic)
         $attr_rows_input = isset( $data['attr_options'] ) && is_array( $data['attr_options'] ) ? $data['attr_options'] : array();
         foreach ( $attr_rows_input as $attr_row ) {
             $attr_id        = isset( $attr_row['attribute_id'] ) ? absint( $attr_row['attribute_id'] ) : 0;
@@ -877,6 +970,18 @@ final class PLS_Admin_Ajax {
             if ( ! $has_enabled ) {
                 $errors[] = array( 'field' => 'pack_tiers', 'message' => __( 'Enable at least one pack tier.', 'pls-private-label-store' ) );
             }
+        }
+
+        // Package Type is now required
+        $has_package_type = false;
+        foreach ( $payload['attributes'] as $attr ) {
+            if ( isset( $attr['attribute_label'] ) && ( $attr['attribute_label'] === 'Package Type' || $attr['attribute_label'] === 'package-type' ) ) {
+                $has_package_type = true;
+                break;
+            }
+        }
+        if ( ! $has_package_type ) {
+            $errors[] = array( 'field' => 'package_type_attr', 'message' => __( 'Package Type is required.', 'pls-private-label-store' ) );
         }
 
         if ( empty( $payload['attributes'] ) ) {
@@ -1429,5 +1534,108 @@ final class PLS_Admin_Ajax {
                 );
             }, $ingredients ),
         ) );
+    }
+
+    /**
+     * AJAX: Generate live preview HTML for unsaved product data.
+     */
+    public static function preview_product() {
+        check_ajax_referer( 'pls_admin_nonce', 'nonce' );
+
+        if ( ! current_user_can( PLS_Capabilities::CAP_PRODUCTS ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $payload = self::sanitize_product_request( $_POST );
+
+        // Generate preview HTML without saving
+        ob_start();
+        require_once PLS_PLS_DIR . 'includes/admin/preview-renderer.php';
+        PLS_Preview_Renderer::render( $payload );
+        $html = ob_get_clean();
+
+        wp_send_json_success( array( 'html' => $html ) );
+    }
+
+    /**
+     * AJAX: Handle custom product request - creates WooCommerce draft order.
+     */
+    public static function custom_product_request() {
+        check_ajax_referer( 'pls_admin_nonce', 'nonce' );
+
+        if ( ! current_user_can( PLS_Capabilities::CAP_PRODUCTS ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        if ( ! function_exists( 'wc_create_order' ) ) {
+            wp_send_json_error( array( 'message' => __( 'WooCommerce is not active.', 'pls-private-label-store' ) ), 400 );
+        }
+
+        $product_type = isset( $_POST['product_type'] ) ? sanitize_text_field( wp_unslash( $_POST['product_type'] ) ) : '';
+        $requirements = isset( $_POST['requirements'] ) ? sanitize_textarea_field( wp_unslash( $_POST['requirements'] ) ) : '';
+        $quantity     = isset( $_POST['quantity'] ) ? absint( $_POST['quantity'] ) : 0;
+        $timeline     = isset( $_POST['timeline'] ) ? sanitize_text_field( wp_unslash( $_POST['timeline'] ) ) : '';
+        $budget       = isset( $_POST['budget'] ) ? sanitize_text_field( wp_unslash( $_POST['budget'] ) ) : '';
+
+        if ( empty( $product_type ) || empty( $requirements ) || empty( $quantity ) || empty( $timeline ) ) {
+            wp_send_json_error( array( 'message' => __( 'Please fill in all required fields.', 'pls-private-label-store' ) ), 400 );
+        }
+
+        // Create WooCommerce draft order
+        $order = wc_create_order( array( 'status' => 'pending' ) );
+
+        if ( is_wp_error( $order ) ) {
+            wp_send_json_error( array( 'message' => __( 'Failed to create order.', 'pls-private-label-store' ) ), 500 );
+        }
+
+        // Set order notes
+        $order_note = sprintf(
+            __( 'Custom Product Request: %s', 'pls-private-label-store' ),
+            $requirements
+        );
+        $order->add_order_note( $order_note );
+
+        // Set customer note
+        $customer_note = sprintf(
+            __( 'Quantity: %d units | Timeline: %s%s', 'pls-private-label-store' ),
+            $quantity,
+            $timeline,
+            $budget ? ' | Budget: ' . $budget : ''
+        );
+        $order->set_customer_note( $customer_note );
+
+        // Add custom meta
+        $order->update_meta_data( '_pls_custom_request', 1 );
+        $order->update_meta_data( '_pls_product_type', $product_type );
+        $order->update_meta_data( '_pls_quantity', $quantity );
+        $order->update_meta_data( '_pls_timeline', $timeline );
+        if ( $budget ) {
+            $order->update_meta_data( '_pls_budget', $budget );
+        }
+        $order->save();
+
+        // Send notification email
+        $admin_email = get_option( 'admin_email' );
+        $order_url   = admin_url( 'post.php?post=' . $order->get_id() . '&action=edit' );
+        $subject     = sprintf( __( '[%s] New Custom Product Request', 'pls-private-label-store' ), get_bloginfo( 'name' ) );
+        $message     = sprintf(
+            __( "A new custom product request has been submitted.\n\nProduct Type: %s\nQuantity: %d\nTimeline: %s\nBudget: %s\n\nRequirements:\n%s\n\nView order: %s", 'pls-private-label-store' ),
+            $product_type,
+            $quantity,
+            $timeline,
+            $budget ? $budget : __( 'Not specified', 'pls-private-label-store' ),
+            $requirements,
+            $order_url
+        );
+
+        wp_mail( $admin_email, $subject, $message );
+
+        wp_send_json_success(
+            array(
+                'message'  => __( 'Custom product request submitted successfully. A draft order has been created.', 'pls-private-label-store' ),
+                'order_id' => $order->get_id(),
+                'order_url' => $order_url,
+            )
+        );
     }
 }

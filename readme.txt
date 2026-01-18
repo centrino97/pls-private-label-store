@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.8.91
+Stable tag: 0.9.0
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,20 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 0.9.0 =
+* **Self-Service Edition:** Complete product management overhaul for client self-service without onboarding videos.
+* **Separate Product Attributes:** Restructured into Package Type, Package Color, and Package Cap as separate, flexible attributes.
+* **Tier-Variable Pricing:** Each option can have different prices at different tier levels (e.g., Frosted costs $2.00 at Tier 1, $1.00 at Tier 5).
+* **Live Price Calculator:** Real-time price calculator in product modal showing base price + addons with tier-specific pricing.
+* **Inline Validation:** Field-level validation with helpful error messages as users type.
+* **Cap Compatibility:** Automatic compatibility hints based on package type (e.g., jar only supports lid).
+* **Label Application Pricing:** Global setting for Tier 1-2 pricing, automatically FREE for Tier 3+.
+* **Custom Product Requests:** New workflow to request custom products via form that creates WooCommerce draft orders.
+* **Live Preview:** Real-time preview inside product modal showing how products will look on frontend.
+* **Enhanced Preview:** Preview shows tier-variable pricing, compatibility warnings, and tier restrictions.
+* **Database Migration:** Added tier_price_overrides and ingredient_category columns for flexible pricing.
+* **Default Attributes:** Auto-creates Package Type (30ml, 50ml, 120ml, 50gr jar), Package Color (Clear, Frosted, Amber), and Package Cap (White/Silver options) on activation.
+
 = 0.8.91 =
 * **Product Preview System:** Added frontend preview functionality in admin to see how Elementor widgets render.
 * **Preview Button:** Added "Preview Frontend" button next to each synced product in Products page.

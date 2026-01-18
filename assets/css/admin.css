@@ -166,3 +166,32 @@ body.pls-modal-open{overflow:hidden}
 .pls-attribute-value-row[data-min-tier="3"] .pls-attribute-value-label::after{content:"Tier 3+";position:absolute;top:-2px;right:-40px;font-size:9px;background:#6366f1;color:#fff;padding:2px 6px;border-radius:4px;font-weight:600}
 .pls-attribute-value-row[data-min-tier="4"] .pls-attribute-value-label::after{content:"Tier 4+";position:absolute;top:-2px;right:-40px;font-size:9px;background:#4f46e5;color:#fff;padding:2px 6px;border-radius:4px;font-weight:600}
 .pls-attribute-value-row[data-min-tier="5"] .pls-attribute-value-label::after{content:"Tier 5";position:absolute;top:-2px;right:-40px;font-size:9px;background:#312e81;color:#fff;padding:2px 6px;border-radius:4px;font-weight:600}
+
+/* Live Preview Mode Toggle */
+.pls-mode-toggle{display:flex;gap:6px;margin-bottom:12px;background:#f1f3f5;padding:4px;border-radius:10px}
+.pls-mode-btn{background:transparent;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-weight:600;transition:all .2s;color:#64748b}
+.pls-mode-btn:hover{background:#e2e8f0;color:#1f2937}
+.pls-mode-btn.is-active{background:#2271b1;color:#fff;box-shadow:0 4px 12px rgba(34,113,177,0.3)}
+.pls-modal__preview-panel{background:#fff;border-radius:14px;padding:20px;min-height:600px;position:relative;margin-top:12px}
+.pls-preview-loading{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:16px;color:#64748b;z-index:10}
+#pls-preview-iframe{width:100%;height:600px;border:none;background:#fff;border-radius:8px}
+
+/* Product Options UI */
+.pls-option-card{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;cursor:pointer;transition:all .2s;margin-bottom:8px}
+.pls-option-card:hover{background:#f8fafc;border-color:#2271b1}
+.pls-option-card input[type=checkbox]{margin:0}
+.pls-option-card input[type=checkbox]:disabled+div{opacity:.6}
+.pls-option-card strong{flex:1;font-size:14px}
+.pls-price-badge{display:inline-flex;align-items:center;padding:4px 10px;background:#e0f2fe;color:#0369a1;border-radius:6px;font-size:12px;font-weight:600}
+.pls-option-disabled{opacity:.5;pointer-events:none}
+.pls-field-error{border-color:#d63638!important;box-shadow:0 0 0 1px #d63638}
+.pls-field-error-msg{display:block;color:#d63638;font-size:12px;margin-top:4px}
+.pls-price-calculator{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin-top:24px}
+.pls-calc-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #e2e8f0;font-size:14px}
+.pls-calc-addon{color:#64748b}
+.pls-calc-total{display:flex;justify-content:space-between;padding:12px 0;margin-top:12px;border-top:2px solid #2271b1;font-size:18px;font-weight:600}
+.pls-calc-total strong{color:#2271b1}
+.pls-color-options,.pls-cap-matrix{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.pls-attribute-group{margin-bottom:20px}
+.pls-attribute-group label{display:block;margin-bottom:8px;font-weight:600}
+.pls-attribute-group select{width:100%;padding:8px 12px;border:1px solid #d8e3f2;border-radius:8px}

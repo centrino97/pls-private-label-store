@@ -84,15 +84,52 @@ final class PLS_Tier_Rules {
     }
 
     /**
+     * Calculate price for an attribute value at a specific tier level (tier-variable pricing).
+     *
+     * @param int $value_id Attribute value ID.
+     * @param int $tier_level Tier level (1-5).
+     * @return float Price impact at this tier.
+     */
+    public static function calculate_tier_price( $value_id, $tier_level ) {
+        $value = PLS_Repo_Attributes::get_value( $value_id );
+        if ( ! $value ) {
+            return 0.0;
+        }
+
+        // Check if tier_price_overrides exist
+        if ( ! empty( $value->tier_price_overrides ) ) {
+            $overrides = json_decode( $value->tier_price_overrides, true );
+            if ( is_array( $overrides ) && isset( $overrides[ $tier_level ] ) ) {
+                return floatval( $overrides[ $tier_level ] );
+            }
+        }
+
+        // Fallback to default price from term meta
+        if ( $value->term_id ) {
+            $default_price = get_term_meta( $value->term_id, '_pls_default_price_impact', true );
+            if ( '' !== $default_price ) {
+                return floatval( $default_price );
+            }
+        }
+
+        return 0.0;
+    }
+
+    /**
      * Get label application fee for a tier level.
      *
      * @param int $tier_level Tier level (1-5).
      * @return float Fee amount (0 for Tier 3+).
      */
     public static function get_label_fee( $tier_level ) {
-        // Tier 1-2: charge fee
         // Tier 3-5: free
-        return ( $tier_level >= 3 ) ? 0.0 : 25.00;
+        if ( $tier_level >= 3 ) {
+            return 0.0;
+        }
+
+        // Tier 1-2: use global setting
+        $label_price = get_option( 'pls_label_price_tier_1_2', '0.50' );
+        return floatval( $label_price );
     }
 
     /**

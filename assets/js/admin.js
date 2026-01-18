@@ -270,6 +270,8 @@
           }
           $(this).find('input[name*="[enabled]"]').prop('checked', true);
         });
+        // Reset preview mode to builder
+        switchMode('builder');
       }
 
       function updateKeyIngredients(forceSelection){
@@ -631,8 +633,54 @@
         $('#pls-label-file').prop('checked', !!parseInt(data.label_requires_file));
         $('#pls-label-guide').val(data.label_guide_url || defaultLabelGuide);
 
+        // Handle Package Type, Color, Cap separately
         if (Array.isArray(data.attributes)){
-          data.attributes.forEach(function(row){ buildAttributeRow(row); });
+          var packageTypeAttr = null;
+          var packageColorAttr = null;
+          var packageCapAttr = null;
+          var otherAttrs = [];
+          
+          data.attributes.forEach(function(row){
+            var attrLabel = row.attribute_label || '';
+            if (attrLabel.indexOf('Package Type') !== -1 || attrLabel.indexOf('package-type') !== -1){
+              packageTypeAttr = row;
+            } else if (attrLabel.indexOf('Package Color') !== -1 || attrLabel.indexOf('Package Colour') !== -1 || attrLabel.indexOf('package-color') !== -1 || attrLabel.indexOf('package-colour') !== -1){
+              packageColorAttr = row;
+            } else if (attrLabel.indexOf('Package Cap') !== -1 || attrLabel.indexOf('package-cap') !== -1){
+              packageCapAttr = row;
+            } else {
+              otherAttrs.push(row);
+            }
+          });
+          
+          // Populate Package Type
+          if (packageTypeAttr && packageTypeAttr.values && packageTypeAttr.values.length){
+            var firstValue = packageTypeAttr.values[0];
+            if (firstValue.value_id){
+              $('#pls-package-type-select').val(firstValue.value_id);
+            }
+          }
+          
+          // Populate Package Colors
+          if (packageColorAttr && packageColorAttr.values){
+            packageColorAttr.values.forEach(function(val){
+              if (val.value_id){
+                $('input[name="package_colors[]"][value="'+val.value_id+'"]').prop('checked', true);
+              }
+            });
+          }
+          
+          // Populate Package Caps
+          if (packageCapAttr && packageCapAttr.values){
+            packageCapAttr.values.forEach(function(val){
+              if (val.value_id){
+                $('input[name="package_caps[]"][value="'+val.value_id+'"]').prop('checked', true);
+              }
+            });
+          }
+          
+          // Populate other attributes
+          otherAttrs.forEach(function(row){ buildAttributeRow(row); });
         }
       }
 
@@ -672,6 +720,64 @@
 
     $('#pls-open-product-modal').on('click', function(){
       openProductModal(null);
+    });
+
+    // Custom product request modal
+    $('#pls-open-custom-request-modal').on('click', function(e){
+      e.preventDefault();
+      openModalById('#pls-custom-request-modal');
+    });
+
+    $('#pls-cancel-custom-request, #pls-custom-request-modal .pls-modal__close').on('click', function(e){
+      e.preventDefault();
+      closeModalElement($('#pls-custom-request-modal'));
+      $('#pls-custom-request-form')[0].reset();
+    });
+
+    $('#pls-custom-request-form').on('submit', function(e){
+      e.preventDefault();
+      var form = $(this);
+      var submitBtn = form.find('button[type=submit]');
+      var originalText = submitBtn.text();
+      
+      var productType = $('#pls-custom-product-type').val();
+      var requirements = $('#pls-custom-requirements').val().trim();
+      var quantity = parseInt($('#pls-custom-quantity').val(), 10);
+      var timeline = $('#pls-custom-timeline').val();
+      
+      if (!productType || !requirements || !quantity || !timeline){
+        alert('Please fill in all required fields.');
+        return;
+      }
+      
+      submitBtn.prop('disabled', true).text('Submitting...');
+      
+      $.post(ajaxurl, {
+        action: 'pls_custom_product_request',
+        nonce: (window.PLS_Admin ? PLS_Admin.nonce : ''),
+        product_type: productType,
+        requirements: requirements,
+        quantity: quantity,
+        timeline: timeline,
+        budget: $('#pls-custom-budget').val()
+      }, function(resp){
+        if (resp && resp.success){
+          alert(resp.data.message);
+          if (resp.data.order_url){
+            if (confirm('Would you like to view the draft order?')){
+              window.open(resp.data.order_url, '_blank');
+            }
+          }
+          closeModalElement($('#pls-custom-request-modal'));
+          form[0].reset();
+        } else {
+          alert((resp && resp.data && resp.data.message) ? resp.data.message : 'Failed to submit request.');
+        }
+      }).fail(function(){
+        alert('Failed to submit request. Please try again.');
+      }).always(function(){
+        submitBtn.prop('disabled', false).text(originalText);
+      });
     });
 
     $('.pls-edit-product').on('click', function(e){
@@ -1301,9 +1407,15 @@
         attrRow.find('.pls-attr-value-multi').val(preserved);
         renderValueDetails(attrRow);
       });
+      
+      // Refresh preview if in preview mode
+      if ($('#pls-preview-panel').is(':visible')){
+        clearTimeout(previewDebounce);
+        previewDebounce = setTimeout(generatePreview, 500);
+      }
     });
 
-    $('#pls-product-form').on('submit', function(e){
+      $('#pls-product-form').on('submit', function(e){
         e.preventDefault();
         var errors = validateProductForm();
         if (errors.length){
@@ -1334,6 +1446,269 @@
           submitBtn.prop('disabled', false).text(originalText);
         });
       });
+
+      // Mode toggle handler
+      $('.pls-mode-btn').on('click', function(){
+        var mode = $(this).data('mode');
+        switchMode(mode);
+      });
+
+      function switchMode(mode){
+        $('.pls-mode-btn').removeClass('is-active');
+        $('.pls-mode-btn[data-mode="'+mode+'"]').addClass('is-active');
+        
+        if (mode === 'preview'){
+          $('.pls-stepper, .pls-modal__footer .pls-stepper__controls, .pls-modal__footer .pls-stepper__actions').hide();
+          $('#pls-preview-panel').show();
+          generatePreview();
+        } else {
+          $('.pls-stepper, .pls-modal__footer .pls-stepper__controls, .pls-modal__footer .pls-stepper__actions').show();
+          $('#pls-preview-panel').hide();
+        }
+      }
+
+      var previewDebounce = null;
+      function generatePreview(){
+        var formData = $('#pls-product-form').serializeArray();
+        formData.push({ name: 'action', value: 'pls_preview_product' });
+        formData.push({ name: 'nonce', value: (window.PLS_Admin ? PLS_Admin.nonce : '') });
+        
+        $('#pls-preview-iframe').hide();
+        $('.pls-preview-loading').show();
+        
+        $.post(ajaxurl, formData, function(resp){
+          if (resp && resp.success && resp.data && resp.data.html){
+            var iframe = document.getElementById('pls-preview-iframe');
+            if (iframe && iframe.contentDocument){
+              iframe.contentDocument.open();
+              iframe.contentDocument.write(resp.data.html);
+              iframe.contentDocument.close();
+              $('.pls-preview-loading').hide();
+              $('#pls-preview-iframe').show();
+            }
+          } else {
+            $('.pls-preview-loading').text('Preview generation failed. Please check form data.');
+          }
+        }).fail(function(){
+          $('.pls-preview-loading').text('Failed to generate preview. Please try again.');
+        });
+      }
+
+      // Auto-refresh preview on field changes (debounced)
+      $(document).on('input change', '#pls-product-form input, #pls-product-form textarea, #pls-product-form select', function(){
+        if ($('#pls-preview-panel').is(':visible')){
+          clearTimeout(previewDebounce);
+          previewDebounce = setTimeout(generatePreview, 800);
+        }
+        // Update price calculator
+        updatePriceCalculator();
+      });
+
+      // Inline validation
+      function validateField(field){
+        var fieldName = field.attr('name') || field.attr('id');
+        var value = field.val();
+        var errorMsg = '';
+        
+        // Remove existing error
+        field.removeClass('pls-field-error');
+        field.next('.pls-field-error-msg').remove();
+        
+        // Field-specific validation
+        if (fieldName === 'name' || fieldName === 'pls-name'){
+          if (!value || value.trim().length < 3){
+            errorMsg = 'Product name must be at least 3 characters';
+          }
+        }
+        
+        if (fieldName === 'package_type_attr' || fieldName === 'pls-package-type-select'){
+          if (!value){
+            errorMsg = 'Please select a package type';
+          }
+        }
+        
+        if (fieldName && fieldName.indexOf('pack_tiers') !== -1 && fieldName.indexOf('[price]') !== -1){
+          var priceVal = parseFloat(value);
+          if (isNaN(priceVal) || priceVal <= 0){
+            errorMsg = 'Price must be greater than zero';
+          }
+        }
+        
+        // Show error if found
+        if (errorMsg){
+          field.addClass('pls-field-error');
+          field.after('<span class="pls-field-error-msg" style="display:block;color:#d63638;font-size:12px;margin-top:4px;">' + errorMsg + '</span>');
+        }
+        
+        return !errorMsg;
+      }
+
+      // Real-time field validation
+      $(document).on('blur', '#pls-name, #pls-package-type-select, input[name*="[price]"]', function(){
+        validateField($(this));
+      });
+
+      // Price calculator
+      function updatePriceCalculator(){
+        var selectedTier = parseInt($('#pls-calc-tier-select').val(), 10) || 1;
+        var basePrice = 0;
+        var addons = [];
+        
+        // Get base price from selected pack tier
+        $('#pls-pack-grid .pls-pack-row').each(function(){
+          var enabled = $(this).find('input[name*="[enabled]"]').is(':checked');
+          if (enabled){
+            var units = parseInt($(this).find('input[name*="[units]"]').val(), 10) || 0;
+            var pricePerUnit = parseFloat($(this).find('input[name*="[price]"]').val()) || 0;
+            
+            // Map units to tier level
+            var tierLevel = 1;
+            if (units <= 50) tierLevel = 1;
+            else if (units <= 100) tierLevel = 2;
+            else if (units <= 250) tierLevel = 3;
+            else if (units <= 500) tierLevel = 4;
+            else tierLevel = 5;
+            
+            if (tierLevel === selectedTier){
+              basePrice = units * pricePerUnit;
+            }
+          }
+        });
+        
+        // Calculate addons from package color
+        $('input[name="package_colors[]"]:checked').each(function(){
+          var badge = $(this).closest('.pls-option-card').find('.pls-price-badge');
+          var tierPrices = badge.data('tier-prices');
+          var defaultPrice = badge.data('default-price') || 0;
+          var price = 0;
+          
+          if (tierPrices && typeof tierPrices === 'object' && tierPrices[selectedTier]){
+            price = parseFloat(tierPrices[selectedTier]);
+          } else if (defaultPrice > 0){
+            price = defaultPrice;
+          }
+          
+          if (price > 0){
+            var label = $(this).closest('.pls-option-card').find('strong').text();
+            addons.push({ label: label, price: price });
+          }
+        });
+        
+        // Calculate addons from package cap
+        $('input[name="package_caps[]"]:checked').each(function(){
+          var badge = $(this).closest('.pls-option-card').find('.pls-price-badge');
+          var tierPrices = badge.data('tier-prices');
+          var defaultPrice = badge.data('default-price') || 0;
+          var price = 0;
+          
+          if (tierPrices && typeof tierPrices === 'object' && tierPrices[selectedTier]){
+            price = parseFloat(tierPrices[selectedTier]);
+          } else if (defaultPrice > 0){
+            price = defaultPrice;
+          }
+          
+          if (price > 0){
+            var label = $(this).closest('.pls-option-card').find('strong').text();
+            addons.push({ label: label, price: price });
+          }
+        });
+        
+        // Label application fee
+        if ($('#pls-label-enabled').is(':checked')){
+          var labelPrice = 0;
+          if (selectedTier >= 3){
+            labelPrice = 0; // FREE for Tier 3+
+          } else {
+            labelPrice = parseFloat($('#pls-label-price').val()) || 0;
+            if (labelPrice > 0){
+              // Multiply by units for selected tier
+              var tierUnits = 50;
+              if (selectedTier === 2) tierUnits = 100;
+              else if (selectedTier === 3) tierUnits = 250;
+              else if (selectedTier === 4) tierUnits = 500;
+              else if (selectedTier === 5) tierUnits = 1000;
+              labelPrice = labelPrice * tierUnits;
+            }
+          }
+          if (labelPrice > 0){
+            addons.push({ label: 'Label Application', price: labelPrice });
+          }
+        }
+        
+        // Update calculator display
+        var unitsLabel = '50';
+        if (selectedTier === 2) unitsLabel = '100';
+        else if (selectedTier === 3) unitsLabel = '250';
+        else if (selectedTier === 4) unitsLabel = '500';
+        else if (selectedTier === 5) unitsLabel = '1000';
+        
+        $('#pls-calc-base-label').text('Base Price (' + unitsLabel + ' units)');
+        $('#pls-calc-base-price').text('$' + basePrice.toFixed(2));
+        
+        var addonsHtml = '';
+        var totalAddons = 0;
+        addons.forEach(function(addon){
+          totalAddons += addon.price;
+          addonsHtml += '<div class="pls-calc-row pls-calc-addon" style="display:flex;justify-content:space-between;padding:6px 0;color:#64748b;font-size:14px;">';
+          addonsHtml += '<span>+ ' + addon.label + '</span>';
+          addonsHtml += '<strong>+$' + addon.price.toFixed(2) + '</strong>';
+          addonsHtml += '</div>';
+        });
+        
+        $('#pls-calc-addons').html(addonsHtml);
+        var total = basePrice + totalAddons;
+        $('#pls-calc-total-price').text('$' + total.toFixed(2));
+      }
+
+      // Update price calculator when tier selector changes
+      $('#pls-calc-tier-select').on('change', updatePriceCalculator);
+      
+      // Update price badges based on selected tier
+      function updatePriceBadges(){
+        var selectedTier = parseInt($('#pls-calc-tier-select').val(), 10) || 1;
+        
+        $('.pls-price-badge[data-tier-prices]').each(function(){
+          var badge = $(this);
+          var tierPrices = badge.data('tier-prices');
+          if (tierPrices && typeof tierPrices === 'object' && tierPrices[selectedTier]){
+            var price = parseFloat(tierPrices[selectedTier]);
+            var currentText = badge.text();
+            var newText = currentText.replace(/\+?\$[\d.]+.*/, '+$' + price.toFixed(2) + ' (Tier ' + selectedTier + ')');
+            badge.text(newText);
+          }
+        });
+      }
+      
+      $('#pls-calc-tier-select').on('change', updatePriceBadges);
+
+      // Cap compatibility matrix (updates based on package type)
+      function updateCapCompatibility(){
+        var packageType = $('#pls-package-type-select option:selected').text().toLowerCase();
+        var isJar = packageType.indexOf('jar') !== -1;
+        var isLargeBottle = packageType.indexOf('120ml') !== -1;
+        
+        $('input[name="package_caps[]"]').each(function(){
+          var capLabel = $(this).closest('.pls-option-card').find('strong').text().toLowerCase();
+          var isDropper = capLabel.indexOf('dropper') !== -1;
+          var isPump = capLabel.indexOf('pump') !== -1;
+          var isLid = capLabel.indexOf('lid') !== -1;
+          
+          var shouldDisable = false;
+          if (isJar && !isLid){
+            shouldDisable = true; // Jar only supports lid
+          } else if (isLargeBottle && isDropper){
+            shouldDisable = true; // 120ml doesn't support dropper
+          }
+          
+          $(this).prop('disabled', shouldDisable);
+          if (shouldDisable && $(this).is(':checked')){
+            $(this).prop('checked', false);
+          }
+          $(this).closest('.pls-option-card').toggleClass('pls-option-disabled', shouldDisable);
+        });
+      }
+      
+      $('#pls-package-type-select').on('change', updateCapCompatibility);
 
     $(document).on('click', '.pls-icon-pick', function(e){
       e.preventDefault();

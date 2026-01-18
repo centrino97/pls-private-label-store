@@ -86,19 +86,37 @@ final class PLS_Repo_Attributes {
         $table     = PLS_Repositories::table( 'attribute_value' );
         $value_key = ! empty( $data['value_key'] ) ? $data['value_key'] : self::generate_unique_value_key( $data['attribute_id'], $data['label'] );
 
-        $wpdb->insert(
-            $table,
-            array(
-                'attribute_id' => $data['attribute_id'],
-                'value_key'    => $value_key,
-                'label'        => $data['label'],
-                'seo_slug'     => isset( $data['seo_slug'] ) ? $data['seo_slug'] : '',
-                'seo_title'    => isset( $data['seo_title'] ) ? $data['seo_title'] : '',
-                'seo_description' => isset( $data['seo_description'] ) ? $data['seo_description'] : '',
-                'sort_order'   => isset( $data['sort_order'] ) ? absint( $data['sort_order'] ) : 0,
-            ),
-            array( '%d', '%s', '%s', '%s', '%s', '%s', '%d' )
+        $insert_data = array(
+            'attribute_id' => $data['attribute_id'],
+            'value_key'    => $value_key,
+            'label'        => $data['label'],
+            'seo_slug'     => isset( $data['seo_slug'] ) ? $data['seo_slug'] : '',
+            'seo_title'    => isset( $data['seo_title'] ) ? $data['seo_title'] : '',
+            'seo_description' => isset( $data['seo_description'] ) ? $data['seo_description'] : '',
+            'sort_order'   => isset( $data['sort_order'] ) ? absint( $data['sort_order'] ) : 0,
         );
+
+        $format = array( '%d', '%s', '%s', '%s', '%s', '%s', '%d' );
+
+        // Add optional min_tier_level
+        if ( isset( $data['min_tier_level'] ) ) {
+            $insert_data['min_tier_level'] = absint( $data['min_tier_level'] );
+            $format[] = '%d';
+        }
+
+        // Add optional tier_price_overrides
+        if ( isset( $data['tier_price_overrides'] ) && is_array( $data['tier_price_overrides'] ) ) {
+            $insert_data['tier_price_overrides'] = wp_json_encode( $data['tier_price_overrides'] );
+            $format[] = '%s';
+        }
+
+        // Add optional ingredient_category
+        if ( isset( $data['ingredient_category'] ) ) {
+            $insert_data['ingredient_category'] = sanitize_text_field( $data['ingredient_category'] );
+            $format[] = '%s';
+        }
+
+        $wpdb->insert( $table, $insert_data, $format );
 
         return $wpdb->insert_id;
     }
@@ -400,6 +418,67 @@ final class PLS_Repo_Attributes {
             array( 'is_primary' => 1 ),
             array( 'id' => $attribute_id ),
             array( '%d' ),
+            array( '%d' )
+        );
+    }
+
+    /**
+     * Update tier price overrides for an attribute value.
+     *
+     * @param int $value_id Attribute value ID.
+     * @param array $tier_overrides Array of tier_level => price (e.g., [1 => 2.00, 2 => 1.80]).
+     * @return bool|int Number of rows affected or false on error.
+     */
+    public static function update_tier_price_overrides( $value_id, $tier_overrides ) {
+        global $wpdb;
+        $table = PLS_Repositories::table( 'attribute_value' );
+
+        $json = is_array( $tier_overrides ) ? wp_json_encode( $tier_overrides ) : null;
+
+        return $wpdb->update(
+            $table,
+            array( 'tier_price_overrides' => $json ),
+            array( 'id' => $value_id ),
+            array( '%s' ),
+            array( '%d' )
+        );
+    }
+
+    /**
+     * Get fragrances (ingredients with category 'fragrance').
+     *
+     * @return array Array of attribute value objects.
+     */
+    public static function get_fragrances() {
+        global $wpdb;
+        $table = PLS_Repositories::table( 'attribute_value' );
+
+        return $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT * FROM {$table} 
+                WHERE ingredient_category = %s 
+                ORDER BY sort_order ASC, id ASC",
+                'fragrance'
+            )
+        );
+    }
+
+    /**
+     * Update ingredient category for an attribute value.
+     *
+     * @param int $value_id Attribute value ID.
+     * @param string|null $category Category name (e.g., 'fragrance') or null to clear.
+     * @return bool|int Number of rows affected or false on error.
+     */
+    public static function update_ingredient_category( $value_id, $category ) {
+        global $wpdb;
+        $table = PLS_Repositories::table( 'attribute_value' );
+
+        return $wpdb->update(
+            $table,
+            array( 'ingredient_category' => $category ? sanitize_text_field( $category ) : null ),
+            array( 'id' => $value_id ),
+            array( '%s' ),
             array( '%d' )
         );
     }

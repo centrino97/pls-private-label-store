@@ -91,6 +91,7 @@ wp_localize_script(
     </div>
     <div>
       <button class="button" id="pls-sync-all"><?php esc_html_e( 'Sync all to Woo', 'pls-private-label-store' ); ?></button>
+      <button class="button" id="pls-open-custom-request-modal"><?php esc_html_e( 'Request Custom Product', 'pls-private-label-store' ); ?></button>
       <button class="button button-primary button-hero" id="pls-open-product-modal"><?php esc_html_e( 'Add product', 'pls-private-label-store' ); ?></button>
     </div>
   </div>
@@ -161,6 +162,10 @@ wp_localize_script(
           <p class="description"><?php esc_html_e( 'Minimal, responsive editor with instant saves.', 'pls-private-label-store' ); ?></p>
         </div>
         <button type="button" class="pls-modal__close" aria-label="Close">×</button>
+      </div>
+      <div class="pls-mode-toggle">
+        <button type="button" class="pls-mode-btn is-active" data-mode="builder"><?php esc_html_e( 'Builder', 'pls-private-label-store' ); ?></button>
+        <button type="button" class="pls-mode-btn" data-mode="preview"><?php esc_html_e( 'Preview', 'pls-private-label-store' ); ?></button>
       </div>
       <form method="post" class="pls-modern-form" id="pls-product-form">
         <?php wp_nonce_field( 'pls_product_modal_save' ); ?>
@@ -340,22 +345,188 @@ wp_localize_script(
                     </div>
                   <?php endforeach; ?>
                 </div>
+                
+                <!-- Live Price Calculator -->
+                <div class="pls-price-calculator" id="pls-live-calculator" style="margin-top: 24px; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
+                  <h4 style="margin-top: 0; font-size: 16px;"><?php esc_html_e( 'Estimated Price Calculator', 'pls-private-label-store' ); ?></h4>
+                  <div class="pls-calc-tier-selector" style="margin-bottom: 12px;">
+                    <label style="display: flex; align-items: center; gap: 8px;">
+                      <span><?php esc_html_e( 'Calculate for:', 'pls-private-label-store' ); ?></span>
+                      <select id="pls-calc-tier-select" style="padding: 4px 8px;">
+                        <option value="1"><?php esc_html_e( 'Tier 1 (50 units)', 'pls-private-label-store' ); ?></option>
+                        <option value="2"><?php esc_html_e( 'Tier 2 (100 units)', 'pls-private-label-store' ); ?></option>
+                        <option value="3"><?php esc_html_e( 'Tier 3 (250 units)', 'pls-private-label-store' ); ?></option>
+                        <option value="4"><?php esc_html_e( 'Tier 4 (500 units)', 'pls-private-label-store' ); ?></option>
+                        <option value="5"><?php esc_html_e( 'Tier 5 (1000 units)', 'pls-private-label-store' ); ?></option>
+                      </select>
+                    </label>
+                  </div>
+                  <div class="pls-calc-breakdown">
+                    <div class="pls-calc-row" style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
+                      <span id="pls-calc-base-label"><?php esc_html_e( 'Base Price', 'pls-private-label-store' ); ?></span>
+                      <strong id="pls-calc-base-price">$0.00</strong>
+                    </div>
+                    <div id="pls-calc-addons" style="margin-top: 8px;">
+                      <!-- Addons will be populated by JavaScript -->
+                    </div>
+                    <div class="pls-calc-total" style="display: flex; justify-content: space-between; padding: 12px 0; margin-top: 12px; border-top: 2px solid #2271b1; font-size: 18px; font-weight: 600;">
+                      <span><?php esc_html_e( 'Total Price', 'pls-private-label-store' ); ?></span>
+                      <strong id="pls-calc-total-price" style="color: #2271b1;">$0.00</strong>
+                    </div>
+                  </div>
+                  <p class="pls-subtle" style="margin-top: 12px; font-size: 12px;"><?php esc_html_e( 'Prices shown are estimates. Select different pack tiers and options to see pricing variations.', 'pls-private-label-store' ); ?></p>
+                </div>
               </div>
             </div>
 
             <div class="pls-stepper__panel" data-step="attributes">
+              <div class="pls-modal__grid">
+                <!-- Package Type Section -->
                 <div class="pls-modal__section">
                   <div class="pls-section-heading">
-                    <p class="pls-label"><?php esc_html_e( 'PRODUCT OPTIONS', 'pls-private-label-store' ); ?></p>
-                    <h3><?php esc_html_e( 'Product options', 'pls-private-label-store' ); ?></h3>
-                    <p class="pls-subtle"><?php esc_html_e( 'Select product options like Package Type, Package Colour, and other customizations. Available options depend on the Pack Tier selected above.', 'pls-private-label-store' ); ?></p>
+                    <p class="pls-label"><?php esc_html_e( 'PACKAGE CONFIGURATION', 'pls-private-label-store' ); ?></p>
+                    <h3><?php esc_html_e( 'Package Type', 'pls-private-label-store' ); ?></h3>
+                    <p class="pls-subtle"><?php esc_html_e( 'Choose the container size for this product.', 'pls-private-label-store' ); ?></p>
                   </div>
-                  <div class="pls-field-stack">
-                    <button type="button" class="button" id="pls-open-attribute-manage"><?php esc_html_e( 'Manage product options & values', 'pls-private-label-store' ); ?></button>
+                  <div class="pls-attribute-group" id="pls-package-type-group">
+                    <label><?php esc_html_e( 'Container Size', 'pls-private-label-store' ); ?>
+                      <select name="package_type_attr" id="pls-package-type-select" class="pls-package-type-select">
+                        <option value=""><?php esc_html_e( 'Select package type', 'pls-private-label-store' ); ?></option>
+                        <?php
+                        // Find Package Type attribute
+                        $package_type_attr = null;
+                        foreach ( $attr_payload as $attr ) {
+                            if ( isset( $attr['attr_key'] ) && $attr['attr_key'] === 'package-type' ) {
+                                $package_type_attr = $attr;
+                                break;
+                            }
+                        }
+                        if ( $package_type_attr && ! empty( $package_type_attr['values'] ) ) {
+                            foreach ( $package_type_attr['values'] as $value ) {
+                                ?>
+                                <option value="<?php echo esc_attr( $value['id'] ); ?>" data-label="<?php echo esc_attr( $value['label'] ); ?>">
+                                    <?php echo esc_html( $value['label'] ); ?>
+                                </option>
+                                <?php
+                            }
+                        }
+                        ?>
+                      </select>
+                    </label>
+                    <p class="pls-field-hint"><?php esc_html_e( 'Select the container size (30ml, 50ml, 120ml bottle or 50gr jar).', 'pls-private-label-store' ); ?></p>
                   </div>
-                  <div id="pls-attribute-rows" class="pls-attribute-rows"></div>
-                  <button type="button" class="button" id="pls-add-attribute-row"><?php esc_html_e( 'Add product option', 'pls-private-label-store' ); ?></button>
-                  <div id="pls-attribute-template" class="hidden">
+                </div>
+
+                <!-- Package Color Section -->
+                <div class="pls-modal__section">
+                  <div class="pls-section-heading">
+                    <h3><?php esc_html_e( 'Package Color/Finish', 'pls-private-label-store' ); ?></h3>
+                    <p class="pls-subtle"><?php esc_html_e( 'Choose the glass finish. Prices vary by pack tier.', 'pls-private-label-store' ); ?></p>
+                  </div>
+                  <div class="pls-color-options" id="pls-package-color-options">
+                    <?php
+                    // Find Package Color attribute
+                    $package_color_attr = null;
+                    foreach ( $attr_payload as $attr ) {
+                        if ( isset( $attr['attr_key'] ) && ( $attr['attr_key'] === 'package-color' || $attr['attr_key'] === 'package-colour' ) ) {
+                            $package_color_attr = $attr;
+                            break;
+                        }
+                    }
+                    if ( $package_color_attr && ! empty( $package_color_attr['values'] ) ) {
+                        foreach ( $package_color_attr['values'] as $value ) {
+                            $tier_prices = isset( $value['tier_price_overrides'] ) && is_array( $value['tier_price_overrides'] ) ? $value['tier_price_overrides'] : null;
+                            $default_price = isset( $value['price'] ) ? floatval( $value['price'] ) : 0;
+                            $is_standard = ( strpos( strtolower( $value['label'] ), 'standard' ) !== false || strpos( strtolower( $value['label'] ), 'clear' ) !== false );
+                            ?>
+                            <label class="pls-option-card">
+                                <input type="checkbox" name="package_colors[]" value="<?php echo esc_attr( $value['id'] ); ?>" 
+                                       data-value-id="<?php echo esc_attr( $value['id'] ); ?>"
+                                       <?php echo $is_standard ? 'checked disabled' : ''; ?> />
+                                <div>
+                                    <strong><?php echo esc_html( $value['label'] ); ?></strong>
+                                    <?php if ( $is_standard ) : ?>
+                                        <span class="pls-price-badge"><?php esc_html_e( 'Included', 'pls-private-label-store' ); ?></span>
+                                    <?php else : ?>
+                                        <span class="pls-price-badge" data-tier-prices="<?php echo esc_attr( $tier_prices ? wp_json_encode( $tier_prices ) : '' ); ?>" 
+                                              data-default-price="<?php echo esc_attr( $default_price ); ?>">
+                                            <?php
+                                            if ( $tier_prices && isset( $tier_prices[1] ) ) {
+                                                echo '+$' . number_format( floatval( $tier_prices[1] ), 2 ) . ' ' . esc_html__( '(Tier 1)', 'pls-private-label-store' );
+                                            } elseif ( $default_price > 0 ) {
+                                                echo '+$' . number_format( $default_price, 2 );
+                                            }
+                                            ?>
+                                        </span>
+                                    <?php endif; ?>
+                                </div>
+                            </label>
+                            <?php
+                        }
+                    }
+                    ?>
+                  </div>
+                </div>
+
+                <!-- Package Cap Section -->
+                <div class="pls-modal__section">
+                  <div class="pls-section-heading">
+                    <h3><?php esc_html_e( 'Package Cap/Applicator', 'pls-private-label-store' ); ?></h3>
+                    <p class="pls-subtle"><?php esc_html_e( 'Select compatible caps for your chosen package type. Silver options have tier-variable pricing.', 'pls-private-label-store' ); ?></p>
+                  </div>
+                  <div class="pls-cap-matrix" id="pls-cap-compatibility">
+                    <?php
+                    // Find Package Cap attribute
+                    $package_cap_attr = null;
+                    foreach ( $attr_payload as $attr ) {
+                        if ( isset( $attr['attr_key'] ) && $attr['attr_key'] === 'package-cap' ) {
+                            $package_cap_attr = $attr;
+                            break;
+                        }
+                    }
+                    if ( $package_cap_attr && ! empty( $package_cap_attr['values'] ) ) {
+                        foreach ( $package_cap_attr['values'] as $value ) {
+                            $tier_prices = isset( $value['tier_price_overrides'] ) && is_array( $value['tier_price_overrides'] ) ? $value['tier_price_overrides'] : null;
+                            $default_price = isset( $value['price'] ) ? floatval( $value['price'] ) : 0;
+                            $is_silver = ( strpos( strtolower( $value['label'] ), 'silver' ) !== false );
+                            ?>
+                            <label class="pls-option-card">
+                                <input type="checkbox" name="package_caps[]" value="<?php echo esc_attr( $value['id'] ); ?>" 
+                                       data-value-id="<?php echo esc_attr( $value['id'] ); ?>" />
+                                <div>
+                                    <strong><?php echo esc_html( $value['label'] ); ?></strong>
+                                    <?php if ( $is_silver && $tier_prices ) : ?>
+                                        <span class="pls-price-badge" data-tier-prices="<?php echo esc_attr( wp_json_encode( $tier_prices ) ); ?>">
+                                            <?php echo '+$' . number_format( floatval( $tier_prices[1] ), 2 ) . ' ' . esc_html__( '(Tier 1)', 'pls-private-label-store' ); ?>
+                                        </span>
+                                    <?php elseif ( $default_price > 0 ) : ?>
+                                        <span class="pls-price-badge">+$<?php echo number_format( $default_price, 2 ); ?></span>
+                                    <?php else : ?>
+                                        <span class="pls-price-badge"><?php esc_html_e( 'Included', 'pls-private-label-store' ); ?></span>
+                                    <?php endif; ?>
+                                </div>
+                            </label>
+                            <?php
+                        }
+                    }
+                    ?>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Additional Product Options (for custom attributes) -->
+              <div class="pls-modal__section" style="margin-top: 24px;">
+                <div class="pls-section-heading">
+                  <p class="pls-label"><?php esc_html_e( 'ADDITIONAL OPTIONS', 'pls-private-label-store' ); ?></p>
+                  <h3><?php esc_html_e( 'Other Product Options', 'pls-private-label-store' ); ?></h3>
+                  <p class="pls-subtle"><?php esc_html_e( 'Add custom product options like Custom Printed Bottles, External Box Packaging, etc.', 'pls-private-label-store' ); ?></p>
+                </div>
+                <div class="pls-field-stack">
+                  <button type="button" class="button" id="pls-open-attribute-manage"><?php esc_html_e( 'Manage product options & values', 'pls-private-label-store' ); ?></button>
+                </div>
+                <div id="pls-attribute-rows" class="pls-attribute-rows"></div>
+                <button type="button" class="button" id="pls-add-attribute-row"><?php esc_html_e( 'Add product option', 'pls-private-label-store' ); ?></button>
+                <div id="pls-attribute-template" class="hidden">
                   <div class="pls-attribute-row">
                     <div class="pls-attribute-row__grid">
                       <div class="pls-attribute-card">
@@ -363,18 +534,20 @@ wp_localize_script(
                         <select class="pls-attr-select" name="">
                           <option value=""><?php esc_html_e( 'Select option', 'pls-private-label-store' ); ?></option>
                           <?php 
-                          // Filter out Pack Tier (primary) and ingredient attributes - only show product options
+                          // Filter out Pack Tier (primary), Package Type, Package Color, Package Cap, and ingredient attributes
                           $primary_attr_id = $primary_attr ? $primary_attr->id : 0;
+                          $excluded_keys = array( 'pack-tier', 'package-type', 'package-color', 'package-colour', 'package-cap' );
                           foreach ( $attr_payload as $attr ) : 
                             // Skip primary attribute (Pack Tier) and ingredient attributes
                             if ( isset( $attr['is_primary'] ) && $attr['is_primary'] ) continue;
                             if ( isset( $attr['option_type'] ) && $attr['option_type'] === 'ingredient' ) continue;
                             if ( isset( $attr['id'] ) && (int) $attr['id'] === $primary_attr_id ) continue;
+                            if ( isset( $attr['attr_key'] ) && in_array( $attr['attr_key'], $excluded_keys, true ) ) continue;
                           ?>
                               <option value="<?php echo esc_attr( $attr['id'] ); ?>"><?php echo esc_html( $attr['label'] ); ?></option>
                           <?php endforeach; ?>
                         </select>
-                        <span class="pls-field-hint"><?php esc_html_e( 'Pick a product option (Package Type, Package Colour, etc.).', 'pls-private-label-store' ); ?></span>
+                        <span class="pls-field-hint"><?php esc_html_e( 'Pick an additional product option.', 'pls-private-label-store' ); ?></span>
                       </div>
                       <div class="pls-attribute-card">
                         <div class="pls-attr-value-stack">
@@ -437,6 +610,11 @@ wp_localize_script(
               </div>
             </div>
           </div>
+        </div>
+
+        <div class="pls-modal__preview-panel" id="pls-preview-panel" style="display:none;">
+          <div class="pls-preview-loading"><?php esc_html_e( 'Generating preview...', 'pls-private-label-store' ); ?></div>
+          <iframe id="pls-preview-iframe" style="width:100%; height:600px; border:none; background:#fff;"></iframe>
         </div>
 
         <div class="pls-modal__footer">
@@ -544,5 +722,61 @@ wp_localize_script(
         </div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- Custom Product Request Modal -->
+<div class="pls-modal" id="pls-custom-request-modal">
+  <div class="pls-modal__dialog">
+    <div class="pls-modal__head">
+      <div>
+        <h2><?php esc_html_e( 'Request Custom Product', 'pls-private-label-store' ); ?></h2>
+        <p class="description"><?php esc_html_e( 'Submit a custom product request that will create a draft WooCommerce order for review.', 'pls-private-label-store' ); ?></p>
+      </div>
+      <button type="button" class="pls-modal__close" aria-label="<?php esc_attr_e( 'Close', 'pls-private-label-store' ); ?>">×</button>
+    </div>
+    <form class="pls-modern-form" id="pls-custom-request-form">
+      <div class="pls-modal__section">
+        <label><?php esc_html_e( 'Product Type', 'pls-private-label-store' ); ?>
+          <select name="product_type" id="pls-custom-product-type" required>
+            <option value=""><?php esc_html_e( 'Select product type', 'pls-private-label-store' ); ?></option>
+            <option value="serum"><?php esc_html_e( 'Serum', 'pls-private-label-store' ); ?></option>
+            <option value="moisturizer"><?php esc_html_e( 'Moisturizer', 'pls-private-label-store' ); ?></option>
+            <option value="cleanser"><?php esc_html_e( 'Cleanser', 'pls-private-label-store' ); ?></option>
+            <option value="toner"><?php esc_html_e( 'Toner', 'pls-private-label-store' ); ?></option>
+            <option value="other"><?php esc_html_e( 'Other', 'pls-private-label-store' ); ?></option>
+          </select>
+        </label>
+        
+        <label><?php esc_html_e( 'Special Requirements', 'pls-private-label-store' ); ?>
+          <textarea name="requirements" id="pls-custom-requirements" rows="6" required 
+                    placeholder="<?php esc_attr_e( 'Describe your custom product requirements, special packaging needs, ingredients, quantities, etc.', 'pls-private-label-store' ); ?>"></textarea>
+        </label>
+        
+        <div class="pls-field-grid">
+          <label><?php esc_html_e( 'Quantity Needed', 'pls-private-label-store' ); ?>
+            <input type="number" name="quantity" id="pls-custom-quantity" min="1" required placeholder="100" />
+          </label>
+          
+          <label><?php esc_html_e( 'Timeline', 'pls-private-label-store' ); ?>
+            <select name="timeline" id="pls-custom-timeline" required>
+              <option value=""><?php esc_html_e( 'Select timeline', 'pls-private-label-store' ); ?></option>
+              <option value="urgent"><?php esc_html_e( 'Urgent (1-2 weeks)', 'pls-private-label-store' ); ?></option>
+              <option value="standard"><?php esc_html_e( 'Standard (3-4 weeks)', 'pls-private-label-store' ); ?></option>
+              <option value="flexible"><?php esc_html_e( 'Flexible (5+ weeks)', 'pls-private-label-store' ); ?></option>
+            </select>
+          </label>
+        </div>
+        
+        <label><?php esc_html_e( 'Budget Range (Optional)', 'pls-private-label-store' ); ?>
+          <input type="text" name="budget" id="pls-custom-budget" placeholder="<?php esc_attr_e( 'e.g., $500-$1000', 'pls-private-label-store' ); ?>" />
+        </label>
+      </div>
+      
+      <div class="pls-modal__footer">
+        <button type="button" class="button" id="pls-cancel-custom-request"><?php esc_html_e( 'Cancel', 'pls-private-label-store' ); ?></button>
+        <button type="submit" class="button button-primary"><?php esc_html_e( 'Submit Request', 'pls-private-label-store' ); ?></button>
+      </div>
+    </form>
   </div>
 </div>
