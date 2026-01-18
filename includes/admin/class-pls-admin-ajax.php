@@ -1571,14 +1571,22 @@ final class PLS_Admin_Ajax {
             wp_send_json_error( array( 'message' => __( 'WooCommerce is not active.', 'pls-private-label-store' ) ), 400 );
         }
 
-        $product_type = isset( $_POST['product_type'] ) ? sanitize_text_field( wp_unslash( $_POST['product_type'] ) ) : '';
-        $requirements = isset( $_POST['requirements'] ) ? sanitize_textarea_field( wp_unslash( $_POST['requirements'] ) ) : '';
-        $quantity     = isset( $_POST['quantity'] ) ? absint( $_POST['quantity'] ) : 0;
-        $timeline     = isset( $_POST['timeline'] ) ? sanitize_text_field( wp_unslash( $_POST['timeline'] ) ) : '';
-        $budget       = isset( $_POST['budget'] ) ? sanitize_text_field( wp_unslash( $_POST['budget'] ) ) : '';
+        $product_category = isset( $_POST['product_category'] ) ? absint( $_POST['product_category'] ) : 0;
+        $message_text     = isset( $_POST['message'] ) ? sanitize_textarea_field( wp_unslash( $_POST['message'] ) ) : '';
+        $contact_name     = isset( $_POST['contact_name'] ) ? sanitize_text_field( wp_unslash( $_POST['contact_name'] ) ) : '';
+        $contact_email    = isset( $_POST['contact_email'] ) ? sanitize_email( wp_unslash( $_POST['contact_email'] ) ) : '';
 
-        if ( empty( $product_type ) || empty( $requirements ) || empty( $quantity ) || empty( $timeline ) ) {
+        if ( empty( $product_category ) || empty( $message_text ) || empty( $contact_name ) || empty( $contact_email ) ) {
             wp_send_json_error( array( 'message' => __( 'Please fill in all required fields.', 'pls-private-label-store' ) ), 400 );
+        }
+
+        // Get category name
+        $category_name = __( 'Other', 'pls-private-label-store' );
+        if ( $product_category && $product_category !== 'other' ) {
+            $category_term = get_term( $product_category, 'product_cat' );
+            if ( $category_term && ! is_wp_error( $category_term ) ) {
+                $category_name = $category_term->name;
+            }
         }
 
         // Create WooCommerce draft order
@@ -1590,49 +1598,42 @@ final class PLS_Admin_Ajax {
 
         // Set order notes
         $order_note = sprintf(
-            __( 'Custom Product Request: %s', 'pls-private-label-store' ),
-            $requirements
+            __( 'Custom Product Request - Category: %s\n\nFrom: %s (%s)\n\nMessage:\n%s', 'pls-private-label-store' ),
+            $category_name,
+            $contact_name,
+            $contact_email,
+            $message_text
         );
         $order->add_order_note( $order_note );
 
         // Set customer note
-        $customer_note = sprintf(
-            __( 'Quantity: %d units | Timeline: %s%s', 'pls-private-label-store' ),
-            $quantity,
-            $timeline,
-            $budget ? ' | Budget: ' . $budget : ''
-        );
-        $order->set_customer_note( $customer_note );
+        $order->set_customer_note( $message_text );
 
         // Add custom meta
         $order->update_meta_data( '_pls_custom_request', 1 );
-        $order->update_meta_data( '_pls_product_type', $product_type );
-        $order->update_meta_data( '_pls_quantity', $quantity );
-        $order->update_meta_data( '_pls_timeline', $timeline );
-        if ( $budget ) {
-            $order->update_meta_data( '_pls_budget', $budget );
-        }
+        $order->update_meta_data( '_pls_product_category', $product_category );
+        $order->update_meta_data( '_pls_contact_name', $contact_name );
+        $order->update_meta_data( '_pls_contact_email', $contact_email );
         $order->save();
 
         // Send notification email
         $admin_email = get_option( 'admin_email' );
         $order_url   = admin_url( 'post.php?post=' . $order->get_id() . '&action=edit' );
         $subject     = sprintf( __( '[%s] New Custom Product Request', 'pls-private-label-store' ), get_bloginfo( 'name' ) );
-        $message     = sprintf(
-            __( "A new custom product request has been submitted.\n\nProduct Type: %s\nQuantity: %d\nTimeline: %s\nBudget: %s\n\nRequirements:\n%s\n\nView order: %s", 'pls-private-label-store' ),
-            $product_type,
-            $quantity,
-            $timeline,
-            $budget ? $budget : __( 'Not specified', 'pls-private-label-store' ),
-            $requirements,
+        $email_message = sprintf(
+            __( "A new custom product request has been submitted.\n\nCategory: %s\n\nFrom: %s\nEmail: %s\n\nMessage:\n%s\n\nView order: %s", 'pls-private-label-store' ),
+            $category_name,
+            $contact_name,
+            $contact_email,
+            $message_text,
             $order_url
         );
 
-        wp_mail( $admin_email, $subject, $message );
+        wp_mail( $admin_email, $subject, $email_message );
 
         wp_send_json_success(
             array(
-                'message'  => __( 'Custom product request submitted successfully. A draft order has been created.', 'pls-private-label-store' ),
+                'message'  => __( 'Your request has been submitted successfully. We will contact you soon.', 'pls-private-label-store' ),
                 'order_id' => $order->get_id(),
                 'order_url' => $order_url,
             )

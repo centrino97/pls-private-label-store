@@ -39,6 +39,10 @@ final class PLS_Activator {
         if ( version_compare( $stored_version, '0.9.0', '<' ) ) {
             require_once PLS_PLS_DIR . 'includes/core/class-pls-migration-v090.php';
             PLS_Migration_V090::maybe_migrate();
+            
+            // Ensure default attributes are created
+            require_once PLS_PLS_DIR . 'includes/core/class-pls-default-attributes.php';
+            PLS_Default_Attributes::create_defaults();
         }
     }
 

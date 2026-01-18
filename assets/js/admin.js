@@ -740,34 +740,28 @@
       var submitBtn = form.find('button[type=submit]');
       var originalText = submitBtn.text();
       
-      var productType = $('#pls-custom-product-type').val();
-      var requirements = $('#pls-custom-requirements').val().trim();
-      var quantity = parseInt($('#pls-custom-quantity').val(), 10);
-      var timeline = $('#pls-custom-timeline').val();
+      var productCategory = $('#pls-custom-product-category').val();
+      var message = $('#pls-custom-message').val().trim();
+      var contactName = $('#pls-custom-contact-name').val().trim();
+      var contactEmail = $('#pls-custom-contact-email').val().trim();
       
-      if (!productType || !requirements || !quantity || !timeline){
+      if (!productCategory || !message || !contactName || !contactEmail){
         alert('Please fill in all required fields.');
         return;
       }
       
-      submitBtn.prop('disabled', true).text('Submitting...');
+      submitBtn.prop('disabled', true).text('Sending...');
       
       $.post(ajaxurl, {
         action: 'pls_custom_product_request',
         nonce: (window.PLS_Admin ? PLS_Admin.nonce : ''),
-        product_type: productType,
-        requirements: requirements,
-        quantity: quantity,
-        timeline: timeline,
-        budget: $('#pls-custom-budget').val()
+        product_category: productCategory,
+        message: message,
+        contact_name: contactName,
+        contact_email: contactEmail
       }, function(resp){
         if (resp && resp.success){
           alert(resp.data.message);
-          if (resp.data.order_url){
-            if (confirm('Would you like to view the draft order?')){
-              window.open(resp.data.order_url, '_blank');
-            }
-          }
           closeModalElement($('#pls-custom-request-modal'));
           form[0].reset();
         } else {

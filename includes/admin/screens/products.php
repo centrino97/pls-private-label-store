@@ -731,51 +731,41 @@ wp_localize_script(
     <div class="pls-modal__head">
       <div>
         <h2><?php esc_html_e( 'Request Custom Product', 'pls-private-label-store' ); ?></h2>
-        <p class="description"><?php esc_html_e( 'Submit a custom product request that will create a draft WooCommerce order for review.', 'pls-private-label-store' ); ?></p>
+        <p class="description"><?php esc_html_e( 'Submit a custom product inquiry. We will contact you to discuss your requirements.', 'pls-private-label-store' ); ?></p>
       </div>
       <button type="button" class="pls-modal__close" aria-label="<?php esc_attr_e( 'Close', 'pls-private-label-store' ); ?>">×</button>
     </div>
     <form class="pls-modern-form" id="pls-custom-request-form">
       <div class="pls-modal__section">
-        <label><?php esc_html_e( 'Product Type', 'pls-private-label-store' ); ?>
-          <select name="product_type" id="pls-custom-product-type" required>
-            <option value=""><?php esc_html_e( 'Select product type', 'pls-private-label-store' ); ?></option>
-            <option value="serum"><?php esc_html_e( 'Serum', 'pls-private-label-store' ); ?></option>
-            <option value="moisturizer"><?php esc_html_e( 'Moisturizer', 'pls-private-label-store' ); ?></option>
-            <option value="cleanser"><?php esc_html_e( 'Cleanser', 'pls-private-label-store' ); ?></option>
-            <option value="toner"><?php esc_html_e( 'Toner', 'pls-private-label-store' ); ?></option>
+        <label><?php esc_html_e( 'Product Category', 'pls-private-label-store' ); ?>
+          <select name="product_category" id="pls-custom-product-category" required>
+            <option value=""><?php esc_html_e( 'Select category', 'pls-private-label-store' ); ?></option>
+            <?php foreach ( $categories as $category ) : ?>
+              <option value="<?php echo esc_attr( $category->term_id ); ?>"><?php echo esc_html( $category->name ); ?></option>
+            <?php endforeach; ?>
             <option value="other"><?php esc_html_e( 'Other', 'pls-private-label-store' ); ?></option>
           </select>
         </label>
         
-        <label><?php esc_html_e( 'Special Requirements', 'pls-private-label-store' ); ?>
-          <textarea name="requirements" id="pls-custom-requirements" rows="6" required 
-                    placeholder="<?php esc_attr_e( 'Describe your custom product requirements, special packaging needs, ingredients, quantities, etc.', 'pls-private-label-store' ); ?>"></textarea>
+        <label><?php esc_html_e( 'Your Message', 'pls-private-label-store' ); ?>
+          <textarea name="message" id="pls-custom-message" rows="6" required 
+                    placeholder="<?php esc_attr_e( 'Tell us about your custom product needs, quantities, timeline, special requirements, etc.', 'pls-private-label-store' ); ?>"></textarea>
         </label>
         
-        <div class="pls-field-grid">
-          <label><?php esc_html_e( 'Quantity Needed', 'pls-private-label-store' ); ?>
-            <input type="number" name="quantity" id="pls-custom-quantity" min="1" required placeholder="100" />
-          </label>
-          
-          <label><?php esc_html_e( 'Timeline', 'pls-private-label-store' ); ?>
-            <select name="timeline" id="pls-custom-timeline" required>
-              <option value=""><?php esc_html_e( 'Select timeline', 'pls-private-label-store' ); ?></option>
-              <option value="urgent"><?php esc_html_e( 'Urgent (1-2 weeks)', 'pls-private-label-store' ); ?></option>
-              <option value="standard"><?php esc_html_e( 'Standard (3-4 weeks)', 'pls-private-label-store' ); ?></option>
-              <option value="flexible"><?php esc_html_e( 'Flexible (5+ weeks)', 'pls-private-label-store' ); ?></option>
-            </select>
-          </label>
-        </div>
+        <label><?php esc_html_e( 'Your Name', 'pls-private-label-store' ); ?>
+          <input type="text" name="contact_name" id="pls-custom-contact-name" required 
+                 value="<?php echo esc_attr( wp_get_current_user()->display_name ); ?>" />
+        </label>
         
-        <label><?php esc_html_e( 'Budget Range (Optional)', 'pls-private-label-store' ); ?>
-          <input type="text" name="budget" id="pls-custom-budget" placeholder="<?php esc_attr_e( 'e.g., $500-$1000', 'pls-private-label-store' ); ?>" />
+        <label><?php esc_html_e( 'Your Email', 'pls-private-label-store' ); ?>
+          <input type="email" name="contact_email" id="pls-custom-contact-email" required 
+                 value="<?php echo esc_attr( wp_get_current_user()->user_email ); ?>" />
         </label>
       </div>
       
       <div class="pls-modal__footer">
         <button type="button" class="button" id="pls-cancel-custom-request"><?php esc_html_e( 'Cancel', 'pls-private-label-store' ); ?></button>
-        <button type="submit" class="button button-primary"><?php esc_html_e( 'Submit Request', 'pls-private-label-store' ); ?></button>
+        <button type="submit" class="button button-primary"><?php esc_html_e( 'Send Request', 'pls-private-label-store' ); ?></button>
       </div>
     </form>
   </div>
