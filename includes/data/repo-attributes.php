@@ -116,6 +116,18 @@ final class PLS_Repo_Attributes {
         );
     }
 
+    public static function get_attr( $id ) {
+        global $wpdb;
+        $table = PLS_Repositories::table( 'attribute' );
+
+        return $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT * FROM {$table} WHERE id = %d",
+                $id
+            )
+        );
+    }
+
     public static function get_value( $id ) {
         global $wpdb;
         $table = PLS_Repositories::table( 'attribute_value' );

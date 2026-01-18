@@ -23,6 +23,11 @@ final class PLS_Admin_Ajax {
         add_action( 'wp_ajax_pls_update_attribute_tier_rules', array( __CLASS__, 'update_attribute_tier_rules' ) );
         add_action( 'wp_ajax_pls_set_pack_tier_attribute', array( __CLASS__, 'set_pack_tier_attribute' ) );
         add_action( 'wp_ajax_pls_get_tier_pricing', array( __CLASS__, 'get_tier_pricing' ) );
+        add_action( 'wp_ajax_pls_delete_attribute', array( __CLASS__, 'delete_attribute' ) );
+        add_action( 'wp_ajax_pls_delete_attribute_value', array( __CLASS__, 'delete_attribute_value' ) );
+        add_action( 'wp_ajax_pls_update_attribute_value', array( __CLASS__, 'update_attribute_value' ) );
+        add_action( 'wp_ajax_pls_update_pack_tier_defaults', array( __CLASS__, 'update_pack_tier_defaults' ) );
+        add_action( 'wp_ajax_pls_get_product_options_data', array( __CLASS__, 'get_product_options_data' ) );
     }
 
     /**
@@ -1158,5 +1163,271 @@ final class PLS_Admin_Ajax {
                 'price'     => $price,
             )
         );
+    }
+
+    /**
+     * Delete attribute via AJAX.
+     */
+    public static function delete_attribute() {
+        check_ajax_referer( 'pls_admin_nonce', 'nonce' );
+
+        if ( ! current_user_can( PLS_Capabilities::CAP_PRODUCTS ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $attribute_id = isset( $_POST['attribute_id'] ) ? absint( $_POST['attribute_id'] ) : 0;
+
+        if ( ! $attribute_id ) {
+            wp_send_json_error( array( 'message' => __( 'Attribute ID required.', 'pls-private-label-store' ) ), 400 );
+        }
+
+        // Check if it's primary attribute - don't allow deletion
+        $attr = PLS_Repo_Attributes::get_attr( $attribute_id );
+        if ( $attr && ! empty( $attr->is_primary ) ) {
+            wp_send_json_error( array( 'message' => __( 'Cannot delete primary attribute (Pack Tier).', 'pls-private-label-store' ) ), 400 );
+        }
+
+        global $wpdb;
+        $table = PLS_Repositories::table( 'attribute' );
+        
+        // Delete all values first
+        $values_table = PLS_Repositories::table( 'attribute_value' );
+        $values = $wpdb->get_col( $wpdb->prepare( "SELECT id FROM {$values_table} WHERE attribute_id = %d", $attribute_id ) );
+        foreach ( $values as $value_id ) {
+            self::delete_attribute_value_internal( $value_id );
+        }
+
+        // Delete attribute
+        $deleted = $wpdb->delete( $table, array( 'id' => $attribute_id ), array( '%d' ) );
+
+        if ( $deleted ) {
+            wp_send_json_success( array( 'message' => __( 'Attribute deleted successfully.', 'pls-private-label-store' ) ) );
+        } else {
+            wp_send_json_error( array( 'message' => __( 'Failed to delete attribute.', 'pls-private-label-store' ) ), 400 );
+        }
+    }
+
+    /**
+     * Delete attribute value via AJAX.
+     */
+    public static function delete_attribute_value() {
+        check_ajax_referer( 'pls_admin_nonce', 'nonce' );
+
+        if ( ! current_user_can( PLS_Capabilities::CAP_PRODUCTS ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $value_id = isset( $_POST['value_id'] ) ? absint( $_POST['value_id'] ) : 0;
+
+        if ( ! $value_id ) {
+            wp_send_json_error( array( 'message' => __( 'Value ID required.', 'pls-private-label-store' ) ), 400 );
+        }
+
+        $deleted = self::delete_attribute_value_internal( $value_id );
+
+        if ( $deleted ) {
+            wp_send_json_success( array( 'message' => __( 'Value deleted successfully.', 'pls-private-label-store' ) ) );
+        } else {
+            wp_send_json_error( array( 'message' => __( 'Failed to delete value.', 'pls-private-label-store' ) ), 400 );
+        }
+    }
+
+    /**
+     * Internal method to delete attribute value.
+     */
+    private static function delete_attribute_value_internal( $value_id ) {
+        global $wpdb;
+        $table = PLS_Repositories::table( 'attribute_value' );
+        
+        $value = PLS_Repo_Attributes::get_value( $value_id );
+        if ( $value && $value->term_id ) {
+            // Delete term meta
+            delete_term_meta( $value->term_id, '_pls_default_price_impact' );
+            delete_term_meta( $value->term_id, '_pls_tier_level' );
+            delete_term_meta( $value->term_id, '_pls_default_units' );
+            delete_term_meta( $value->term_id, '_pls_default_price_per_unit' );
+            
+            // Delete term if it exists - find the taxonomy first
+            $term = get_term( $value->term_id );
+            if ( $term && ! is_wp_error( $term ) ) {
+                // Get attribute to find taxonomy
+                $attr = PLS_Repo_Attributes::get_attr( $value->attribute_id );
+                if ( $attr && $attr->wc_attribute_id ) {
+                    $taxonomy = wc_attribute_taxonomy_name_by_id( $attr->wc_attribute_id );
+                    if ( $taxonomy ) {
+                        wp_delete_term( $value->term_id, $taxonomy );
+                    }
+                }
+            }
+        }
+
+        // Delete swatch
+        $swatch_table = PLS_Repositories::table( 'swatch' );
+        $wpdb->delete( $swatch_table, array( 'attribute_value_id' => $value_id ), array( '%d' ) );
+
+        // Delete value
+        return $wpdb->delete( $table, array( 'id' => $value_id ), array( '%d' ) );
+    }
+
+    /**
+     * Update attribute value via AJAX.
+     */
+    public static function update_attribute_value() {
+        check_ajax_referer( 'pls_admin_nonce', 'nonce' );
+
+        if ( ! current_user_can( PLS_Capabilities::CAP_PRODUCTS ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $value_id = isset( $_POST['value_id'] ) ? absint( $_POST['value_id'] ) : 0;
+        $label = isset( $_POST['label'] ) ? sanitize_text_field( wp_unslash( $_POST['label'] ) ) : '';
+        $min_tier = isset( $_POST['min_tier_level'] ) ? absint( $_POST['min_tier_level'] ) : 1;
+        $price = isset( $_POST['price'] ) ? round( floatval( $_POST['price'] ), 2 ) : 0;
+
+        if ( ! $value_id || '' === $label ) {
+            wp_send_json_error( array( 'message' => __( 'Value ID and label are required.', 'pls-private-label-store' ) ), 400 );
+        }
+
+        global $wpdb;
+        $table = PLS_Repositories::table( 'attribute_value' );
+        
+        // Update label
+        $wpdb->update(
+            $table,
+            array( 'label' => $label ),
+            array( 'id' => $value_id ),
+            array( '%s' ),
+            array( '%d' )
+        );
+
+        // Update tier rules
+        PLS_Repo_Attributes::update_value_tier_rules( $value_id, $min_tier, null );
+
+        // Update price
+        $value = PLS_Repo_Attributes::get_value( $value_id );
+        if ( $value && $value->term_id ) {
+            if ( $price > 0 ) {
+                update_term_meta( $value->term_id, '_pls_default_price_impact', $price );
+            } else {
+                delete_term_meta( $value->term_id, '_pls_default_price_impact' );
+            }
+        }
+
+        wp_send_json_success( array(
+            'message' => __( 'Value updated successfully.', 'pls-private-label-store' ),
+            'value' => array(
+                'id' => $value_id,
+                'label' => $label,
+                'min_tier_level' => $min_tier,
+                'price' => $price,
+            ),
+        ) );
+    }
+
+    /**
+     * Update pack tier defaults via AJAX.
+     */
+    public static function update_pack_tier_defaults() {
+        check_ajax_referer( 'pls_admin_nonce', 'nonce' );
+
+        if ( ! current_user_can( PLS_Capabilities::CAP_PRODUCTS ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $updates = isset( $_POST['tier_prices'] ) && is_array( $_POST['tier_prices'] ) ? $_POST['tier_prices'] : array();
+
+        foreach ( $updates as $value_id => $data ) {
+            $value_id = absint( $value_id );
+            if ( ! $value_id ) {
+                continue;
+            }
+
+            $price = isset( $data['price'] ) ? round( floatval( $data['price'] ), 2 ) : 0;
+            $units = isset( $data['units'] ) ? absint( $data['units'] ) : 0;
+
+            $value = PLS_Repo_Attributes::get_value( $value_id );
+            if ( $value && $value->term_id ) {
+                if ( $price > 0 ) {
+                    update_term_meta( $value->term_id, '_pls_default_price_per_unit', $price );
+                }
+                if ( $units > 0 ) {
+                    update_term_meta( $value->term_id, '_pls_default_units', $units );
+                }
+            }
+        }
+
+        wp_send_json_success( array( 'message' => __( 'Pack tier defaults updated.', 'pls-private-label-store' ) ) );
+    }
+
+    /**
+     * Get product options data for AJAX refresh.
+     */
+    public static function get_product_options_data() {
+        check_ajax_referer( 'pls_admin_nonce', 'nonce' );
+
+        if ( ! current_user_can( PLS_Capabilities::CAP_PRODUCTS ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $primary_attr = PLS_Repo_Attributes::get_primary_attribute();
+        $product_options = PLS_Repo_Attributes::get_product_options();
+        $ingredient_attrs = PLS_Repo_Attributes::get_ingredient_attributes();
+        $ingredients = get_terms( array( 'taxonomy' => 'pls_ingredient', 'hide_empty' => false ) );
+        if ( is_wp_error( $ingredients ) ) {
+            $ingredients = array();
+        }
+
+        require_once PLS_PLS_DIR . 'includes/core/class-pls-tier-rules.php';
+
+        // Format pack tier data
+        $pack_tiers = array();
+        if ( $primary_attr ) {
+            $tier_values = PLS_Repo_Attributes::values_for_attr( $primary_attr->id );
+            foreach ( $tier_values as $tier_value ) {
+                $tier_level = PLS_Tier_Rules::get_tier_level_from_value( $tier_value->id );
+                $default_units = PLS_Tier_Rules::get_default_units_for_tier( $tier_value->id );
+                $default_price = PLS_Tier_Rules::get_default_price_per_unit( $tier_value->id );
+                $pack_tiers[] = array(
+                    'id' => $tier_value->id,
+                    'label' => $tier_value->label,
+                    'tier_level' => $tier_level,
+                    'units' => $default_units,
+                    'price' => $default_price,
+                );
+            }
+        }
+
+        // Format product options
+        $options_data = array();
+        foreach ( $product_options as $option ) {
+            $values = PLS_Repo_Attributes::values_for_attr( $option->id );
+            $values_data = array();
+            foreach ( $values as $value ) {
+                $price_meta = $value->term_id ? get_term_meta( $value->term_id, '_pls_default_price_impact', true ) : '';
+                $values_data[] = array(
+                    'id' => $value->id,
+                    'label' => $value->label,
+                    'min_tier_level' => $value->min_tier_level,
+                    'price' => '' !== $price_meta ? floatval( $price_meta ) : 0,
+                );
+            }
+            $options_data[] = array(
+                'id' => $option->id,
+                'label' => $option->label,
+                'values' => $values_data,
+            );
+        }
+
+        wp_send_json_success( array(
+            'pack_tiers' => $pack_tiers,
+            'product_options' => $options_data,
+            'ingredients' => array_map( function( $ing ) {
+                return array(
+                    'term_id' => $ing->term_id,
+                    'name' => $ing->name,
+                    'icon' => PLS_Taxonomies::icon_for_term( $ing->term_id ),
+                );
+            }, $ingredients ),
+        ) );
     }
 }

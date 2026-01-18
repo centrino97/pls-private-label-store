@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.8.5
+Stable tag: 0.8.6
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,14 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 0.8.6 =
+* **AJAX-Powered Product Options:** Complete rewrite to use AJAX for all operations - no page reloads!
+* **Modals for Add/Edit:** Beautiful modals for adding and editing product options and values.
+* **Delete Functionality:** Delete buttons with confirmation for both options and values.
+* **Pack Tier Modal:** Pack Tier defaults moved to separate modal accessible via button.
+* **Better UX:** Instant feedback, smooth animations, and improved user experience throughout.
+* **Dynamic Updates:** All changes reflect immediately without page refreshes.
+
 = 0.8.5 =
 * **Tabbed Product Options UI:** Complete redesign with tabs for Pack Tier (PRIMARY), Product Options, and Ingredients.
 * **Pack Tier Defaults:** Pack tiers now have default units and prices that are always loaded but editable per product.
