@@ -23,6 +23,10 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 0.8.7 =
+* **Bug Fix:** Fixed JavaScript error `updateTierTotal is not defined` in product creation modal.
+* **Function Scope:** Moved `updateTierTotal` function to proper scope for accessibility.
+
 = 0.8.6 =
 * **AJAX-Powered Product Options:** Complete rewrite to use AJAX for all operations - no page reloads!
 * **Modals for Add/Edit:** Beautiful modals for adding and editing product options and values.

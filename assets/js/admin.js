@@ -226,6 +226,14 @@
         renderIngredientList(ingredientFilter);
       }
 
+      // Helper function to update tier total - must be defined before resetModal
+      function updateTierTotal(row){
+        var units = parseFloat(row.find('input[name*="[units]"]').val()) || 0;
+        var price = parseFloat(row.find('input[name*="[price]"]').val()) || 0;
+        var total = units * price;
+        row.find('.pls-tier-total').text(total.toFixed(2));
+      }
+
       function resetModal(){
         var form = $('#pls-product-form');
         if (form.length) {
@@ -575,15 +583,8 @@
           });
         }
         
-        // Auto-calculate tier totals
-        function updateTierTotal(row){
-          var units = parseFloat(row.find('input[name*="[units]"]').val()) || 0;
-          var price = parseFloat(row.find('input[name*="[price]"]').val()) || 0;
-          var total = units * price;
-          row.find('.pls-tier-total').text(total.toFixed(2));
-        }
-        
-        $('#pls-pack-grid').on('input', 'input[name*="[units]"], input[name*="[price]"]', function(){
+        // Auto-calculate tier totals (event handler - only bind once)
+        $('#pls-pack-grid').off('input', 'input[name*="[units]"], input[name*="[price]"]').on('input', 'input[name*="[units]"], input[name*="[price]"]', function(){
           updateTierTotal($(this).closest('.pls-pack-row'));
         });
 
