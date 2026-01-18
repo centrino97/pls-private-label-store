@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.8.1
+Stable tag: 0.8.2
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,12 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 0.8.2 =
+* **Compact Table UI:** Redesigned Product Options with compact, table-based layout for better navigation.
+* **Client Requirements Complete:** Added Custom Printed Bottles and External Box Packaging options for Tier 4+.
+* **Improved UX:** Quick add forms, click-to-expand editing, responsive design with minimal spacing.
+* **All Client Specs:** Package types (30ml, 50ml, 120ml, 50gr jar), Package colours with silver pump upgrade, Tier-based restrictions fully implemented.
+
 = 0.8.1 =
 * **UI/UX Overhaul:** Completely redesigned Product Options page with modern, intuitive interface.
 * **Unified Interface:** Integrated ingredients into Product Options - no longer separate menu item.
