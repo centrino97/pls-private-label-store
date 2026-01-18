@@ -56,20 +56,11 @@ final class PLS_Admin_Menu {
 
         add_submenu_page(
             'pls-dashboard',
-            __( 'PLS – Attributes & Swatches', 'pls-private-label-store' ),
-            __( 'Attributes', 'pls-private-label-store' ),
+            __( 'PLS – Product Options', 'pls-private-label-store' ),
+            __( 'Product Options', 'pls-private-label-store' ),
             PLS_Capabilities::CAP_ATTRS,
             'pls-attributes',
             array( __CLASS__, 'render_attributes' )
-        );
-
-        add_submenu_page(
-            'pls-dashboard',
-            __( 'PLS – Ingredients', 'pls-private-label-store' ),
-            __( 'Ingredients', 'pls-private-label-store' ),
-            PLS_Capabilities::CAP_PRODUCTS,
-            'pls-ingredients',
-            array( __CLASS__, 'render_ingredients' )
         );
 
         add_submenu_page(
