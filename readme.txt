@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.9.0
+Stable tag: 0.9.1
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,12 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 0.9.1 =
+* **Simplified Custom Product Request:** Changed to simple contact form with category selection instead of complex form.
+* **Admin Dashboard Filter:** Automatically hides all WordPress menus except PLS and WooCommerce for bodocibiophysics.com users.
+* **Streamlined UX:** Custom product requests now auto-fill user name and email for faster submission.
+* **Default Attributes:** Ensured comprehensive default product options are created during migration for immediate use.
+
 = 0.9.0 =
 * **Self-Service Edition:** Complete product management overhaul for client self-service without onboarding videos.
 * **Separate Product Attributes:** Restructured into Package Type, Package Color, and Package Cap as separate, flexible attributes.
