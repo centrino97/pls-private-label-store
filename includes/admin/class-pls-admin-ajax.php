@@ -139,26 +139,46 @@ final class PLS_Admin_Ajax {
             wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
         }
 
-        $label       = isset( $_POST['label'] ) ? sanitize_text_field( wp_unslash( $_POST['label'] ) ) : '';
+        $label        = isset( $_POST['label'] ) ? sanitize_text_field( wp_unslash( $_POST['label'] ) ) : '';
         $is_variation = isset( $_POST['is_variation'] ) ? 1 : 0;
+        $option_type  = isset( $_POST['option_type'] ) ? sanitize_text_field( wp_unslash( $_POST['option_type'] ) ) : 'product-option';
+        $is_primary   = isset( $_POST['is_primary'] ) ? 1 : 0;
 
         if ( '' === $label ) {
             wp_send_json_error( array( 'message' => __( 'Attribute label is required.', 'pls-private-label-store' ) ), 400 );
         }
 
+        // Validate option_type
+        $valid_types = array( 'pack-tier', 'product-option', 'ingredient' );
+        if ( ! in_array( $option_type, $valid_types, true ) ) {
+            $option_type = 'product-option';
+        }
+
+        // Validate: only one primary attribute allowed
+        if ( $is_primary ) {
+            $existing_primary = PLS_Repo_Attributes::get_primary_attribute();
+            if ( $existing_primary ) {
+                wp_send_json_error( array( 'message' => __( 'Only one primary attribute is allowed. Please unset the existing primary attribute first.', 'pls-private-label-store' ) ), 400 );
+            }
+        }
+
         $attr_id = PLS_Repo_Attributes::insert_attr(
             array(
-                'label'        => $label,
-                'is_variation' => $is_variation,
+                'label'            => $label,
+                'is_variation'     => $is_variation,
+                'option_type'      => $option_type,
+                'is_primary'       => $is_primary,
             )
         );
 
         wp_send_json_success(
             array(
                 'attribute' => array(
-                    'id'     => $attr_id,
-                    'label'  => $label,
-                    'values' => array(),
+                    'id'          => $attr_id,
+                    'label'       => $label,
+                    'option_type' => $option_type,
+                    'is_primary'  => $is_primary,
+                    'values'      => array(),
                 ),
             )
         );
@@ -182,6 +202,21 @@ final class PLS_Admin_Ajax {
 
         if ( ! $attribute_id || '' === $label ) {
             wp_send_json_error( array( 'message' => __( 'Attribute and value label are required.', 'pls-private-label-store' ) ), 400 );
+        }
+
+        // Check if this is an ingredient attribute - default to Tier 3+
+        $attr = PLS_Repo_Attributes::get_primary_attribute();
+        $is_ingredient = false;
+        if ( $attribute_id ) {
+            global $wpdb;
+            $table = PLS_Repositories::table( 'attribute' );
+            $attr_obj = $wpdb->get_row(
+                $wpdb->prepare( "SELECT option_type FROM {$table} WHERE id = %d", $attribute_id )
+            );
+            if ( $attr_obj && $attr_obj->option_type === 'ingredient' ) {
+                $is_ingredient = true;
+                $min_tier = 3; // Ingredients are always Tier 3+
+            }
         }
 
         $value_id = PLS_Repo_Attributes::insert_value(
@@ -283,9 +318,11 @@ final class PLS_Admin_Ajax {
                 );
             }
             $payload[] = array(
-                'id'     => $attr->id,
-                'label'  => $attr->label,
-                'values' => $values,
+                'id'          => $attr->id,
+                'label'       => $attr->label,
+                'option_type' => isset( $attr->option_type ) ? $attr->option_type : 'product-option',
+                'is_primary'  => isset( $attr->is_primary ) ? (bool) $attr->is_primary : false,
+                'values'      => $values,
             );
         }
 

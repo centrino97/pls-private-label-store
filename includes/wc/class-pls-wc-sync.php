@@ -17,6 +17,14 @@ final class PLS_WC_Sync {
      * @return int|false Attribute ID or false if not set.
      */
     public static function get_pack_tier_attribute_id() {
+        // Try to get primary attribute first (v0.8.3+)
+        $primary = PLS_Repo_Attributes::get_primary_attribute();
+        if ( $primary ) {
+            update_option( 'pls_pack_tier_attribute_id', $primary->id );
+            return $primary->id;
+        }
+        
+        // Fallback to option for backward compatibility
         return get_option( 'pls_pack_tier_attribute_id', false );
     }
 

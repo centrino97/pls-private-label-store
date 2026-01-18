@@ -5,7 +5,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 $notice = '';
 $error  = '';
-$active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'attributes';
 
 // Handle ingredient creation
 if ( isset( $_POST['pls_ingredient_add'] ) && check_admin_referer( 'pls_ingredient_add' ) ) {
@@ -64,19 +63,16 @@ if ( isset( $_POST['pls_ingredient_edit'] ) && check_admin_referer( 'pls_ingredi
 if ( isset( $_POST['pls_attr_add'] ) && check_admin_referer( 'pls_attr_add' ) ) {
     $label       = isset( $_POST['label'] ) ? sanitize_text_field( wp_unslash( $_POST['label'] ) ) : '';
     $is_var      = isset( $_POST['is_variation'] ) ? 1 : 0;
-    $attr_type   = isset( $_POST['attr_type'] ) ? sanitize_text_field( wp_unslash( $_POST['attr_type'] ) ) : 'regular';
+    $option_type = isset( $_POST['option_type'] ) ? sanitize_text_field( wp_unslash( $_POST['option_type'] ) ) : 'product-option';
 
     if ( $label ) {
         $attr_id = PLS_Repo_Attributes::insert_attr(
             array(
                 'label'        => $label,
                 'is_variation' => $is_var,
+                'option_type'  => $option_type,
             )
         );
-
-        if ( $attr_type === 'pack-tier' && $attr_id ) {
-            update_option( 'pls_pack_tier_attribute_id', $attr_id );
-        }
 
         $notice = __( 'Option saved.', 'pls-private-label-store' );
     }
@@ -141,8 +137,10 @@ if ( isset( $_POST['pls_value_bulk_update'] ) && check_admin_referer( 'pls_value
     $notice = __( 'Options updated.', 'pls-private-label-store' );
 }
 
-$attrs = PLS_Repo_Attributes::attrs_all();
-$pack_tier_attr_id = get_option( 'pls_pack_tier_attribute_id', 0 );
+// Get data by type
+$primary_attr = PLS_Repo_Attributes::get_primary_attribute();
+$product_options = PLS_Repo_Attributes::get_product_options();
+$ingredient_attrs = PLS_Repo_Attributes::get_ingredient_attributes();
 $ingredients = get_terms( array( 'taxonomy' => 'pls_ingredient', 'hide_empty' => false ) );
 if ( is_wp_error( $ingredients ) ) {
     $ingredients = array();
@@ -158,41 +156,69 @@ if ( is_wp_error( $ingredients ) ) {
         <div class="notice notice-error is-dismissible"><p><?php echo esc_html( $error ); ?></p></div>
     <?php endif; ?>
 
-    <nav class="nav-tab-wrapper" style="margin: 20px 0 0;">
-        <a href="<?php echo esc_url( add_query_arg( 'tab', 'attributes', admin_url( 'admin.php?page=pls-attributes' ) ) ); ?>" 
-           class="nav-tab <?php echo $active_tab === 'attributes' ? 'nav-tab-active' : ''; ?>">
-            <?php esc_html_e( 'Attributes', 'pls-private-label-store' ); ?>
-            <span class="count">(<?php echo count( $attrs ); ?>)</span>
-        </a>
-        <a href="<?php echo esc_url( add_query_arg( 'tab', 'ingredients', admin_url( 'admin.php?page=pls-attributes' ) ) ); ?>" 
-           class="nav-tab <?php echo $active_tab === 'ingredients' ? 'nav-tab-active' : ''; ?>">
-            <?php esc_html_e( 'Ingredients', 'pls-private-label-store' ); ?>
-            <span class="count">(<?php echo count( $ingredients ); ?>)</span>
-        </a>
-        <a href="<?php echo esc_url( add_query_arg( 'tab', 'pricing', admin_url( 'admin.php?page=pls-attributes' ) ) ); ?>" 
-           class="nav-tab <?php echo $active_tab === 'pricing' ? 'nav-tab-active' : ''; ?>">
-            <?php esc_html_e( 'Pricing Overview', 'pls-private-label-store' ); ?>
-        </a>
-    </nav>
+    <!-- PRIMARY: Pack Tier Section -->
+    <div class="pls-primary-section" style="background: #fff; border: 2px solid #2271b1; border-radius: 4px; padding: 15px; margin: 20px 0;">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+            <h2 style="margin: 0; font-size: 18px;"><?php esc_html_e( 'Pack Tier', 'pls-private-label-store' ); ?></h2>
+            <span class="pls-primary-badge" style="background: #2271b1; color: #fff; padding: 4px 10px; border-radius: 3px; font-size: 11px; font-weight: 600; text-transform: uppercase;"><?php esc_html_e( 'PRIMARY OPTION', 'pls-private-label-store' ); ?></span>
+        </div>
 
-    <?php if ( $active_tab === 'attributes' ) : ?>
-        <!-- Attributes Tab -->
-        <div class="tab-content" style="margin-top: 20px;">
+        <?php if ( $primary_attr ) : ?>
+            <?php
+            $tier_values = PLS_Repo_Attributes::values_for_attr( $primary_attr->id );
+            require_once PLS_PLS_DIR . 'includes/core/class-pls-tier-rules.php';
+            ?>
+            <table class="wp-list-table widefat fixed striped">
+                <thead>
+                    <tr>
+                        <th style="width: 20%;"><?php esc_html_e( 'Tier', 'pls-private-label-store' ); ?></th>
+                        <th style="width: 20%;"><?php esc_html_e( 'Units', 'pls-private-label-store' ); ?></th>
+                        <th style="width: 20%;"><?php esc_html_e( 'Price', 'pls-private-label-store' ); ?></th>
+                        <th style="width: 40%;"><?php esc_html_e( 'Actions', 'pls-private-label-store' ); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ( $tier_values as $tier_value ) : ?>
+                        <?php
+                        $tier_level = PLS_Tier_Rules::get_tier_level_from_value( $tier_value->id );
+                        $units = PLS_Tier_Rules::get_default_units_for_tier( $tier_value->id );
+                        ?>
+                        <tr>
+                            <td><strong><?php echo esc_html( $tier_value->label ); ?></strong></td>
+                            <td><?php echo esc_html( $units ?: '—' ); ?></td>
+                            <td><?php esc_html_e( 'Set per product', 'pls-private-label-store' ); ?></td>
+                            <td>
+                                <button type="button" class="button button-small pls-edit-tier" data-attr-id="<?php echo esc_attr( $primary_attr->id ); ?>"><?php esc_html_e( 'Edit', 'pls-private-label-store' ); ?></button>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php else : ?>
+            <p><?php esc_html_e( 'Pack Tier attribute not found. Please activate the plugin to create default attributes.', 'pls-private-label-store' ); ?></p>
+        <?php endif; ?>
+    </div>
+
+    <!-- PRODUCT OPTIONS Section -->
+    <div class="pls-product-options-section" style="background: #fff; border: 1px solid #ccd0d4; border-radius: 4px; padding: 15px; margin: 20px 0;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <h2 style="margin: 0; font-size: 18px;"><?php esc_html_e( 'Product Options', 'pls-private-label-store' ); ?></h2>
+                <span class="pls-badge" style="background: #f0f0f1; color: #50575e; padding: 4px 10px; border-radius: 3px; font-size: 11px; font-weight: 600;"><?php echo count( $product_options ); ?> <?php esc_html_e( 'options', 'pls-private-label-store' ); ?></span>
+            </div>
+            <button type="button" class="button button-small pls-toggle-section" data-target="product-options-content"><?php esc_html_e( 'Toggle', 'pls-private-label-store' ); ?></button>
+        </div>
+
+        <div id="product-options-content">
             <!-- Quick Add Form -->
-            <div style="background: #fff; border: 1px solid #ccd0d4; padding: 12px; margin-bottom: 20px; border-radius: 4px;">
-                <form method="post" style="display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 8px; align-items: end;">
+            <div style="background: #f9f9f9; border: 1px solid #ddd; padding: 12px; margin-bottom: 15px; border-radius: 4px;">
+                <form method="post" style="display: grid; grid-template-columns: 2fr 1fr auto; gap: 8px; align-items: end;">
                     <?php wp_nonce_field( 'pls_attr_add' ); ?>
                     <input type="hidden" name="pls_attr_add" value="1" />
+                    <input type="hidden" name="option_type" value="product-option" />
                     <div>
                         <label style="display: block; margin-bottom: 4px; font-weight: 600; font-size: 13px;"><?php esc_html_e( 'Option Name', 'pls-private-label-store' ); ?></label>
                         <input type="text" name="label" class="regular-text" placeholder="e.g., Package Type" required style="width: 100%;" />
-                    </div>
-                    <div>
-                        <label style="display: block; margin-bottom: 4px; font-weight: 600; font-size: 13px;"><?php esc_html_e( 'Type', 'pls-private-label-store' ); ?></label>
-                        <select name="attr_type" class="regular-text" style="width: 100%;">
-                            <option value="regular"><?php esc_html_e( 'Regular', 'pls-private-label-store' ); ?></option>
-                            <option value="pack-tier"><?php esc_html_e( 'Pack Tier', 'pls-private-label-store' ); ?></option>
-                        </select>
                     </div>
                     <div>
                         <label style="display: block; margin-bottom: 4px; font-weight: 600; font-size: 13px;">&nbsp;</label>
@@ -204,28 +230,25 @@ if ( is_wp_error( $ingredients ) ) {
                 </form>
             </div>
 
-            <!-- Attributes Table -->
-            <?php if ( empty( $attrs ) ) : ?>
-                <p><?php esc_html_e( 'No options yet. Add one above.', 'pls-private-label-store' ); ?></p>
+            <!-- Product Options Table -->
+            <?php if ( empty( $product_options ) ) : ?>
+                <p><?php esc_html_e( 'No product options yet. Add one above.', 'pls-private-label-store' ); ?></p>
             <?php else : ?>
                 <table class="wp-list-table widefat fixed striped">
                     <thead>
                         <tr>
                             <th style="width: 25%;"><?php esc_html_e( 'Option', 'pls-private-label-store' ); ?></th>
-                            <th style="width: 50%;"><?php esc_html_e( 'Values', 'pls-private-label-store' ); ?></th>
+                            <th style="width: 45%;"><?php esc_html_e( 'Values', 'pls-private-label-store' ); ?></th>
                             <th style="width: 15%;"><?php esc_html_e( 'Tier', 'pls-private-label-store' ); ?></th>
-                            <th style="width: 10%;"><?php esc_html_e( 'Price', 'pls-private-label-store' ); ?></th>
+                            <th style="width: 15%;"><?php esc_html_e( 'Actions', 'pls-private-label-store' ); ?></th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ( $attrs as $attr ) : ?>
+                        <?php foreach ( $product_options as $attr ) : ?>
                             <?php $values = PLS_Repo_Attributes::values_for_attr( $attr->id ); ?>
-                            <tr>
+                            <tr class="pls-clickable-row" data-attr-id="<?php echo esc_attr( $attr->id ); ?>">
                                 <td>
                                     <strong><?php echo esc_html( $attr->label ); ?></strong>
-                                    <?php if ( (int) $attr->id === (int) $pack_tier_attr_id ) : ?>
-                                        <span class="pls-badge-small" style="background: #dbeafe; color: #1e40af; padding: 2px 6px; border-radius: 3px; font-size: 10px; margin-left: 6px;"><?php esc_html_e( 'Pack Tier', 'pls-private-label-store' ); ?></span>
-                                    <?php endif; ?>
                                     <br><code style="font-size: 11px; color: #999;"><?php echo esc_html( $attr->attr_key ); ?></code>
                                 </td>
                                 <td>
@@ -237,7 +260,7 @@ if ( is_wp_error( $ingredients ) ) {
                                                 <span style="background: #f0f0f1; padding: 4px 8px; border-radius: 3px; font-size: 12px;">
                                                     <?php echo esc_html( $value->label ); ?>
                                                     <?php if ( $value->min_tier_level > 1 ) : ?>
-                                                        <span class="pls-tier-badge-small" style="background: #6366f1; color: #fff; padding: 1px 4px; border-radius: 2px; font-size: 9px; margin-left: 4px;">T<?php echo esc_html( $value->min_tier_level ); ?></span>
+                                                        <span class="pls-tier-badge" style="background: #6366f1; color: #fff; padding: 1px 4px; border-radius: 2px; font-size: 9px; margin-left: 4px;">T<?php echo esc_html( $value->min_tier_level ); ?></span>
                                                     <?php endif; ?>
                                                 </span>
                                             <?php endforeach; ?>
@@ -246,142 +269,129 @@ if ( is_wp_error( $ingredients ) ) {
                                 </td>
                                 <td>
                                     <?php
-                                    $tier_counts = array( 1 => 0, 2 => 0, 3 => 0, 4 => 0, 5 => 0 );
-                                    foreach ( $values as $value ) {
-                                        $tier_counts[ $value->min_tier_level ]++;
-                                    }
                                     $tier_info = array();
-                                    foreach ( $tier_counts as $tier => $count ) {
-                                        if ( $count > 0 ) {
-                                            $tier_info[] = 'T' . $tier . ': ' . $count;
+                                    foreach ( $values as $value ) {
+                                        if ( $value->min_tier_level > 1 ) {
+                                            $tier_info[] = 'T' . $value->min_tier_level;
                                         }
                                     }
-                                    echo esc_html( implode( ', ', $tier_info ) ?: '—' );
+                                    echo esc_html( ! empty( $tier_info ) ? implode( ', ', array_unique( $tier_info ) ) : 'T1+' );
                                     ?>
                                 </td>
                                 <td>
-                                    <?php
-                                    $has_pricing = false;
-                                    foreach ( $values as $value ) {
-                                        $price = $value->term_id ? get_term_meta( $value->term_id, '_pls_default_price_impact', true ) : '';
-                                        if ( '' !== $price && floatval( $price ) > 0 ) {
-                                            $has_pricing = true;
-                                            break;
-                                        }
-                                    }
-                                    echo $has_pricing ? '<span style="color: #059669;">✓</span>' : '—';
-                                    ?>
+                                    <button type="button" class="button button-small pls-edit-option" data-attr-id="<?php echo esc_attr( $attr->id ); ?>"><?php esc_html_e( 'Edit', 'pls-private-label-store' ); ?></button>
+                                </td>
+                            </tr>
+                            <!-- Edit Panel -->
+                            <tr class="pls-edit-panel-row" data-attr-id="<?php echo esc_attr( $attr->id ); ?>" style="display: none;">
+                                <td colspan="4" style="background: #f9f9f9; padding: 15px;">
+                                    <div class="pls-attr-edit-panel">
+                                        <h3 style="margin-top: 0;"><?php echo esc_html( $attr->label ); ?> - <?php esc_html_e( 'Edit Values', 'pls-private-label-store' ); ?></h3>
+                                        
+                                        <?php if ( ! empty( $values ) ) : ?>
+                                            <form method="post" style="margin-bottom: 15px;">
+                                                <?php wp_nonce_field( 'pls_value_bulk_update' ); ?>
+                                                <input type="hidden" name="pls_value_bulk_update" value="1" />
+                                                <table class="wp-list-table widefat fixed">
+                                                    <thead>
+                                                        <tr>
+                                                            <th><?php esc_html_e( 'Label', 'pls-private-label-store' ); ?></th>
+                                                            <th style="width: 100px;"><?php esc_html_e( 'Min Tier', 'pls-private-label-store' ); ?></th>
+                                                            <th style="width: 120px;"><?php esc_html_e( 'Price', 'pls-private-label-store' ); ?></th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <?php foreach ( $values as $value ) : ?>
+                                                            <?php
+                                                            $price_meta = $value->term_id ? get_term_meta( $value->term_id, '_pls_default_price_impact', true ) : '';
+                                                            $price_display = '' !== $price_meta ? floatval( $price_meta ) : 0;
+                                                            ?>
+                                                            <tr>
+                                                                <td><strong><?php echo esc_html( $value->label ); ?></strong></td>
+                                                                <td>
+                                                                    <select name="value_updates[<?php echo esc_attr( $value->id ); ?>][min_tier_level]" style="width: 100%;">
+                                                                        <?php for ( $i = 1; $i <= 5; $i++ ) : ?>
+                                                                            <option value="<?php echo esc_attr( $i ); ?>" <?php selected( $value->min_tier_level, $i ); ?>><?php echo esc_html( $i ); ?></option>
+                                                                        <?php endfor; ?>
+                                                                    </select>
+                                                                </td>
+                                                                <td>
+                                                                    <input type="number" 
+                                                                           name="value_updates[<?php echo esc_attr( $value->id ); ?>][price]" 
+                                                                           value="<?php echo esc_attr( $price_display ); ?>" 
+                                                                           step="0.01" 
+                                                                           min="0" 
+                                                                           style="width: 100%;" />
+                                                                </td>
+                                                            </tr>
+                                                        <?php endforeach; ?>
+                                                    </tbody>
+                                                </table>
+                                                <p style="margin-top: 10px;">
+                                                    <button type="submit" class="button button-primary"><?php esc_html_e( 'Save Changes', 'pls-private-label-store' ); ?></button>
+                                                </p>
+                                            </form>
+                                        <?php endif; ?>
+
+                                        <!-- Add New Value -->
+                                        <form method="post" style="background: #fff; padding: 12px; border: 1px solid #ddd; border-radius: 4px;">
+                                            <?php wp_nonce_field( 'pls_value_add' ); ?>
+                                            <input type="hidden" name="pls_value_add" value="1" />
+                                            <input type="hidden" name="attribute_id" value="<?php echo esc_attr( $attr->id ); ?>" />
+                                            <h4 style="margin-top: 0;"><?php esc_html_e( 'Add Value', 'pls-private-label-store' ); ?></h4>
+                                            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 8px; align-items: end;">
+                                                <div>
+                                                    <label style="display: block; margin-bottom: 4px; font-size: 12px;"><?php esc_html_e( 'Label', 'pls-private-label-store' ); ?></label>
+                                                    <input type="text" name="value_label" class="regular-text" placeholder="e.g., Airless Pump" required style="width: 100%;" />
+                                                </div>
+                                                <div>
+                                                    <label style="display: block; margin-bottom: 4px; font-size: 12px;"><?php esc_html_e( 'Min Tier', 'pls-private-label-store' ); ?></label>
+                                                    <select name="min_tier_level" style="width: 100%;">
+                                                        <?php for ( $i = 1; $i <= 5; $i++ ) : ?>
+                                                            <option value="<?php echo esc_attr( $i ); ?>"><?php echo esc_html( $i ); ?></option>
+                                                        <?php endfor; ?>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label style="display: block; margin-bottom: 4px; font-size: 12px;"><?php esc_html_e( 'Price', 'pls-private-label-store' ); ?></label>
+                                                    <input type="number" name="default_price" step="0.01" min="0" value="0" style="width: 100%;" />
+                                                </div>
+                                                <div>
+                                                    <label style="display: block; margin-bottom: 4px; font-size: 12px;"><?php esc_html_e( 'Swatch', 'pls-private-label-store' ); ?></label>
+                                                    <select name="swatch_type" style="width: 100%;">
+                                                        <option value="label"><?php esc_html_e( 'Label', 'pls-private-label-store' ); ?></option>
+                                                        <option value="color"><?php esc_html_e( 'Color', 'pls-private-label-store' ); ?></option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <button type="submit" class="button"><?php esc_html_e( 'Add', 'pls-private-label-store' ); ?></button>
+                                                </div>
+                                            </div>
+                                        </form>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
-
-                <!-- Expandable Edit Forms -->
-                <?php foreach ( $attrs as $attr ) : ?>
-                    <?php $values = PLS_Repo_Attributes::values_for_attr( $attr->id ); ?>
-                    <div class="pls-attr-edit-panel" data-attr-id="<?php echo esc_attr( $attr->id ); ?>" style="display: none; background: #f9f9f9; border: 1px solid #ddd; padding: 15px; margin-top: 10px; border-radius: 4px;">
-                        <h3 style="margin-top: 0;"><?php echo esc_html( $attr->label ); ?> - <?php esc_html_e( 'Edit Values', 'pls-private-label-store' ); ?></h3>
-                        
-                        <?php if ( ! empty( $values ) ) : ?>
-                            <form method="post" style="margin-bottom: 15px;">
-                                <?php wp_nonce_field( 'pls_value_bulk_update' ); ?>
-                                <input type="hidden" name="pls_value_bulk_update" value="1" />
-                                <table class="wp-list-table widefat fixed">
-                                    <thead>
-                                        <tr>
-                                            <th><?php esc_html_e( 'Label', 'pls-private-label-store' ); ?></th>
-                                            <th style="width: 100px;"><?php esc_html_e( 'Min Tier', 'pls-private-label-store' ); ?></th>
-                                            <th style="width: 120px;"><?php esc_html_e( 'Price', 'pls-private-label-store' ); ?></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php foreach ( $values as $value ) : ?>
-                                            <?php
-                                            $swatch = PLS_Repo_Attributes::swatch_for_value( $value->id );
-                                            $price_meta = $value->term_id ? get_term_meta( $value->term_id, '_pls_default_price_impact', true ) : '';
-                                            $price_display = '' !== $price_meta ? floatval( $price_meta ) : 0;
-                                            ?>
-                                            <tr>
-                                                <td>
-                                                    <strong><?php echo esc_html( $value->label ); ?></strong>
-                                                    <br><code style="font-size: 10px; color: #999;"><?php echo esc_html( $value->value_key ); ?></code>
-                                                </td>
-                                                <td>
-                                                    <select name="value_updates[<?php echo esc_attr( $value->id ); ?>][min_tier_level]" style="width: 100%;">
-                                                        <?php for ( $i = 1; $i <= 5; $i++ ) : ?>
-                                                            <option value="<?php echo esc_attr( $i ); ?>" <?php selected( $value->min_tier_level, $i ); ?>><?php echo esc_html( $i ); ?></option>
-                                                        <?php endfor; ?>
-                                                    </select>
-                                                </td>
-                                                <td>
-                                                    <input type="number" 
-                                                           name="value_updates[<?php echo esc_attr( $value->id ); ?>][price]" 
-                                                           value="<?php echo esc_attr( $price_display ); ?>" 
-                                                           step="0.01" 
-                                                           min="0" 
-                                                           style="width: 100%;" />
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
-                                <p style="margin-top: 10px;">
-                                    <button type="submit" class="button button-primary"><?php esc_html_e( 'Save Changes', 'pls-private-label-store' ); ?></button>
-                                </p>
-                            </form>
-                        <?php endif; ?>
-
-                        <!-- Add New Value -->
-                        <form method="post" style="background: #fff; padding: 12px; border: 1px solid #ddd; border-radius: 4px;">
-                            <?php wp_nonce_field( 'pls_value_add' ); ?>
-                            <input type="hidden" name="pls_value_add" value="1" />
-                            <input type="hidden" name="attribute_id" value="<?php echo esc_attr( $attr->id ); ?>" />
-                            <h4 style="margin-top: 0;"><?php esc_html_e( 'Add Value', 'pls-private-label-store' ); ?></h4>
-                            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 8px; align-items: end;">
-                                <div>
-                                    <label style="display: block; margin-bottom: 4px; font-size: 12px;"><?php esc_html_e( 'Label', 'pls-private-label-store' ); ?></label>
-                                    <input type="text" name="value_label" class="regular-text" placeholder="e.g., Airless Pump" required style="width: 100%;" />
-                                </div>
-                                <div>
-                                    <label style="display: block; margin-bottom: 4px; font-size: 12px;"><?php esc_html_e( 'Min Tier', 'pls-private-label-store' ); ?></label>
-                                    <select name="min_tier_level" style="width: 100%;">
-                                        <?php for ( $i = 1; $i <= 5; $i++ ) : ?>
-                                            <option value="<?php echo esc_attr( $i ); ?>"><?php echo esc_html( $i ); ?></option>
-                                        <?php endfor; ?>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label style="display: block; margin-bottom: 4px; font-size: 12px;"><?php esc_html_e( 'Price', 'pls-private-label-store' ); ?></label>
-                                    <input type="number" name="default_price" step="0.01" min="0" value="0" style="width: 100%;" />
-                                </div>
-                                <div>
-                                    <label style="display: block; margin-bottom: 4px; font-size: 12px;"><?php esc_html_e( 'Swatch', 'pls-private-label-store' ); ?></label>
-                                    <select name="swatch_type" style="width: 100%;">
-                                        <option value="label"><?php esc_html_e( 'Label', 'pls-private-label-store' ); ?></option>
-                                        <option value="color"><?php esc_html_e( 'Color', 'pls-private-label-store' ); ?></option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <button type="submit" class="button"><?php esc_html_e( 'Add', 'pls-private-label-store' ); ?></button>
-                                </div>
-                            </div>
-                            <?php if ( isset( $_POST['swatch_type'] ) && $_POST['swatch_type'] === 'color' ) : ?>
-                                <div style="margin-top: 8px;">
-                                    <input type="text" name="swatch_value" placeholder="#ffffff" style="width: 120px;" />
-                                </div>
-                            <?php endif; ?>
-                        </form>
-                    </div>
-                <?php endforeach; ?>
             <?php endif; ?>
         </div>
+    </div>
 
-    <?php elseif ( $active_tab === 'ingredients' ) : ?>
-        <!-- Ingredients Tab -->
-        <div class="tab-content" style="margin-top: 20px;">
+    <!-- INGREDIENTS Section -->
+    <div class="pls-ingredient-section" style="background: #fff; border: 1px solid #ccd0d4; border-radius: 4px; padding: 15px; margin: 20px 0;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <h2 style="margin: 0; font-size: 18px;"><?php esc_html_e( 'Ingredients', 'pls-private-label-store' ); ?></h2>
+                <span class="pls-tier-badge" style="background: #6366f1; color: #fff; padding: 4px 10px; border-radius: 3px; font-size: 11px; font-weight: 600;"><?php esc_html_e( 'Tier 3+', 'pls-private-label-store' ); ?></span>
+                <span class="pls-badge" style="background: #f0f0f1; color: #50575e; padding: 4px 10px; border-radius: 3px; font-size: 11px; font-weight: 600;"><?php echo count( $ingredients ); ?> <?php esc_html_e( 'ingredients', 'pls-private-label-store' ); ?></span>
+            </div>
+            <button type="button" class="button button-small pls-toggle-section" data-target="ingredients-content"><?php esc_html_e( 'Toggle', 'pls-private-label-store' ); ?></button>
+        </div>
+
+        <div id="ingredients-content">
             <!-- Quick Add Form -->
-            <div style="background: #fff; border: 1px solid #ccd0d4; padding: 12px; margin-bottom: 20px; border-radius: 4px;">
+            <div style="background: #f9f9f9; border: 1px solid #ddd; padding: 12px; margin-bottom: 15px; border-radius: 4px;">
                 <form method="post" style="display: grid; grid-template-columns: 2fr 2fr 1fr auto; gap: 8px; align-items: end;">
                     <?php wp_nonce_field( 'pls_ingredient_add' ); ?>
                     <input type="hidden" name="pls_ingredient_add" value="1" />
@@ -470,91 +480,33 @@ if ( is_wp_error( $ingredients ) ) {
                 </form>
             <?php endif; ?>
         </div>
-
-    <?php elseif ( $active_tab === 'pricing' ) : ?>
-        <!-- Pricing Overview Tab -->
-        <div class="tab-content" style="margin-top: 20px;">
-            <?php
-            $all_values_with_pricing = array();
-            foreach ( $attrs as $attr ) {
-                $values = PLS_Repo_Attributes::values_for_attr( $attr->id );
-                foreach ( $values as $value ) {
-                    $price = $value->term_id ? get_term_meta( $value->term_id, '_pls_default_price_impact', true ) : '';
-                    if ( '' !== $price || $value->min_tier_level > 1 ) {
-                        $all_values_with_pricing[] = array(
-                            'attr_label' => $attr->label,
-                            'value_label' => $value->label,
-                            'value_id' => $value->id,
-                            'price' => '' !== $price ? floatval( $price ) : 0,
-                            'min_tier' => $value->min_tier_level,
-                        );
-                    }
-                }
-            }
-            ?>
-            
-            <?php if ( empty( $all_values_with_pricing ) ) : ?>
-                <p><?php esc_html_e( 'No pricing impacts configured yet.', 'pls-private-label-store' ); ?></p>
-            <?php else : ?>
-                <table class="wp-list-table widefat fixed striped">
-                    <thead>
-                        <tr>
-                            <th style="width: 25%;"><?php esc_html_e( 'Option', 'pls-private-label-store' ); ?></th>
-                            <th style="width: 35%;"><?php esc_html_e( 'Value', 'pls-private-label-store' ); ?></th>
-                            <th style="width: 20%;"><?php esc_html_e( 'Price Impact', 'pls-private-label-store' ); ?></th>
-                            <th style="width: 20%;"><?php esc_html_e( 'Min Tier', 'pls-private-label-store' ); ?></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ( $all_values_with_pricing as $item ) : ?>
-                            <tr>
-                                <td><strong><?php echo esc_html( $item['attr_label'] ); ?></strong></td>
-                                <td><?php echo esc_html( $item['value_label'] ); ?></td>
-                                <td>
-                                    <?php if ( $item['price'] > 0 ) : ?>
-                                        <span style="color: #059669; font-weight: 600;">+$<?php echo number_format( $item['price'], 2 ); ?></span>
-                                    <?php else : ?>
-                                        <span style="color: #999;">$0.00</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <?php if ( $item['min_tier'] > 1 ) : ?>
-                                        <span class="pls-tier-badge-small" style="background: #6366f1; color: #fff; padding: 2px 6px; border-radius: 3px; font-size: 10px;">Tier <?php echo esc_html( $item['min_tier'] ); ?>+</span>
-                                    <?php else : ?>
-                                        <span style="color: #999;">—</span>
-                                    <?php endif; ?>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            <?php endif; ?>
-        </div>
-    <?php endif; ?>
+    </div>
 </div>
 
 <script>
 jQuery(document).ready(function($) {
-    // Toggle edit panels
-    $('.wp-list-table tbody tr').on('click', function() {
-        if ($(this).next('.pls-attr-edit-panel').length) {
-            $(this).next('.pls-attr-edit-panel').slideToggle();
-        }
+    // Toggle sections
+    $('.pls-toggle-section').on('click', function() {
+        var target = $(this).data('target');
+        $('#' + target).slideToggle();
     });
-    
-    // Make rows clickable
-    $('.wp-list-table tbody tr').css('cursor', 'pointer');
+
+    // Toggle edit panels for product options
+    $('.pls-clickable-row').on('click', function() {
+        var attrId = $(this).data('attr-id');
+        $('.pls-edit-panel-row[data-attr-id="' + attrId + '"]').slideToggle();
+    });
+
+    $('.pls-clickable-row').css('cursor', 'pointer');
 });
 </script>
 
 <style>
-.pls-product-options .tab-content { margin-top: 20px; }
+.pls-product-options .pls-primary-section { border-left: 4px solid #2271b1 !important; }
+.pls-product-options .pls-primary-badge { text-transform: uppercase; font-weight: 600; }
+.pls-product-options .pls-clickable-row:hover { background: #f6f7f7; }
 .pls-product-options table { margin-top: 0; }
-.pls-product-options .wp-list-table tbody tr { cursor: pointer; }
-.pls-product-options .wp-list-table tbody tr:hover { background: #f6f7f7; }
-.pls-badge-small { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; }
-.pls-tier-badge-small { display: inline-block; padding: 1px 4px; border-radius: 2px; font-size: 9px; font-weight: 600; }
-.pls-attr-edit-panel { display: none; }
+.pls-product-options .pls-edit-panel-row { display: none; }
 @media (max-width: 782px) {
     .pls-product-options form[style*="grid"] { grid-template-columns: 1fr !important; }
     .pls-product-options .wp-list-table { font-size: 13px; }

@@ -58,6 +58,8 @@ final class PLS_Plugin {
         require_once PLS_PLS_DIR . 'includes/core/class-pls-tier-rules.php';
         require_once PLS_PLS_DIR . 'includes/core/class-pls-default-attributes.php';
         require_once PLS_PLS_DIR . 'includes/core/class-pls-migration-v080.php';
+        require_once PLS_PLS_DIR . 'includes/core/class-pls-migration-v083.php';
+        require_once PLS_PLS_DIR . 'includes/core/class-pls-ingredient-sync.php';
 
         require_once PLS_PLS_DIR . 'includes/admin/class-pls-admin-menu.php';
         require_once PLS_PLS_DIR . 'includes/admin/class-pls-admin-ajax.php';
@@ -91,6 +93,11 @@ final class PLS_Plugin {
         PLS_Admin_Menu::init();
         PLS_Ajax::init();
         PLS_Elementor::init();
+
+        // Hook ingredient sync
+        add_action( 'created_pls_ingredient', array( 'PLS_Ingredient_Sync', 'on_ingredient_created' ) );
+        add_action( 'edited_pls_ingredient', array( 'PLS_Ingredient_Sync', 'on_ingredient_updated' ) );
+        add_action( 'delete_pls_ingredient', array( 'PLS_Ingredient_Sync', 'on_ingredient_deleted' ) );
 
         $this->maybe_upgrade();
     }

@@ -61,10 +61,12 @@ final class PLS_Default_Attributes {
         // Create attribute
         $attr_id = PLS_Repo_Attributes::insert_attr(
             array(
-                'label'        => 'Pack Tier',
-                'attr_key'     => 'pack-tier',
-                'is_variation' => 1,
-                'sort_order'   => 0,
+                'label'            => 'Pack Tier',
+                'attr_key'         => 'pack-tier',
+                'is_variation'     => 1,
+                'sort_order'       => 0,
+                'option_type'      => 'pack-tier',
+                'is_primary'       => 1,
             )
         );
 
@@ -137,6 +139,7 @@ final class PLS_Default_Attributes {
                 'attr_key'     => 'package-type',
                 'is_variation' => 1,
                 'sort_order'   => 10,
+                'option_type'  => 'product-option',
             )
         );
 
@@ -197,6 +200,7 @@ final class PLS_Default_Attributes {
                 'attr_key'     => 'package-colour',
                 'is_variation' => 1,
                 'sort_order'   => 20,
+                'option_type'  => 'product-option',
             )
         );
 
@@ -329,6 +333,7 @@ final class PLS_Default_Attributes {
                     'attr_key'     => 'box-packaging',
                     'is_variation' => 1,
                     'sort_order'   => 40,
+                    'option_type'  => 'product-option',
                 )
             );
 

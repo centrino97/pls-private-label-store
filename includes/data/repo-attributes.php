@@ -16,16 +16,43 @@ final class PLS_Repo_Attributes {
         $table    = PLS_Repositories::table( 'attribute' );
         $attr_key = ! empty( $data['attr_key'] ) ? $data['attr_key'] : self::generate_unique_attr_key( $data['label'] );
 
-        $wpdb->insert(
-            $table,
-            array(
-                'attr_key'     => $attr_key,
-                'label'        => $data['label'],
-                'is_variation' => ! empty( $data['is_variation'] ) ? 1 : 0,
-                'sort_order'   => isset( $data['sort_order'] ) ? absint( $data['sort_order'] ) : 0,
-            ),
-            array( '%s', '%s', '%d', '%d' )
+        $insert_data = array(
+            'attr_key'     => $attr_key,
+            'label'        => $data['label'],
+            'is_variation' => ! empty( $data['is_variation'] ) ? 1 : 0,
+            'sort_order'   => isset( $data['sort_order'] ) ? absint( $data['sort_order'] ) : 0,
         );
+
+        $format = array( '%s', '%s', '%d', '%d' );
+
+        // Add optional hierarchy fields
+        if ( isset( $data['parent_attribute_id'] ) ) {
+            $insert_data['parent_attribute_id'] = absint( $data['parent_attribute_id'] );
+            $format[] = '%d';
+        }
+
+        if ( isset( $data['option_type'] ) ) {
+            $insert_data['option_type'] = sanitize_text_field( $data['option_type'] );
+            $format[] = '%s';
+        }
+
+        if ( isset( $data['is_primary'] ) ) {
+            $insert_data['is_primary'] = ! empty( $data['is_primary'] ) ? 1 : 0;
+            $format[] = '%d';
+            
+            // If setting as primary, unset any existing primary
+            if ( $insert_data['is_primary'] ) {
+                $wpdb->update(
+                    $table,
+                    array( 'is_primary' => 0 ),
+                    array( 'is_primary' => 1 ),
+                    array( '%d' ),
+                    array( '%d' )
+                );
+            }
+        }
+
+        $wpdb->insert( $table, $insert_data, $format );
 
         return $wpdb->insert_id;
     }
@@ -266,5 +293,102 @@ final class PLS_Repo_Attributes {
         }
 
         return 0.0;
+    }
+
+    /**
+     * Get the primary attribute (Pack Tier).
+     *
+     * @return object|null Attribute object or null if not found.
+     */
+    public static function get_primary_attribute() {
+        global $wpdb;
+        $table = PLS_Repositories::table( 'attribute' );
+
+        return $wpdb->get_row(
+            "SELECT * FROM {$table} WHERE is_primary = 1 LIMIT 1"
+        );
+    }
+
+    /**
+     * Get attributes filtered by option_type.
+     *
+     * @param string $type Option type: 'pack-tier', 'product-option', or 'ingredient'.
+     * @return array Array of attribute objects.
+     */
+    public static function get_attributes_by_type( $type ) {
+        global $wpdb;
+        $table = PLS_Repositories::table( 'attribute' );
+
+        return $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT * FROM {$table} WHERE option_type = %s ORDER BY sort_order ASC, id ASC",
+                $type
+            )
+        );
+    }
+
+    /**
+     * Get all product options (non-primary, non-ingredient attributes).
+     *
+     * @return array Array of attribute objects.
+     */
+    public static function get_product_options() {
+        return self::get_attributes_by_type( 'product-option' );
+    }
+
+    /**
+     * Get all ingredient-type attributes.
+     *
+     * @return array Array of attribute objects.
+     */
+    public static function get_ingredient_attributes() {
+        return self::get_attributes_by_type( 'ingredient' );
+    }
+
+    /**
+     * Get child attributes of a parent attribute.
+     *
+     * @param int $parent_id Parent attribute ID.
+     * @return array Array of attribute objects.
+     */
+    public static function get_child_attributes( $parent_id ) {
+        global $wpdb;
+        $table = PLS_Repositories::table( 'attribute' );
+
+        return $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT * FROM {$table} WHERE parent_attribute_id = %d ORDER BY sort_order ASC, id ASC",
+                $parent_id
+            )
+        );
+    }
+
+    /**
+     * Set an attribute as primary (unset others).
+     *
+     * @param int $attribute_id Attribute ID to set as primary.
+     * @return bool|int Number of rows affected or false on error.
+     */
+    public static function set_primary_attribute( $attribute_id ) {
+        global $wpdb;
+        $table = PLS_Repositories::table( 'attribute' );
+
+        // Unset any existing primary
+        $wpdb->update(
+            $table,
+            array( 'is_primary' => 0 ),
+            array( 'is_primary' => 1 ),
+            array( '%d' ),
+            array( '%d' )
+        );
+
+        // Set new primary
+        return $wpdb->update(
+            $table,
+            array( 'is_primary' => 1 ),
+            array( 'id' => $attribute_id ),
+            array( '%d' ),
+            array( '%d' )
+        );
     }
 }

@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.8.2
+Stable tag: 0.8.3
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,15 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 0.8.3 =
+* **Hierarchical Product Options:** Pack Tier is now PRIMARY option with clear visual hierarchy.
+* **Ingredient Integration:** Ingredients integrated as Tier 3+ options, automatically synced with attribute system.
+* **UI Redesign:** 3-section layout (Pack Tier PRIMARY, Product Options, Ingredients) with distinct styling and badges.
+* **Database:** Added option_type, is_primary, and parent_attribute_id columns to pls_attribute table.
+* **Ingredient Sync:** Automatic bidirectional sync between pls_ingredient taxonomy and pls_attribute table.
+* **Repository Updates:** New methods for filtering by option type and managing primary attributes.
+* **WooCommerce Sync:** Updated to use primary attribute system for pack tier identification.
+
 = 0.8.2 =
 * **Compact Table UI:** Redesigned Product Options with compact, table-based layout for better navigation.
 * **Client Requirements Complete:** Added Custom Printed Bottles and External Box Packaging options for Tier 4+.

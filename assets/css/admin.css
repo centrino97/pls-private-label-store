@@ -129,14 +129,20 @@ body.pls-modal-open{overflow:hidden}
 .pls-manage-value-label{font-weight:600}
 .pls-manage-value-form .pls-chip-row{align-items:center}
 
-/* Compact Product Options UI */
-.pls-product-options .tab-content{margin-top:20px}
+/* Hierarchical Product Options UI */
+.pls-product-options .pls-primary-section{border-left:4px solid #2271b1!important;background:#f0f7ff}
+.pls-product-options .pls-primary-badge{text-transform:uppercase;font-weight:600;background:#2271b1;color:#fff;padding:4px 10px;border-radius:3px;font-size:11px}
+.pls-product-options .pls-product-options-section,.pls-product-options .pls-ingredient-section{border:1px solid #ccd0d4;border-radius:4px;background:#fff}
+.pls-product-options .pls-badge{background:#f0f0f1;color:#50575e;padding:4px 10px;border-radius:3px;font-size:11px;font-weight:600}
 .pls-product-options table{margin-top:0}
 .pls-product-options .wp-list-table tbody tr{cursor:pointer}
 .pls-product-options .wp-list-table tbody tr:hover{background:#f6f7f7}
+.pls-product-options .pls-clickable-row:hover{background:#f6f7f7}
+.pls-product-options .pls-edit-panel-row{display:none}
+.pls-product-options .pls-edit-panel-row td{background:#f9f9f9;padding:15px}
 .pls-badge-small{display:inline-block;padding:2px 6px;border-radius:3px;font-size:10px;font-weight:600}
 .pls-tier-badge-small{display:inline-block;padding:1px 4px;border-radius:2px;font-size:9px;font-weight:600}
-.pls-attr-edit-panel{display:none}
+.pls-attr-edit-panel{display:block}
 @media (max-width:782px){
     .pls-product-options form[style*="grid"]{grid-template-columns:1fr!important}
     .pls-product-options .wp-list-table{font-size:13px}

@@ -28,6 +28,12 @@ final class PLS_Activator {
             require_once PLS_PLS_DIR . 'includes/core/class-pls-migration-v080.php';
             PLS_Migration_V080::maybe_migrate();
         }
+        
+        // Run v0.8.3 migration if upgrading from earlier version
+        if ( version_compare( $stored_version, '0.8.3', '<' ) ) {
+            require_once PLS_PLS_DIR . 'includes/core/class-pls-migration-v083.php';
+            PLS_Migration_V083::maybe_migrate();
+        }
     }
 
     private static function maybe_create_tables() {
@@ -134,14 +140,20 @@ final class PLS_Activator {
 
         $tables[] = "CREATE TABLE {$p}pls_attribute (
             id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            parent_attribute_id BIGINT(20) UNSIGNED NULL DEFAULT NULL,
             wc_attribute_id BIGINT(20) UNSIGNED NULL,
             attr_key VARCHAR(100) NOT NULL,
             label VARCHAR(255) NOT NULL,
+            option_type VARCHAR(50) NOT NULL DEFAULT 'product-option',
+            is_primary TINYINT(1) NOT NULL DEFAULT 0,
             is_variation TINYINT(1) NOT NULL DEFAULT 0,
             sort_order INT(11) NOT NULL DEFAULT 0,
             PRIMARY KEY (id),
             UNIQUE KEY attr_key (attr_key),
+            KEY parent_attribute_id (parent_attribute_id),
             KEY wc_attribute_id (wc_attribute_id),
+            KEY option_type (option_type),
+            KEY is_primary (is_primary),
             KEY is_variation (is_variation)
         ) $charset_collate;";
 
