@@ -7,7 +7,7 @@
   }
 
   $(function(){
-    var stepOrder = ['general','data','ingredients','attributes','packs','label'];
+    var stepOrder = ['general','data','ingredients','packs','attributes','label'];
     var defaultLabelGuide = 'https://bodocibiophysics.com/label-guide/';
     var currentStep = 0;
 

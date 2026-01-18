@@ -170,8 +170,11 @@ wp_localize_script(
             <button type="button" class="pls-stepper__item is-active" data-step="general"><?php esc_html_e( 'General', 'pls-private-label-store' ); ?></button>
             <button type="button" class="pls-stepper__item" data-step="data"><?php esc_html_e( 'Data', 'pls-private-label-store' ); ?></button>
             <button type="button" class="pls-stepper__item" data-step="ingredients"><?php esc_html_e( 'Ingredients', 'pls-private-label-store' ); ?></button>
-            <button type="button" class="pls-stepper__item" data-step="attributes"><?php esc_html_e( 'Attribute options', 'pls-private-label-store' ); ?></button>
-            <button type="button" class="pls-stepper__item" data-step="packs"><?php esc_html_e( 'Pack tiers', 'pls-private-label-store' ); ?></button>
+            <button type="button" class="pls-stepper__item" data-step="packs">
+              <span class="pls-primary-badge" style="background: #2271b1; color: #fff; padding: 2px 6px; border-radius: 2px; font-size: 9px; margin-right: 6px;">PRIMARY</span>
+              <?php esc_html_e( 'Pack tiers', 'pls-private-label-store' ); ?>
+            </button>
+            <button type="button" class="pls-stepper__item" data-step="attributes"><?php esc_html_e( 'Product options', 'pls-private-label-store' ); ?></button>
             <button type="button" class="pls-stepper__item" data-step="label"><?php esc_html_e( 'Label application', 'pls-private-label-store' ); ?></button>
           </div>
 
@@ -298,54 +301,13 @@ wp_localize_script(
               </div>
             </div>
 
-            <div class="pls-stepper__panel" data-step="attributes">
-                <div class="pls-modal__section">
-                  <div class="pls-section-heading">
-                    <p class="pls-label"><?php esc_html_e( 'Attributes', 'pls-private-label-store' ); ?></p>
-                    <h3><?php esc_html_e( 'Attribute options', 'pls-private-label-store' ); ?></h3>
-                    <p class="pls-subtle"><?php esc_html_e( 'Pick an existing attribute or craft a new one, then attach multiple values with their price impact.', 'pls-private-label-store' ); ?></p>
-                  </div>
-                  <div class="pls-field-stack">
-                    <button type="button" class="button" id="pls-open-attribute-manage"><?php esc_html_e( 'Manage attributes & values', 'pls-private-label-store' ); ?></button>
-                  </div>
-                  <div id="pls-attribute-rows" class="pls-attribute-rows"></div>
-                  <button type="button" class="button" id="pls-add-attribute-row"><?php esc_html_e( 'Add attribute option', 'pls-private-label-store' ); ?></button>
-                  <div id="pls-attribute-template" class="hidden">
-                  <div class="pls-attribute-row">
-                    <div class="pls-attribute-row__grid">
-                      <div class="pls-attribute-card">
-                        <p class="pls-micro"><?php esc_html_e( 'Attribute', 'pls-private-label-store' ); ?></p>
-                        <select class="pls-attr-select" name="">
-                          <option value=""><?php esc_html_e( 'Select attribute', 'pls-private-label-store' ); ?></option>
-                          <?php foreach ( $attr_payload as $attr ) : ?>
-                              <option value="<?php echo esc_attr( $attr['id'] ); ?>"><?php echo esc_html( $attr['label'] ); ?></option>
-                          <?php endforeach; ?>
-                        </select>
-                        <span class="pls-field-hint"><?php esc_html_e( 'Pick one attribute for this row.', 'pls-private-label-store' ); ?></span>
-                      </div>
-                      <div class="pls-attribute-card">
-                        <div class="pls-attr-value-stack">
-                          <p class="pls-micro"><?php esc_html_e( 'Values & price impact', 'pls-private-label-store' ); ?></p>
-                          <label class="pls-field-stack">
-                            <span class="screen-reader-text"><?php esc_html_e( 'Select values', 'pls-private-label-store' ); ?></span>
-                            <select class="pls-attr-value-multi" multiple data-placeholder="<?php esc_attr_e( 'Select values', 'pls-private-label-store' ); ?>"></select>
-                          </label>
-                          <div class="pls-attribute-value-details"></div>
-                          <div class="pls-attribute-custom-values"></div>
-                          <button type="button" class="button button-small pls-attribute-value-add-custom"><?php esc_html_e( 'Add custom value', 'pls-private-label-store' ); ?></button>
-                        </div>
-                      </div>
-                    </div>
-                    <button type="button" class="button-link-delete pls-attribute-remove"><?php esc_html_e( 'Remove', 'pls-private-label-store' ); ?></button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             <div class="pls-stepper__panel" data-step="packs">
-              <div class="pls-modal__section">
-                <h3><?php esc_html_e( 'Pack tiers', 'pls-private-label-store' ); ?></h3>
-                <p class="description"><?php esc_html_e( 'Defaults are 50/100/250/500/1000 units. Adjust on the fly.', 'pls-private-label-store' ); ?></p>
+              <div class="pls-modal__section" style="border-left: 4px solid #2271b1; padding-left: 20px;">
+                <div class="pls-section-heading">
+                  <p class="pls-label"><?php esc_html_e( 'PRIMARY OPTION', 'pls-private-label-store' ); ?></p>
+                  <h3><?php esc_html_e( 'Pack tiers', 'pls-private-label-store' ); ?></h3>
+                  <p class="pls-subtle"><?php esc_html_e( 'Default values are pre-filled from your settings. You can adjust units and prices per product.', 'pls-private-label-store' ); ?></p>
+                </div>
                 <div class="pls-pack-grid" id="pls-pack-grid">
                   <?php foreach ( $pack_defaults as $i => $tier ) : ?>
                     <?php
@@ -370,6 +332,58 @@ wp_localize_script(
                       <label class="pls-inline-checkbox"><input type="checkbox" name="pack_tiers[<?php echo esc_attr( $i ); ?>][enabled]" checked /> <?php esc_html_e( 'Enabled', 'pls-private-label-store' ); ?></label>
                     </div>
                   <?php endforeach; ?>
+                </div>
+              </div>
+            </div>
+
+            <div class="pls-stepper__panel" data-step="attributes">
+                <div class="pls-modal__section">
+                  <div class="pls-section-heading">
+                    <p class="pls-label"><?php esc_html_e( 'PRODUCT OPTIONS', 'pls-private-label-store' ); ?></p>
+                    <h3><?php esc_html_e( 'Product options', 'pls-private-label-store' ); ?></h3>
+                    <p class="pls-subtle"><?php esc_html_e( 'Select product options like Package Type, Package Colour, and other customizations. Available options depend on the Pack Tier selected above.', 'pls-private-label-store' ); ?></p>
+                  </div>
+                  <div class="pls-field-stack">
+                    <button type="button" class="button" id="pls-open-attribute-manage"><?php esc_html_e( 'Manage product options & values', 'pls-private-label-store' ); ?></button>
+                  </div>
+                  <div id="pls-attribute-rows" class="pls-attribute-rows"></div>
+                  <button type="button" class="button" id="pls-add-attribute-row"><?php esc_html_e( 'Add product option', 'pls-private-label-store' ); ?></button>
+                  <div id="pls-attribute-template" class="hidden">
+                  <div class="pls-attribute-row">
+                    <div class="pls-attribute-row__grid">
+                      <div class="pls-attribute-card">
+                        <p class="pls-micro"><?php esc_html_e( 'Product Option', 'pls-private-label-store' ); ?></p>
+                        <select class="pls-attr-select" name="">
+                          <option value=""><?php esc_html_e( 'Select option', 'pls-private-label-store' ); ?></option>
+                          <?php 
+                          // Filter out Pack Tier (primary) and ingredient attributes - only show product options
+                          $primary_attr_id = $primary_attr ? $primary_attr->id : 0;
+                          foreach ( $attr_payload as $attr ) : 
+                            // Skip primary attribute (Pack Tier) and ingredient attributes
+                            if ( isset( $attr['is_primary'] ) && $attr['is_primary'] ) continue;
+                            if ( isset( $attr['option_type'] ) && $attr['option_type'] === 'ingredient' ) continue;
+                            if ( isset( $attr['id'] ) && (int) $attr['id'] === $primary_attr_id ) continue;
+                          ?>
+                              <option value="<?php echo esc_attr( $attr['id'] ); ?>"><?php echo esc_html( $attr['label'] ); ?></option>
+                          <?php endforeach; ?>
+                        </select>
+                        <span class="pls-field-hint"><?php esc_html_e( 'Pick a product option (Package Type, Package Colour, etc.).', 'pls-private-label-store' ); ?></span>
+                      </div>
+                      <div class="pls-attribute-card">
+                        <div class="pls-attr-value-stack">
+                          <p class="pls-micro"><?php esc_html_e( 'Values & price impact', 'pls-private-label-store' ); ?></p>
+                          <label class="pls-field-stack">
+                            <span class="screen-reader-text"><?php esc_html_e( 'Select values', 'pls-private-label-store' ); ?></span>
+                            <select class="pls-attr-value-multi" multiple data-placeholder="<?php esc_attr_e( 'Select values', 'pls-private-label-store' ); ?>"></select>
+                          </label>
+                          <div class="pls-attribute-value-details"></div>
+                          <div class="pls-attribute-custom-values"></div>
+                          <button type="button" class="button button-small pls-attribute-value-add-custom"><?php esc_html_e( 'Add custom value', 'pls-private-label-store' ); ?></button>
+                        </div>
+                      </div>
+                    </div>
+                    <button type="button" class="button-link-delete pls-attribute-remove"><?php esc_html_e( 'Remove', 'pls-private-label-store' ); ?></button>
+                  </div>
                 </div>
               </div>
             </div>

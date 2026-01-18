@@ -23,6 +23,13 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 0.8.8 =
+* **Product Creation Hierarchy:** Reordered product creation modal to follow hierarchical structure - Pack Tier (PRIMARY) comes before Product Options.
+* **Visual Hierarchy:** Pack Tier section now clearly marked as PRIMARY with badge and distinct styling.
+* **Filtered Options:** Product Options dropdown now excludes Pack Tier and ingredient attributes (only shows actual product options).
+* **Better Descriptions:** Updated descriptions to reflect hierarchy and clarify that options depend on selected Pack Tier.
+* **Improved UX:** Product creation flow now matches the hierarchical structure established in Product Options settings.
+
 = 0.8.7 =
 * **Bug Fix:** Fixed JavaScript error `updateTierTotal is not defined` in product creation modal.
 * **Function Scope:** Moved `updateTierTotal` function to proper scope for accessibility.
