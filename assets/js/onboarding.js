@@ -37,14 +37,251 @@
             });
         });
 
-        // Show onboarding card if active
-        if ( onboardingData.is_active ) {
-            initOnboardingCard();
-        } else {
-            // Show Help button
+        // Inject help buttons into modals
+        injectModalHelpButtons();
+
+        // Show onboarding card if active (only when not in modal)
+        function checkAndShowOnboarding() {
+            if ( onboardingData.is_active && !$('.pls-modal.is-active').length ) {
+                if (!$('#pls-onboarding-card').length) {
+                    initOnboardingCard();
+                }
+                $('#pls-onboarding-card').show();
+            } else {
+                $('#pls-onboarding-card').hide();
+            }
+        }
+
+        checkAndShowOnboarding();
+
+        // Show Help button in page header if onboarding not active
+        if ( !onboardingData.is_active ) {
             initHelpButton();
         }
+
+        // Watch for modal opens/closes
+        $(document).on('click', '.pls-modal__close, .pls-modal-cancel, [data-pls-open-modal]', function() {
+            setTimeout(function() {
+                injectModalHelpButtons();
+                checkAndShowOnboarding();
+            }, 300);
+        });
+
+        // Watch for modal class changes using MutationObserver
+        if (typeof MutationObserver !== 'undefined') {
+            const modalObserver = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                        const $target = $(mutation.target);
+                        if ($target.hasClass('pls-modal')) {
+                            setTimeout(function() {
+                                injectModalHelpButtons();
+                                checkAndShowOnboarding();
+                            }, 100);
+                        }
+                    }
+                });
+            });
+
+            // Observe all existing modals
+            $('.pls-modal').each(function() {
+                modalObserver.observe(this, { attributes: true, attributeFilter: ['class'] });
+            });
+
+            // Observe body for new modals
+            const bodyObserver = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    mutation.addedNodes.forEach(function(node) {
+                        if (node.nodeType === 1 && $(node).hasClass('pls-modal')) {
+                            modalObserver.observe(node, { attributes: true, attributeFilter: ['class'] });
+                            setTimeout(injectModalHelpButtons, 100);
+                        }
+                    });
+                });
+            });
+
+            bodyObserver.observe(document.body, { childList: true, subtree: true });
+        }
     });
+
+    function injectModalHelpButtons() {
+        ensureModalHelpButtons();
+
+        // Attach tooltip handlers (only once)
+        if (!$(document).data('pls-help-handlers-attached')) {
+            $(document).on('click', '.pls-help-btn', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const $btn = $(this);
+                const section = $btn.data('section');
+                const page = $btn.data('page');
+                
+                // Get helper content from server
+                showHelpTooltip($btn, section, page);
+            });
+            $(document).data('pls-help-handlers-attached', true);
+        }
+    }
+
+    function showHelpTooltip($button, section, page) {
+        // Remove existing tooltip
+        $('.pls-help-tooltip').remove();
+
+        // Get helper content (simplified - in production, fetch via AJAX)
+        const content = getHelperContentForSection(page, section);
+        if (!content) return;
+
+        const $tooltip = $('<div class="pls-help-tooltip"></div>');
+        $tooltip.append('<h4>' + (content.title || 'Help') + '</h4>');
+        
+        if (content.tips && content.tips.length) {
+            const $tipsList = $('<ul class="pls-help-tips"></ul>');
+            content.tips.forEach(function(tip) {
+                $tipsList.append('<li>' + tip + '</li>');
+            });
+            $tooltip.append($tipsList);
+        }
+
+        if (content.validation && content.validation.length) {
+            const $validationList = $('<ul class="pls-help-validation"></ul>');
+            content.validation.forEach(function(rule) {
+                $validationList.append('<li>' + rule + '</li>');
+            });
+            $tooltip.append('<h5>Requirements:</h5>');
+            $tooltip.append($validationList);
+        }
+
+        $('body').append($tooltip);
+
+        // Position tooltip near button
+        const btnOffset = $button.offset();
+        const btnWidth = $button.outerWidth();
+        const btnHeight = $button.outerHeight();
+        const tooltipWidth = $tooltip.outerWidth();
+        const tooltipHeight = $tooltip.outerHeight();
+
+        let left = btnOffset.left + btnWidth + 10;
+        let top = btnOffset.top;
+
+        // Adjust if tooltip goes off screen
+        if (left + tooltipWidth > $(window).width()) {
+            left = btnOffset.left - tooltipWidth - 10;
+        }
+        if (top + tooltipHeight > $(window).height()) {
+            top = $(window).height() - tooltipHeight - 10;
+        }
+
+        $tooltip.css({ left: left + 'px', top: top + 'px' }).fadeIn(200);
+
+        // Close on click outside or Escape key
+        $(document).on('click.helpTooltip', function(e) {
+            if (!$(e.target).closest('.pls-help-btn, .pls-help-tooltip').length) {
+                $tooltip.fadeOut(200, function() {
+                    $(this).remove();
+                });
+                $(document).off('click.helpTooltip keydown.helpTooltip');
+            }
+        });
+
+        $(document).on('keydown.helpTooltip', function(e) {
+            if (e.key === 'Escape') {
+                $tooltip.fadeOut(200, function() {
+                    $(this).remove();
+                });
+                $(document).off('click.helpTooltip keydown.helpTooltip');
+            }
+        });
+    }
+
+    function getHelperContentForSection(page, section) {
+        // Fetch helper content from server (consolidated source)
+        let content = null;
+        
+        $.ajax({
+            url: PLS_Onboarding.ajax_url,
+            type: 'POST',
+            async: false, // Synchronous for immediate use
+            data: {
+                action: 'pls_get_helper_content',
+                nonce: PLS_Onboarding.nonce,
+                page: page,
+                section: section
+            },
+            success: function(resp) {
+                if (resp && resp.success && resp.data && resp.data.content) {
+                    if (section) {
+                        content = resp.data.content[section] || null;
+                    } else {
+                        content = resp.data.content;
+                    }
+                }
+            },
+            error: function() {
+                // Fallback to hardcoded content if AJAX fails
+                content = getHelperContentFallback(page, section);
+            }
+        });
+        
+        return content || getHelperContentFallback(page, section);
+    }
+
+    function getHelperContentFallback(page, section) {
+        // Fallback helper content (matches PHP get_helper_content)
+        const contentMap = {
+            'products': {
+                'general': {
+                    title: 'General Information',
+                    tips: [
+                        'Product name will be used as the WooCommerce product title.',
+                        'Select categories to organize products in your store.',
+                        'Upload featured image and gallery images for product display.'
+                    ],
+                    validation: [
+                        'Product name is required.',
+                        'At least one category must be selected.'
+                    ]
+                },
+                'packs': {
+                    title: 'Pack Tiers',
+                    tips: [
+                        'Pack tiers define different quantities and pricing options.',
+                        'Each tier will become a WooCommerce product variation.',
+                        'Enable tiers that should be available for purchase.'
+                    ],
+                    validation: [
+                        'At least one pack tier must be enabled.',
+                        'Units and price must be greater than 0.'
+                    ]
+                },
+                'attributes': {
+                    title: 'Product Options',
+                    tips: [
+                        'Product options allow customers to customize their order.',
+                        'Set tier-based pricing rules for each option value.',
+                        'Options will sync to WooCommerce as product attributes.'
+                    ]
+                }
+            },
+            'bundles': {
+                'create': {
+                    title: 'Create Bundle',
+                    tips: [
+                        'Bundles combine multiple products with special pricing.',
+                        'SKU count is the number of different products in the bundle.',
+                        'Units per SKU is the quantity for each product.',
+                        'Cart will automatically detect when customers qualify for bundle pricing.'
+                    ],
+                    validation: [
+                        'Bundle name is required.',
+                        'SKU count must be at least 2.',
+                        'Units per SKU and price per unit must be greater than 0.'
+                    ]
+                }
+            }
+        };
+
+        return contentMap[page] && contentMap[page][section] ? contentMap[page][section] : null;
+    }
 
     function initOnboardingCard() {
         const currentPage = onboardingData.current_page || 'dashboard';

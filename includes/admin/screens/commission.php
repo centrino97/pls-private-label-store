@@ -233,18 +233,19 @@ $paid_total = $paid_product + $paid_custom;
                 </form>
             </div>
 
-            <table class="wp-list-table widefat fixed striped">
-                <thead>
-                    <tr>
-                        <th><?php esc_html_e( 'Month', 'pls-private-label-store' ); ?></th>
-                        <th><?php esc_html_e( 'Product Orders', 'pls-private-label-store' ); ?></th>
-                        <th><?php esc_html_e( 'Custom Orders', 'pls-private-label-store' ); ?></th>
-                        <th><?php esc_html_e( 'Total', 'pls-private-label-store' ); ?></th>
-                        <th><?php esc_html_e( 'Status', 'pls-private-label-store' ); ?></th>
-                        <th><?php esc_html_e( 'Actions', 'pls-private-label-store' ); ?></th>
-                    </tr>
-                </thead>
-                <tbody>
+            <div class="pls-table-modern pls-table-modern--compact">
+                <table>
+                    <thead>
+                        <tr>
+                            <th><?php esc_html_e( 'Month', 'pls-private-label-store' ); ?></th>
+                            <th><?php esc_html_e( 'Product Orders', 'pls-private-label-store' ); ?></th>
+                            <th><?php esc_html_e( 'Custom Orders', 'pls-private-label-store' ); ?></th>
+                            <th><?php esc_html_e( 'Total', 'pls-private-label-store' ); ?></th>
+                            <th><?php esc_html_e( 'Status', 'pls-private-label-store' ); ?></th>
+                            <th><?php esc_html_e( 'Actions', 'pls-private-label-store' ); ?></th>
+                        </tr>
+                    </thead>
+                    <tbody>
                     <?php if ( empty( $monthly_summary ) ) : ?>
                         <tr>
                             <td colspan="6"><?php esc_html_e( 'No commission data available.', 'pls-private-label-store' ); ?></td>
@@ -271,11 +272,11 @@ $paid_total = $paid_product + $paid_custom;
                                 </td>
                                 <td>
                                     <?php if ( 'pending' === $summary['status'] ) : ?>
-                                        <button type="button" class="button button-small pls-mark-invoiced-monthly" data-month="<?php echo esc_attr( $month_key ); ?>">
+                                        <button type="button" class="button button-small pls-btn--ghost pls-mark-invoiced-monthly" data-month="<?php echo esc_attr( $month_key ); ?>">
                                             <?php esc_html_e( 'Mark Invoiced', 'pls-private-label-store' ); ?>
                                         </button>
                                     <?php elseif ( 'invoiced' === $summary['status'] ) : ?>
-                                        <button type="button" class="button button-small pls-mark-paid-monthly" data-month="<?php echo esc_attr( $month_key ); ?>">
+                                        <button type="button" class="button button-small pls-btn--ghost pls-mark-paid-monthly" data-month="<?php echo esc_attr( $month_key ); ?>">
                                             <?php esc_html_e( 'Mark Paid', 'pls-private-label-store' ); ?>
                                         </button>
                                     <?php else : ?>
@@ -318,19 +319,20 @@ $paid_total = $paid_product + $paid_custom;
                 <button type="button" class="button" id="pls-apply-bulk-action"><?php esc_html_e( 'Apply', 'pls-private-label-store' ); ?></button>
             </div>
 
-            <table class="wp-list-table widefat fixed striped">
-                <thead>
-                    <tr>
-                        <th class="check-column"><input type="checkbox" id="pls-select-all-commissions" /></th>
-                        <th><?php esc_html_e( 'Source', 'pls-private-label-store' ); ?></th>
-                        <th><?php esc_html_e( 'Date', 'pls-private-label-store' ); ?></th>
-                        <th><?php esc_html_e( 'Type', 'pls-private-label-store' ); ?></th>
-                        <th><?php esc_html_e( 'Amount', 'pls-private-label-store' ); ?></th>
-                        <th><?php esc_html_e( 'Status', 'pls-private-label-store' ); ?></th>
-                        <th><?php esc_html_e( 'Actions', 'pls-private-label-store' ); ?></th>
-                    </tr>
-                </thead>
-                <tbody>
+            <div class="pls-table-modern pls-table-modern--compact">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="check-column"><input type="checkbox" id="pls-select-all-commissions" /></th>
+                            <th><?php esc_html_e( 'Source', 'pls-private-label-store' ); ?></th>
+                            <th><?php esc_html_e( 'Date', 'pls-private-label-store' ); ?></th>
+                            <th><?php esc_html_e( 'Type', 'pls-private-label-store' ); ?></th>
+                            <th><?php esc_html_e( 'Amount', 'pls-private-label-store' ); ?></th>
+                            <th><?php esc_html_e( 'Status', 'pls-private-label-store' ); ?></th>
+                            <th><?php esc_html_e( 'Actions', 'pls-private-label-store' ); ?></th>
+                        </tr>
+                    </thead>
+                    <tbody>
                     <?php
                     $all_commissions = array();
                     
@@ -409,13 +411,13 @@ $paid_total = $paid_product + $paid_custom;
                                 </td>
                                 <td>
                                     <?php if ( 'pending' === $comm['status'] ) : ?>
-                                        <button type="button" class="button button-small pls-mark-invoiced-item" 
+                                        <button type="button" class="button button-small pls-btn--ghost pls-mark-invoiced-item" 
                                                 data-id="<?php echo esc_attr( $comm['id'] ); ?>" 
                                                 data-type="<?php echo esc_attr( $comm['type'] ); ?>">
                                             <?php esc_html_e( 'Mark Invoiced', 'pls-private-label-store' ); ?>
                                         </button>
                                     <?php elseif ( 'invoiced' === $comm['status'] ) : ?>
-                                        <button type="button" class="button button-small pls-mark-paid-item" 
+                                        <button type="button" class="button button-small pls-btn--ghost pls-mark-paid-item" 
                                                 data-id="<?php echo esc_attr( $comm['id'] ); ?>" 
                                                 data-type="<?php echo esc_attr( $comm['type'] ); ?>">
                                             <?php esc_html_e( 'Mark Paid', 'pls-private-label-store' ); ?>
@@ -425,8 +427,9 @@ $paid_total = $paid_product + $paid_custom;
                             </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>
-                </tbody>
-            </table>
+                    </tbody>
+                </table>
+            </div>
         </div>
     <?php endif; ?>
 </div>

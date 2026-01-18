@@ -22,6 +22,7 @@ final class PLS_Onboarding {
         add_action( 'wp_ajax_pls_skip_onboarding', array( __CLASS__, 'skip_onboarding' ) );
         add_action( 'wp_ajax_pls_get_onboarding_steps', array( __CLASS__, 'get_steps' ) );
         add_action( 'wp_ajax_pls_delete_test_product', array( __CLASS__, 'delete_test_product' ) );
+        add_action( 'wp_ajax_pls_get_helper_content', array( __CLASS__, 'get_helper_content_ajax' ) );
     }
 
     /**
@@ -66,6 +67,77 @@ final class PLS_Onboarding {
     }
 
     /**
+     * Get helper content for a specific page/section.
+     *
+     * @param string $page Page identifier.
+     * @param string $section Optional section identifier.
+     * @return array Helper content array.
+     */
+    public static function get_helper_content( $page, $section = '' ) {
+        $content = array();
+
+        // Product creation modal sections
+        if ( 'products' === $page ) {
+            $content = array(
+                'general' => array(
+                    'title' => __( 'General Information', 'pls-private-label-store' ),
+                    'tips' => array(
+                        __( 'Product name will be used as the WooCommerce product title.', 'pls-private-label-store' ),
+                        __( 'Select categories to organize products in your store.', 'pls-private-label-store' ),
+                        __( 'Upload featured image and gallery images for product display.', 'pls-private-label-store' ),
+                    ),
+                    'validation' => array(
+                        __( 'Product name is required.', 'pls-private-label-store' ),
+                        __( 'At least one category must be selected.', 'pls-private-label-store' ),
+                    ),
+                ),
+                'packs' => array(
+                    'title' => __( 'Pack Tiers', 'pls-private-label-store' ),
+                    'tips' => array(
+                        __( 'Pack tiers define different quantities and pricing options.', 'pls-private-label-store' ),
+                        __( 'Each tier will become a WooCommerce product variation.', 'pls-private-label-store' ),
+                        __( 'Enable tiers that should be available for purchase.', 'pls-private-label-store' ),
+                    ),
+                    'validation' => array(
+                        __( 'At least one pack tier must be enabled.', 'pls-private-label-store' ),
+                        __( 'Units and price must be greater than 0.', 'pls-private-label-store' ),
+                    ),
+                ),
+                'attributes' => array(
+                    'title' => __( 'Product Options', 'pls-private-label-store' ),
+                    'tips' => array(
+                        __( 'Product options allow customers to customize their order.', 'pls-private-label-store' ),
+                        __( 'Set tier-based pricing rules for each option value.', 'pls-private-label-store' ),
+                        __( 'Options will sync to WooCommerce as product attributes.', 'pls-private-label-store' ),
+                    ),
+                ),
+            );
+        }
+
+        // Bundle creation
+        if ( 'bundles' === $page ) {
+            $content = array(
+                'create' => array(
+                    'title' => __( 'Create Bundle', 'pls-private-label-store' ),
+                    'tips' => array(
+                        __( 'Bundles combine multiple products with special pricing.', 'pls-private-label-store' ),
+                        __( 'SKU count is the number of different products in the bundle.', 'pls-private-label-store' ),
+                        __( 'Units per SKU is the quantity for each product.', 'pls-private-label-store' ),
+                        __( 'Cart will automatically detect when customers qualify for bundle pricing.', 'pls-private-label-store' ),
+                    ),
+                    'validation' => array(
+                        __( 'Bundle name is required.', 'pls-private-label-store' ),
+                        __( 'SKU count must be at least 2.', 'pls-private-label-store' ),
+                        __( 'Units per SKU and price per unit must be greater than 0.', 'pls-private-label-store' ),
+                    ),
+                ),
+            );
+        }
+
+        return $content;
+    }
+
+    /**
      * Get steps definition.
      *
      * @return array
@@ -87,6 +159,10 @@ final class PLS_Onboarding {
                     __( 'Add Pack Tiers with units and pricing', 'pls-private-label-store' ),
                     __( 'Configure Product Options (Package Type, Color, Cap)', 'pls-private-label-store' ),
                     __( 'Save product and sync to WooCommerce', 'pls-private-label-store' ),
+                    __( 'Understand sync states: Active, Inactive, Update Available, Not Synced', 'pls-private-label-store' ),
+                    __( 'Use Activate/Deactivate buttons to control product visibility', 'pls-private-label-store' ),
+                    __( 'Use Update button when product changes need syncing', 'pls-private-label-store' ),
+                    __( 'Click [?] help buttons in modals for contextual guidance', 'pls-private-label-store' ),
                 ),
             ),
             'orders' => array(
@@ -118,6 +194,8 @@ final class PLS_Onboarding {
                 'steps' => array(
                     __( 'View monthly commission summary', 'pls-private-label-store' ),
                     __( 'Switch to detailed list view', 'pls-private-label-store' ),
+                    __( 'Commissions are auto-calculated when orders are completed', 'pls-private-label-store' ),
+                    __( 'Review and approve pending commissions', 'pls-private-label-store' ),
                     __( 'Mark commissions as invoiced or paid', 'pls-private-label-store' ),
                     __( 'Send monthly commission reports', 'pls-private-label-store' ),
                 ),
@@ -398,6 +476,28 @@ final class PLS_Onboarding {
         );
 
         wp_send_json_success( array( 'message' => __( 'Test product deleted.', 'pls-private-label-store' ) ) );
+    }
+
+    /**
+     * AJAX: Get helper content for a page/section.
+     */
+    public static function get_helper_content_ajax() {
+        check_ajax_referer( 'pls_onboarding_nonce', 'nonce' );
+
+        $page = isset( $_POST['page'] ) ? sanitize_text_field( wp_unslash( $_POST['page'] ) ) : '';
+        $section = isset( $_POST['section'] ) ? sanitize_text_field( wp_unslash( $_POST['section'] ) ) : '';
+
+        if ( empty( $page ) ) {
+            wp_send_json_error( array( 'message' => __( 'Page parameter required.', 'pls-private-label-store' ) ), 400 );
+        }
+
+        $content = self::get_helper_content( $page, $section );
+
+        if ( empty( $content ) ) {
+            wp_send_json_error( array( 'message' => __( 'Helper content not found.', 'pls-private-label-store' ) ), 404 );
+        }
+
+        wp_send_json_success( array( 'content' => $content ) );
     }
 
     /**

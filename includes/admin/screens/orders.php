@@ -55,20 +55,21 @@ $bundle_rates     = isset( $commission_rates['bundles'] ) ? $commission_rates['b
             <p><?php esc_html_e( 'No orders found containing PLS products.', 'pls-private-label-store' ); ?></p>
         </div>
     <?php else : ?>
-        <table class="wp-list-table widefat fixed striped">
-            <thead>
-                <tr>
-                    <th><?php esc_html_e( 'Order #', 'pls-private-label-store' ); ?></th>
-                    <th><?php esc_html_e( 'Date', 'pls-private-label-store' ); ?></th>
-                    <th><?php esc_html_e( 'Customer', 'pls-private-label-store' ); ?></th>
-                    <th><?php esc_html_e( 'Products', 'pls-private-label-store' ); ?></th>
-                    <th><?php esc_html_e( 'Total', 'pls-private-label-store' ); ?></th>
-                    <th><?php esc_html_e( 'Commission', 'pls-private-label-store' ); ?></th>
-                    <th><?php esc_html_e( 'Status', 'pls-private-label-store' ); ?></th>
-                    <th><?php esc_html_e( 'Actions', 'pls-private-label-store' ); ?></th>
-                </tr>
-            </thead>
-            <tbody>
+        <div class="pls-table-modern pls-table-modern--compact">
+            <table>
+                <thead>
+                    <tr>
+                        <th><?php esc_html_e( 'Order #', 'pls-private-label-store' ); ?></th>
+                        <th><?php esc_html_e( 'Date', 'pls-private-label-store' ); ?></th>
+                        <th><?php esc_html_e( 'Customer', 'pls-private-label-store' ); ?></th>
+                        <th><?php esc_html_e( 'Products', 'pls-private-label-store' ); ?></th>
+                        <th><?php esc_html_e( 'Total', 'pls-private-label-store' ); ?></th>
+                        <th><?php esc_html_e( 'Commission', 'pls-private-label-store' ); ?></th>
+                        <th><?php esc_html_e( 'Status', 'pls-private-label-store' ); ?></th>
+                        <th><?php esc_html_e( 'Actions', 'pls-private-label-store' ); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
                 <?php foreach ( $pls_orders as $order ) : ?>
                     <?php
                     $order_id        = $order->get_id();
@@ -183,14 +184,15 @@ $bundle_rates     = isset( $commission_rates['bundles'] ) ? $commission_rates['b
                             <?php echo esc_html( wc_get_order_status_name( $order_status ) ); ?>
                         </span></td>
                         <td>
-                            <a href="<?php echo esc_url( admin_url( 'post.php?post=' . $order_id . '&action=edit' ) ); ?>" class="button button-small">
+                            <a href="<?php echo esc_url( admin_url( 'post.php?post=' . $order_id . '&action=edit' ) ); ?>" class="button button-small pls-btn--ghost">
                                 <?php esc_html_e( 'View', 'pls-private-label-store' ); ?>
                             </a>
                         </td>
                     </tr>
                 <?php endforeach; ?>
-            </tbody>
-        </table>
+                </tbody>
+            </table>
+        </div>
     <?php endif; ?>
 </div>
 <?php

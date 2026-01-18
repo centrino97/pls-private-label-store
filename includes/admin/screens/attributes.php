@@ -27,16 +27,18 @@ require_once PLS_PLS_DIR . 'includes/core/class-pls-tier-rules.php';
     <div id="pls-notice-container"></div>
 
     <!-- Tabs Navigation -->
-    <nav class="nav-tab-wrapper pls-options-tabs" style="margin: 20px 0 0; border-bottom: 2px solid #2271b1;">
+    <nav class="nav-tab-wrapper pls-options-tabs" style="margin: 20px 0 0; border-bottom: 2px solid var(--pls-accent);">
         <?php foreach ( $product_options as $option ) : ?>
             <a href="<?php echo esc_url( add_query_arg( 'tab', 'option-' . $option->id, admin_url( 'admin.php?page=pls-attributes' ) ) ); ?>" 
                class="nav-tab pls-option-tab <?php echo $active_tab === 'option-' . $option->id ? 'nav-tab-active' : ''; ?>"
-               data-option-id="<?php echo esc_attr( $option->id ); ?>">
+               data-option-id="<?php echo esc_attr( $option->id ); ?>"
+               style="border-bottom: 2px solid transparent; margin-bottom: -2px; transition: none;">
                 <?php echo esc_html( $option->label ); ?>
             </a>
         <?php endforeach; ?>
         <a href="<?php echo esc_url( add_query_arg( 'tab', 'ingredients', admin_url( 'admin.php?page=pls-attributes' ) ) ); ?>" 
-           class="nav-tab <?php echo $active_tab === 'ingredients' ? 'nav-tab-active' : ''; ?>">
+           class="nav-tab <?php echo $active_tab === 'ingredients' ? 'nav-tab-active' : ''; ?>"
+           style="border-bottom: 2px solid transparent; margin-bottom: -2px; transition: none;">
             <span class="pls-tier-badge" style="background: #6366f1; color: #fff; padding: 2px 6px; border-radius: 2px; font-size: 9px; margin-right: 6px;">T3+</span>
             <?php esc_html_e( 'Ingredients', 'pls-private-label-store' ); ?>
         </a>
@@ -132,8 +134,9 @@ require_once PLS_PLS_DIR . 'includes/core/class-pls-tier-rules.php';
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
-                            </tbody>
-                        </table>
+                                </tbody>
+                            </table>
+                        </div>
                         <p style="margin-top: 20px; text-align: right;">
                             <button type="button" class="button pls-close-pack-tier-modal" style="margin-right: 10px;"><?php esc_html_e( 'Cancel', 'pls-private-label-store' ); ?></button>
                             <button type="submit" class="button button-primary"><?php esc_html_e( 'Save Default Values', 'pls-private-label-store' ); ?></button>
@@ -234,16 +237,17 @@ require_once PLS_PLS_DIR . 'includes/core/class-pls-tier-rules.php';
                         
                         <?php $values = PLS_Repo_Attributes::values_for_attr( $current_option->id ); ?>
                         
-                        <table class="wp-list-table widefat fixed striped">
-                            <thead>
-                                <tr>
-                                    <th><?php esc_html_e( 'Value', 'pls-private-label-store' ); ?></th>
-                                    <th style="width: 120px;"><?php esc_html_e( 'Min Tier', 'pls-private-label-store' ); ?></th>
-                                    <th style="width: 120px;"><?php esc_html_e( 'Price Impact', 'pls-private-label-store' ); ?></th>
-                                    <th style="width: 150px;"><?php esc_html_e( 'Actions', 'pls-private-label-store' ); ?></th>
-                                </tr>
-                            </thead>
-                            <tbody id="pls-values-list-<?php echo esc_attr( $current_option->id ); ?>">
+                        <div class="pls-table-modern pls-table-modern--compact">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th><?php esc_html_e( 'Value', 'pls-private-label-store' ); ?></th>
+                                        <th style="width: 120px;"><?php esc_html_e( 'Min Tier', 'pls-private-label-store' ); ?></th>
+                                        <th style="width: 120px;"><?php esc_html_e( 'Price Impact', 'pls-private-label-store' ); ?></th>
+                                        <th style="width: 150px;"><?php esc_html_e( 'Actions', 'pls-private-label-store' ); ?></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pls-values-list-<?php echo esc_attr( $current_option->id ); ?>">
                                 <?php foreach ( $values as $value ) : ?>
                                     <?php
                                     $price_meta = $value->term_id ? get_term_meta( $value->term_id, '_pls_default_price_impact', true ) : '';
@@ -270,8 +274,9 @@ require_once PLS_PLS_DIR . 'includes/core/class-pls-tier-rules.php';
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
-                            </tbody>
-                        </table>
+                                </tbody>
+                            </table>
+                        </div>
                         <p style="margin-top: 15px;">
                             <button type="button" class="button button-primary pls-add-value" data-attribute-id="<?php echo esc_attr( $current_option->id ); ?>">
                                 <?php esc_html_e( 'Add New Value', 'pls-private-label-store' ); ?>
@@ -322,8 +327,9 @@ require_once PLS_PLS_DIR . 'includes/core/class-pls-tier-rules.php';
                                         <td><?php echo esc_html( $short ); ?></td>
                                     </tr>
                                 <?php endforeach; ?>
-                            </tbody>
-                        </table>
+                                </tbody>
+                            </table>
+                        </div>
                     <?php endif; ?>
                 </div>
             </div>
@@ -611,23 +617,15 @@ jQuery(document).ready(function($) {
 </script>
 
 <style>
-.pls-product-options .pls-primary-section { border-left: 4px solid #2271b1 !important; }
-.pls-product-options .pls-primary-badge { text-transform: uppercase; font-weight: 600; }
-.pls-product-options .pls-options-tabs { border-bottom: 2px solid #2271b1; }
-.pls-product-options .pls-options-tabs .nav-tab { margin-bottom: -2px; }
-.pls-product-options .pls-options-tabs .nav-tab-active { border-bottom-color: #2271b1; border-bottom-width: 2px; }
+.pls-product-options .pls-primary-section { border-left: 4px solid var(--pls-accent) !important; }
+.pls-product-options .pls-primary-badge { text-transform: uppercase; font-weight: 600; background: var(--pls-accent); color: #fff; padding: 4px 10px; border-radius: 3px; font-size: 11px; }
+.pls-product-options .pls-options-tabs { border-bottom: 2px solid var(--pls-accent); }
+.pls-product-options .pls-options-tabs .nav-tab { margin-bottom: -2px; border-bottom: 2px solid transparent; transition: none; }
+.pls-product-options .pls-options-tabs .nav-tab-active { border-bottom-color: var(--pls-accent); border-bottom-width: 2px; }
 .pls-product-options .pls-tab-content { min-height: 400px; }
 .pls-product-options table { margin-top: 0; }
-.pls-modal { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); z-index: 100000; display: flex; align-items: center; justify-content: center; padding: 20px; }
-.pls-modal .pls-modal__dialog { background: #fff; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); max-width: 900px; width: 100%; max-height: 90vh; overflow-y: auto; }
-.pls-modal .pls-modal__head { display: flex; align-items: center; justify-content: space-between; padding: 20px; border-bottom: 1px solid #ddd; }
-.pls-modal .pls-modal__content { padding: 20px; }
-.pls-modal .pls-modal__close { background: #fff; border: 1px solid #e2e8f0; border-radius: 999px; width: 36px; height: 36px; cursor: pointer; font-size: 20px; line-height: 1; }
-body.pls-modal-open { overflow: hidden; }
 @media (max-width: 782px) {
     .pls-product-options form[style*="grid"] { grid-template-columns: 1fr !important; }
-    .pls-product-options .wp-list-table { font-size: 13px; }
     .pls-product-options .pls-options-tabs .nav-tab { font-size: 12px; padding: 8px 10px; }
-    .pls-modal .pls-modal__dialog { max-width: 100%; margin: 0; }
 }
 </style>

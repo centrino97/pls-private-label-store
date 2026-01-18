@@ -50,67 +50,89 @@ $categories = array_filter(
     }
 );
 ?>
-<div class="wrap pls-wrap">
-  <h1><?php esc_html_e( 'PLS – Categories', 'pls-private-label-store' ); ?></h1>
-  <p class="description"><?php esc_html_e( 'Add fresh PLS categories with SEO meta without touching the default WooCommerce taxonomy screens.', 'pls-private-label-store' ); ?></p>
+<div class="wrap pls-wrap pls-page-categories">
+    <div class="pls-page-head">
+        <div>
+            <p class="pls-label"><?php esc_html_e( 'Categories', 'pls-private-label-store' ); ?></p>
+            <h1><?php esc_html_e( 'Product Categories', 'pls-private-label-store' ); ?></h1>
+            <p class="description"><?php esc_html_e( 'Manage product categories with SEO meta fields.', 'pls-private-label-store' ); ?></p>
+        </div>
+    </div>
 
-  <?php if ( $notice ) : ?>
-      <div class="notice notice-success"><p><?php echo esc_html( $notice ); ?></p></div>
-  <?php endif; ?>
-
-  <div class="pls-card pls-card--panel">
-    <h2><?php esc_html_e( 'Create category', 'pls-private-label-store' ); ?></h2>
-    <form method="post">
-      <?php wp_nonce_field( 'pls_category_add' ); ?>
-      <input type="hidden" name="pls_category_add" value="1" />
-      <div class="pls-field-grid">
-        <div>
-          <label><?php esc_html_e( 'Name', 'pls-private-label-store' ); ?></label>
-          <input type="text" name="category_name" class="regular-text" placeholder="Serums" required />
+    <?php if ( $notice ) : ?>
+        <div class="notice notice-success is-dismissible">
+            <p><?php echo esc_html( $notice ); ?></p>
         </div>
-        <div>
-          <label><?php esc_html_e( 'Meta Title', 'pls-private-label-store' ); ?></label>
-          <input type="text" name="category_meta_title" class="regular-text" placeholder="Serums – Private Label" />
-        </div>
-      </div>
-      <div class="pls-field-grid">
-        <div>
-          <label><?php esc_html_e( 'Description', 'pls-private-label-store' ); ?></label>
-          <textarea name="category_desc" rows="3" class="large-text" placeholder="Short marketing blurb..."></textarea>
-        </div>
-        <div>
-          <label><?php esc_html_e( 'Meta Description', 'pls-private-label-store' ); ?></label>
-          <textarea name="category_meta_desc" rows="3" class="large-text" placeholder="SEO summary..."></textarea>
-        </div>
-      </div>
-      <p class="submit"><button type="submit" class="button button-primary"><?php esc_html_e( 'Save Category', 'pls-private-label-store' ); ?></button></p>
-    </form>
-  </div>
-
-  <h2><?php esc_html_e( 'Categories (Uncategorized hidden)', 'pls-private-label-store' ); ?></h2>
-  <div class="pls-card-grid">
-    <?php if ( empty( $categories ) ) : ?>
-        <p class="description"><?php esc_html_e( 'No categories yet.', 'pls-private-label-store' ); ?></p>
-    <?php else : ?>
-        <?php foreach ( $categories as $cat ) : ?>
-            <?php $meta_title = get_term_meta( $cat->term_id, '_pls_meta_title', true ); ?>
-            <?php $meta_desc  = get_term_meta( $cat->term_id, '_pls_meta_desc', true ); ?>
-            <div class="pls-card">
-              <div class="pls-card__heading">
-                <strong><?php echo esc_html( $cat->name ); ?></strong>
-                <code><?php echo esc_html( $cat->slug ); ?></code>
-              </div>
-              <?php if ( $meta_title ) : ?>
-                  <div class="pls-chip">SEO: <?php echo esc_html( $meta_title ); ?></div>
-              <?php endif; ?>
-              <?php if ( $meta_desc ) : ?>
-                  <p class="description">Meta: <?php echo esc_html( $meta_desc ); ?></p>
-              <?php endif; ?>
-              <?php if ( $cat->description ) : ?>
-                  <p><?php echo esc_html( $cat->description ); ?></p>
-              <?php endif; ?>
-            </div>
-        <?php endforeach; ?>
     <?php endif; ?>
-  </div>
+
+    <div class="pls-card" style="margin-bottom: 24px;">
+        <h2 style="margin-top: 0; font-size: 18px; font-weight: 600;"><?php esc_html_e( 'Create Category', 'pls-private-label-store' ); ?></h2>
+        <form method="post">
+            <?php wp_nonce_field( 'pls_category_add' ); ?>
+            <input type="hidden" name="pls_category_add" value="1" />
+            <div class="pls-field-grid">
+                <div class="pls-input-group">
+                    <label for="category_name"><?php esc_html_e( 'Name', 'pls-private-label-store' ); ?></label>
+                    <input type="text" id="category_name" name="category_name" class="pls-input" placeholder="Serums" required />
+                </div>
+                <div class="pls-input-group">
+                    <label for="category_meta_title"><?php esc_html_e( 'Meta Title', 'pls-private-label-store' ); ?></label>
+                    <input type="text" id="category_meta_title" name="category_meta_title" class="pls-input" placeholder="Serums – Private Label" />
+                </div>
+            </div>
+            <div class="pls-field-grid">
+                <div class="pls-input-group">
+                    <label for="category_desc"><?php esc_html_e( 'Description', 'pls-private-label-store' ); ?></label>
+                    <textarea id="category_desc" name="category_desc" rows="3" class="pls-rich-textarea" placeholder="Short marketing blurb..."></textarea>
+                </div>
+                <div class="pls-input-group">
+                    <label for="category_meta_desc"><?php esc_html_e( 'Meta Description', 'pls-private-label-store' ); ?></label>
+                    <textarea id="category_meta_desc" name="category_meta_desc" rows="3" class="pls-rich-textarea" placeholder="SEO summary..."></textarea>
+                </div>
+            </div>
+            <p class="submit" style="margin-top: 16px;">
+                <button type="submit" class="button button-primary pls-btn--primary"><?php esc_html_e( 'Save Category', 'pls-private-label-store' ); ?></button>
+            </p>
+        </form>
+    </div>
+
+    <div style="margin-bottom: 16px;">
+        <h2 style="font-size: 18px; font-weight: 600; margin: 0;"><?php esc_html_e( 'All Categories', 'pls-private-label-store' ); ?></h2>
+        <p class="description" style="margin: 4px 0 0;"><?php esc_html_e( 'Uncategorized category is hidden from this list.', 'pls-private-label-store' ); ?></p>
+    </div>
+    
+    <div class="pls-card-grid">
+        <?php if ( empty( $categories ) ) : ?>
+            <div class="pls-card" style="text-align: center; padding: 48px 24px; grid-column: 1 / -1;">
+                <div style="font-size: 48px; color: var(--pls-gray-300); margin-bottom: 16px;">📁</div>
+                <h2 style="margin: 0 0 8px; font-size: 20px; font-weight: 600; color: var(--pls-gray-900);"><?php esc_html_e( 'No categories yet', 'pls-private-label-store' ); ?></h2>
+                <p style="margin: 0; color: var(--pls-gray-500);"><?php esc_html_e( 'Create your first category to organize products.', 'pls-private-label-store' ); ?></p>
+            </div>
+        <?php else : ?>
+            <?php foreach ( $categories as $cat ) : ?>
+                <?php $meta_title = get_term_meta( $cat->term_id, '_pls_meta_title', true ); ?>
+                <?php $meta_desc  = get_term_meta( $cat->term_id, '_pls_meta_desc', true ); ?>
+                <div class="pls-card pls-card--interactive">
+                    <div class="pls-card__heading">
+                        <strong style="font-size: 16px; font-weight: 600;"><?php echo esc_html( $cat->name ); ?></strong>
+                        <code style="background: var(--pls-gray-100); color: var(--pls-gray-600); padding: 4px 8px; border-radius: 4px; font-size: 11px; font-family: monospace;"><?php echo esc_html( $cat->slug ); ?></code>
+                    </div>
+                    <?php if ( $cat->description ) : ?>
+                        <p style="margin: 8px 0; color: var(--pls-gray-600);"><?php echo esc_html( $cat->description ); ?></p>
+                    <?php endif; ?>
+                    <?php if ( $meta_title ) : ?>
+                        <div class="pls-chip" style="margin-top: 8px;">
+                            <strong style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; margin-right: 4px;">SEO:</strong>
+                            <?php echo esc_html( $meta_title ); ?>
+                        </div>
+                    <?php endif; ?>
+                    <?php if ( $meta_desc ) : ?>
+                        <p class="description" style="margin-top: 8px; font-size: 12px; color: var(--pls-gray-500);">
+                            <?php echo esc_html( wp_trim_words( $meta_desc, 15 ) ); ?>
+                        </p>
+                    <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
+    </div>
 </div>

@@ -20,6 +20,7 @@ final class PLS_Sample_Data {
         self::add_ingredients();
         self::add_product_options();
         self::add_products();
+        self::add_bundles();
     }
 
     /**
@@ -76,6 +77,13 @@ final class PLS_Sample_Data {
         foreach ( $ingredients as $ingredient ) {
             wp_delete_term( $ingredient->term_id, 'pls_ingredient' );
         }
+
+        // Delete bundles
+        $bundles_table = $wpdb->prefix . 'pls_bundle';
+        $wpdb->query( "TRUNCATE TABLE {$bundles_table}" );
+
+        $bundle_items_table = $wpdb->prefix . 'pls_bundle_item';
+        $wpdb->query( "TRUNCATE TABLE {$bundle_items_table}" );
     }
 
     /**
@@ -589,6 +597,82 @@ final class PLS_Sample_Data {
                     wp_set_object_terms( $product_id, $ingredient_ids, 'pls_ingredient' );
                 }
             }
+        }
+    }
+
+    /**
+     * Add sample bundles.
+     */
+    private static function add_bundles() {
+        $bundles = array(
+            array(
+                'name' => 'Mini Line Bundle',
+                'bundle_type' => 'mini_line',
+                'sku_count' => 2,
+                'units_per_sku' => 250,
+                'price_per_unit' => 10.90,
+                'commission_per_unit' => 0.59,
+                'status' => 'live',
+            ),
+            array(
+                'name' => 'Starter Line Bundle',
+                'bundle_type' => 'starter_line',
+                'sku_count' => 3,
+                'units_per_sku' => 300,
+                'price_per_unit' => 9.90,
+                'commission_per_unit' => 0.49,
+                'status' => 'live',
+            ),
+            array(
+                'name' => 'Growth Line Bundle',
+                'bundle_type' => 'growth_line',
+                'sku_count' => 4,
+                'units_per_sku' => 400,
+                'price_per_unit' => 8.20,
+                'commission_per_unit' => 0.32,
+                'status' => 'live',
+            ),
+            array(
+                'name' => 'Premium Line Bundle',
+                'bundle_type' => 'premium_line',
+                'sku_count' => 6,
+                'units_per_sku' => 500,
+                'price_per_unit' => 7.50,
+                'commission_per_unit' => 0.25,
+                'status' => 'draft', // Draft for testing
+            ),
+        );
+
+        foreach ( $bundles as $bundle_data ) {
+            $slug = sanitize_title( $bundle_data['name'] );
+            $bundle_key = $bundle_data['bundle_type'] . '_' . $bundle_data['sku_count'] . 'x' . $bundle_data['units_per_sku'];
+            
+            // Calculate totals
+            $total_units = $bundle_data['sku_count'] * $bundle_data['units_per_sku'];
+            $total_price = $total_units * $bundle_data['price_per_unit'];
+
+            // Store bundle rules in JSON
+            $offer_rules = array(
+                'bundle_type' => $bundle_data['bundle_type'],
+                'sku_count' => $bundle_data['sku_count'],
+                'units_per_sku' => $bundle_data['units_per_sku'],
+                'price_per_unit' => $bundle_data['price_per_unit'],
+                'commission_per_unit' => $bundle_data['commission_per_unit'],
+                'total_units' => $total_units,
+                'total_price' => $total_price,
+            );
+
+            $data = array(
+                'bundle_key' => $bundle_key,
+                'slug' => $slug,
+                'name' => $bundle_data['name'],
+                'base_price' => $total_price,
+                'pricing_mode' => 'fixed',
+                'status' => $bundle_data['status'],
+                'offer_rules_json' => wp_json_encode( $offer_rules ),
+            );
+
+            PLS_Repo_Bundle::insert( $data );
         }
     }
 }

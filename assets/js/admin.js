@@ -7,6 +7,13 @@
   }
 
   $(function(){
+    // Accordion functionality
+    $(document).on('click', '.pls-accordion__header', function(e){
+      e.preventDefault();
+      var $item = $(this).closest('.pls-accordion__item');
+      $item.toggleClass('is-collapsed');
+    });
+
     var stepOrder = ['general','data','ingredients','packs','attributes','label'];
     var defaultLabelGuide = 'https://bodocibiophysics.com/label-guide/';
     var currentStep = 0;
@@ -813,7 +820,7 @@
       });
     });
 
-    $(document).on('click', '.pls-sync-product', function(e){
+    $(document).on('click', '.pls-sync-product, .pls-update-product', function(e){
       e.preventDefault();
       var id = $(this).data('product-id');
       if (!id){ return; }
@@ -823,13 +830,58 @@
       $.post(ajaxurl, { action: 'pls_sync_product', nonce: (window.PLS_Admin ? PLS_Admin.nonce : ''), id: id }, function(resp){
         if (resp && resp.success && resp.data && resp.data.product){
           productMap[id] = resp.data.product;
-          updateCardSync(resp.data.product);
+          // Reload page to show updated sync state and buttons
+          window.location.reload();
         } else {
           alert((resp && resp.data && resp.data.message) ? resp.data.message : 'Could not sync product.');
+          button.prop('disabled', false).text(originalText);
         }
       }).fail(function(){
         alert('Could not sync product.');
-      }).always(function(){
+        button.prop('disabled', false).text(originalText);
+      });
+    });
+
+    $(document).on('click', '.pls-activate-product', function(e){
+      e.preventDefault();
+      var id = $(this).data('product-id');
+      if (!id){ return; }
+      var button = $(this);
+      var originalText = button.text();
+      button.prop('disabled', true).text('Activating...');
+      $.post(ajaxurl, { action: 'pls_activate_product', nonce: (window.PLS_Admin ? PLS_Admin.nonce : ''), id: id }, function(resp){
+        if (resp && resp.success && resp.data && resp.data.product){
+          productMap[id] = resp.data.product;
+          // Reload page to show updated sync state and buttons
+          window.location.reload();
+        } else {
+          alert((resp && resp.data && resp.data.message) ? resp.data.message : 'Could not activate product.');
+          button.prop('disabled', false).text(originalText);
+        }
+      }).fail(function(){
+        alert('Could not activate product.');
+        button.prop('disabled', false).text(originalText);
+      });
+    });
+
+    $(document).on('click', '.pls-deactivate-product', function(e){
+      e.preventDefault();
+      var id = $(this).data('product-id');
+      if (!id){ return; }
+      var button = $(this);
+      var originalText = button.text();
+      button.prop('disabled', true).text('Deactivating...');
+      $.post(ajaxurl, { action: 'pls_deactivate_product', nonce: (window.PLS_Admin ? PLS_Admin.nonce : ''), id: id }, function(resp){
+        if (resp && resp.success && resp.data && resp.data.product){
+          productMap[id] = resp.data.product;
+          // Reload page to show updated sync state and buttons
+          window.location.reload();
+        } else {
+          alert((resp && resp.data && resp.data.message) ? resp.data.message : 'Could not deactivate product.');
+          button.prop('disabled', false).text(originalText);
+        }
+      }).fail(function(){
+        alert('Could not deactivate product.');
         button.prop('disabled', false).text(originalText);
       });
     });
@@ -1722,6 +1774,184 @@
       var picker = $(this).closest('.pls-icon-picker');
       picker.find('input[type=hidden]').val('');
       picker.closest('tr, .pls-icon-picker').find('.pls-icon-preview').empty();
+    });
+
+    // Bundle Modal Functionality
+    function openBundleModal(bundleData) {
+      if (bundleData) {
+        $('#pls-bundle-modal-title').text('Edit Bundle');
+        $('#pls-bundle-id').val(bundleData.id);
+        $('#bundle_name').val(bundleData.name);
+        $('#bundle_type').val(bundleData.bundle_type);
+        $('#sku_count').val(bundleData.sku_count);
+        $('#units_per_sku').val(bundleData.units_per_sku);
+        $('#price_per_unit').val(bundleData.price_per_unit);
+        $('#commission_per_unit').val(bundleData.commission_per_unit);
+        $('#bundle_status').val(bundleData.status);
+      } else {
+        $('#pls-bundle-modal-title').text('Create Bundle');
+        $('#pls-bundle-id').val('');
+        $('#pls-bundle-form')[0].reset();
+      }
+      $('#pls-bundle-modal').addClass('is-active');
+    }
+
+    function closeBundleModal() {
+      $('#pls-bundle-modal').removeClass('is-active');
+      $('#pls-bundle-form')[0].reset();
+      $('#pls-bundle-errors').hide();
+    }
+
+    $('#pls-create-bundle, #pls-create-bundle-empty').on('click', function(e) {
+      e.preventDefault();
+      openBundleModal(null);
+    });
+
+    $(document).on('click', '.pls-edit-bundle', function(e) {
+      e.preventDefault();
+      var bundleId = $(this).data('bundle-id');
+      if (!bundleId) return;
+      
+      $.post(ajaxurl, {
+        action: 'pls_get_bundle',
+        nonce: (window.PLS_Admin ? PLS_Admin.nonce : ''),
+        bundle_id: bundleId
+      }, function(resp) {
+        if (resp && resp.success && resp.data && resp.data.bundle) {
+          openBundleModal(resp.data.bundle);
+        } else {
+          alert('Could not load bundle data.');
+        }
+      }).fail(function() {
+        alert('Could not load bundle data.');
+      });
+    });
+
+    $('#pls-bundle-modal .pls-modal__close, #pls-bundle-modal .pls-modal-cancel').on('click', function(e) {
+      e.preventDefault();
+      closeBundleModal();
+    });
+
+    $('#pls-bundle-form').on('submit', function(e) {
+      e.preventDefault();
+      var form = $(this);
+      var submitBtn = form.find('button[type=submit]');
+      var originalText = submitBtn.text();
+      
+      submitBtn.prop('disabled', true).text('Saving...');
+      $('#pls-bundle-errors').hide();
+      
+      var formData = form.serializeArray();
+      formData.push({ name: 'action', value: 'pls_save_bundle' });
+      formData.push({ name: 'nonce', value: (window.PLS_Admin ? PLS_Admin.nonce : '') });
+      
+      $.post(ajaxurl, formData, function(resp) {
+        if (resp && resp.success) {
+          closeBundleModal();
+          window.location.reload();
+        } else {
+          var errorMsg = (resp && resp.data && resp.data.message) ? resp.data.message : 'Could not save bundle.';
+          alert(errorMsg);
+          submitBtn.prop('disabled', false).text(originalText);
+        }
+      }).fail(function() {
+        alert('Could not save bundle.');
+        submitBtn.prop('disabled', false).text(originalText);
+      });
+    });
+
+    $(document).on('click', '.pls-delete-bundle', function(e) {
+      e.preventDefault();
+      var bundleId = $(this).data('bundle-id');
+      if (!bundleId) return;
+      
+      if (!confirm('Delete this bundle and trash its WooCommerce product?')) {
+        return;
+      }
+      
+      var button = $(this);
+      button.prop('disabled', true);
+      
+      $.post(ajaxurl, {
+        action: 'pls_delete_bundle',
+        nonce: (window.PLS_Admin ? PLS_Admin.nonce : ''),
+        bundle_id: bundleId
+      }, function(resp) {
+        if (resp && resp.success) {
+          $('.pls-card[data-bundle-id="' + bundleId + '"]').fadeOut(300, function() {
+            $(this).remove();
+            if ($('.pls-card-grid .pls-card').length === 0) {
+              window.location.reload();
+            }
+          });
+        } else {
+          alert((resp && resp.data && resp.data.message) ? resp.data.message : 'Could not delete bundle.');
+          button.prop('disabled', false);
+        }
+      }).fail(function() {
+        alert('Could not delete bundle.');
+        button.prop('disabled', false);
+      });
+    });
+
+    $(document).on('click', '.pls-sync-bundle', function(e) {
+      e.preventDefault();
+      var bundleId = $(this).data('bundle-id');
+      if (!bundleId) return;
+      
+      var button = $(this);
+      var originalText = button.text();
+      button.prop('disabled', true).text('Syncing...');
+      
+      $.post(ajaxurl, {
+        action: 'pls_sync_bundle',
+        nonce: (window.PLS_Admin ? PLS_Admin.nonce : ''),
+        bundle_id: bundleId
+      }, function(resp) {
+        if (resp && resp.success) {
+          alert((resp.data && resp.data.message) ? resp.data.message : 'Bundle synced successfully.');
+          window.location.reload();
+        } else {
+          alert((resp && resp.data && resp.data.message) ? resp.data.message : 'Could not sync bundle.');
+          button.prop('disabled', false).text(originalText);
+        }
+      }).fail(function() {
+        alert('Could not sync bundle.');
+        button.prop('disabled', false).text(originalText);
+      });
+    });
+
+    // Auto-update SKU count and units based on bundle type
+    $('#bundle_type').on('change', function() {
+      var bundleType = $(this).val();
+      var skuCount = 0;
+      var unitsPerSku = 0;
+      
+      switch(bundleType) {
+        case 'mini_line':
+          skuCount = 2;
+          unitsPerSku = 250;
+          break;
+        case 'starter_line':
+          skuCount = 3;
+          unitsPerSku = 300;
+          break;
+        case 'growth_line':
+          skuCount = 4;
+          unitsPerSku = 400;
+          break;
+        case 'premium_line':
+          skuCount = 6;
+          unitsPerSku = 500;
+          break;
+      }
+      
+      if (skuCount > 0) {
+        $('#sku_count').val(skuCount);
+      }
+      if (unitsPerSku > 0) {
+        $('#units_per_sku').val(unitsPerSku);
+      }
     });
   });
 })(jQuery);

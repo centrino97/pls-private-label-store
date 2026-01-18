@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.11.1
+Stable tag: 1.1.0
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,32 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 1.1.0 =
+* **Product Sync State Detection:** Intelligent sync state detection with 4 states (Synced/Active, Synced/Inactive, Update Available, Not Synced) and visual badges.
+* **Product Status Control:** Activate/Deactivate buttons for quick product visibility control. Update button appears when product changes need syncing.
+* **Full Bundle Functionality:** Complete bundle management system with creation, editing, and WooCommerce Grouped Product sync.
+* **Bundle Cart Detection:** Automatic cart detection of bundle qualification with automatic pricing application. Customers can pick products and qualify for bundle pricing.
+* **Semi-Automated Commission:** Commission automatically calculated when orders are completed, with approval workflow for review and adjustment.
+* **Integrated Helper System:** Per-section help buttons with contextual tooltips in modals, replacing floating helper card.
+* **Enhanced Onboarding:** Updated onboarding steps covering all v1.1.0 features including sync states, bundle creation, and commission workflow.
+* **Technical Documentation:** Comprehensive technical documentation covering architecture, API endpoints, database schema, and developer guide.
+
+= 1.0.0 =
+* **Complete UI/UX Modernization:** Major visual overhaul with Apple-inspired design system.
+* **Design System:** New CSS variable-based design system with neutral gray palette and subtle blue accents.
+* **Settings Page:** Redesigned with accordion layout, compact form inputs, and improved organization.
+* **Modern Tables:** All tables updated with modern striped design, rounded corners, and hover effects.
+* **Dashboard:** Compact cards with improved visual hierarchy and better quick links.
+* **Products Page:** Refined product cards with hover effects and modern button styles.
+* **Commission & Revenue:** Polished summary cards and modern table designs.
+* **Custom Orders:** Enhanced kanban board with cleaner styling.
+* **Product Options:** Modernized tabs with underline style and refined tables.
+* **Bundles Page:** Complete UI redesign matching design system (functionality in development).
+* **Categories Page:** Modern card-based layout with improved form styling.
+* **Component Library:** Comprehensive button, input, card, badge, and accordion components.
+* **Responsive Design:** Fully responsive across all screen sizes with mobile optimizations.
+* **Performance:** Minimal animations for instant, responsive interactions.
+
 = 0.11.1 =
 * **Sample Data Generator:** Added comprehensive sample data generator accessible from Settings page. Generates sample categories, ingredients, product options with values, and 6 sample products for testing.
 * **Elementor Widget:** Added PLS Product Info widget for displaying product description, directions, skin types, and key ingredients on product pages.

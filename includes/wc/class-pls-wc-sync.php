@@ -474,4 +474,134 @@ final class PLS_WC_Sync {
 
         return __( 'Attributes synced to WooCommerce.', 'pls-private-label-store' );
     }
+
+    /**
+     * Sync bundle to WooCommerce as Grouped Product.
+     *
+     * @param int $bundle_id Bundle ID.
+     * @return string|WP_Error Success message or error.
+     */
+    public static function sync_bundle_to_wc( $bundle_id ) {
+        if ( ! class_exists( 'WooCommerce' ) ) {
+            return new WP_Error( 'pls_wc_missing', __( 'WooCommerce not active; sync skipped.', 'pls-private-label-store' ) );
+        }
+
+        if ( ! function_exists( 'wc_get_product' ) ) {
+            return new WP_Error( 'pls_wc_missing', __( 'WooCommerce product functions unavailable; sync skipped.', 'pls-private-label-store' ) );
+        }
+
+        $bundle = PLS_Repo_Bundle::get( $bundle_id );
+        if ( ! $bundle ) {
+            return new WP_Error( 'pls_bundle_missing', __( 'Bundle not found.', 'pls-private-label-store' ) );
+        }
+
+        $status = ( 'live' === $bundle->status ) ? 'publish' : 'draft';
+        $product = null;
+        $created = false;
+
+        if ( $bundle->wc_product_id ) {
+            $product = wc_get_product( $bundle->wc_product_id );
+        }
+
+        if ( ! $product ) {
+            $post_id = wp_insert_post(
+                array(
+                    'post_title'  => $bundle->name,
+                    'post_name'   => $bundle->slug,
+                    'post_type'   => 'product',
+                    'post_status' => $status,
+                )
+            );
+
+            if ( is_wp_error( $post_id ) ) {
+                return new WP_Error( 'pls_wc_create_failed', __( 'Failed to create WooCommerce product.', 'pls-private-label-store' ) );
+            }
+
+            wp_set_object_terms( $post_id, 'grouped', 'product_type' );
+            PLS_Repo_Bundle::set_wc_product_id( $bundle_id, $post_id );
+            $product = wc_get_product( $post_id );
+            $created = true;
+        }
+
+        if ( ! $product ) {
+            return new WP_Error( 'pls_wc_product_missing', __( 'WooCommerce product not available.', 'pls-private-label-store' ) );
+        }
+
+        // Ensure product type is grouped
+        if ( method_exists( $product, 'set_type' ) ) {
+            $product->set_type( 'grouped' );
+        }
+
+        // Update status
+        if ( $product->get_status() !== $status ) {
+            $product->set_status( $status );
+        }
+
+        // Get bundle items (products in bundle)
+        $bundle_items = PLS_Repo_Bundle_Item::for_bundle( $bundle_id );
+        $child_product_ids = array();
+
+        // If bundle items exist, use them; otherwise, bundle is customer-choice (no specific products)
+        if ( ! empty( $bundle_items ) ) {
+            foreach ( $bundle_items as $item ) {
+                $base_product = PLS_Repo_Base_Product::get( $item->base_product_id );
+                if ( $base_product && $base_product->wc_product_id ) {
+                    $child_product_ids[] = $base_product->wc_product_id;
+                }
+            }
+        }
+
+        // Set grouped product children
+        if ( method_exists( $product, 'set_children' ) ) {
+            $product->set_children( $child_product_ids );
+        } else {
+            // Fallback: use post meta
+            update_post_meta( $product->get_id(), '_children', $child_product_ids );
+        }
+
+        // Set price
+        if ( $bundle->base_price ) {
+            $product->set_regular_price( $bundle->base_price );
+        }
+
+        $product->save();
+
+        // Store bundle metadata
+        update_post_meta( $product->get_id(), '_pls_bundle_id', $bundle_id );
+        update_post_meta( $product->get_id(), '_pls_bundle_key', $bundle->bundle_key );
+
+        // Parse and store bundle rules
+        $bundle_rules = ! empty( $bundle->offer_rules_json ) ? json_decode( $bundle->offer_rules_json, true ) : array();
+        if ( ! empty( $bundle_rules ) ) {
+            update_post_meta( $product->get_id(), '_pls_bundle_rules', $bundle_rules );
+        }
+
+        return __( 'Bundle synced to WooCommerce as Grouped Product.', 'pls-private-label-store' );
+    }
+
+    /**
+     * Sync bundles stub (for backward compatibility).
+     *
+     * @return string Message.
+     */
+    public static function sync_bundles_stub() {
+        $bundles = PLS_Repo_Bundle::all();
+        $synced = 0;
+        $errors = 0;
+
+        foreach ( $bundles as $bundle ) {
+            $result = self::sync_bundle_to_wc( $bundle->id );
+            if ( is_wp_error( $result ) ) {
+                $errors++;
+            } else {
+                $synced++;
+            }
+        }
+
+        if ( $errors > 0 ) {
+            return sprintf( __( 'Synced %d bundles. %d errors.', 'pls-private-label-store' ), $synced, $errors );
+        }
+
+        return sprintf( __( 'Synced %d bundles successfully.', 'pls-private-label-store' ), $synced );
+    }
 }

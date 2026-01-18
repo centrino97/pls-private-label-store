@@ -28,6 +28,27 @@ The `pls_attribute` table supports hierarchical product options with the followi
 
 The Pack Tier attribute is marked with `is_primary = 1` and `option_type = 'pack-tier'`. All other product options use `option_type = 'product-option'`. Ingredients are synced with `option_type = 'ingredient'`.
 
+## Bundle Tables (v1.1.0+)
+
+### pls_bundle Table
+Stores bundle definitions with pricing and commission rules.
+
+**Key Fields:**
+- `bundle_key` - Unique identifier (e.g., `mini_line_2x250`)
+- `offer_rules_json` - JSON containing:
+  - `bundle_type` - Type identifier (mini_line, starter_line, etc.)
+  - `sku_count` - Number of SKUs (2, 3, 4, 6)
+  - `units_per_sku` - Units per SKU (250, 300, 400, 500)
+  - `price_per_unit` - Bundle price per unit
+  - `commission_per_unit` - Commission rate per unit
+  - `total_units` - Calculated total units
+  - `total_price` - Calculated total price
+
+### pls_bundle_item Table
+Stores products included in bundles (optional - for pre-defined bundles).
+
+**Note**: Most bundles are customer-choice (customer picks products), so this table may be empty. It's used for pre-defined bundle combinations.
+
 ## Why custom tables?
 Pack tiers and bundle compositions are structured and benefit from:
 - validation

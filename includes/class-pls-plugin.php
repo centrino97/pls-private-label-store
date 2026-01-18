@@ -78,7 +78,9 @@ final class PLS_Plugin {
         require_once PLS_PLS_DIR . 'includes/data/repo-custom-order.php';
         require_once PLS_PLS_DIR . 'includes/data/repo-commission.php';
         require_once PLS_PLS_DIR . 'includes/data/repo-commission-report.php';
+        require_once PLS_PLS_DIR . 'includes/data/repo-bundle.php';
         require_once PLS_PLS_DIR . 'includes/wc/class-pls-wc-sync.php';
+        require_once PLS_PLS_DIR . 'includes/wc/class-pls-bundle-cart.php';
 
         require_once PLS_PLS_DIR . 'includes/frontend/class-pls-ajax.php';
         require_once PLS_PLS_DIR . 'includes/frontend/class-pls-custom-order-page.php';
@@ -107,6 +109,7 @@ final class PLS_Plugin {
         PLS_Admin_Dashboard_Filter::init();
         PLS_Commission_Email::init();
         PLS_Onboarding::init();
+        PLS_Bundle_Cart::init();
 
         // Hook ingredient sync
         add_action( 'created_pls_ingredient', array( 'PLS_Ingredient_Sync', 'on_ingredient_created' ) );
@@ -197,8 +200,42 @@ final class PLS_Plugin {
             $tier_key = null;
             $bundle_key = null;
 
-            // Check if it's a variation (pack tier)
-            if ( $item->get_variation_id() ) {
+            // Check order item meta for bundle info (from cart detection)
+            $bundle_key_meta = $item->get_meta( 'pls_bundle_key' );
+            $bundle_type_meta = $item->get_meta( 'pls_bundle_type' );
+            
+            // If bundle item from cart detection, use bundle commission rate
+            if ( $bundle_key_meta && isset( $bundle_rates[ $bundle_key_meta ] ) ) {
+                $bundle_key = $bundle_key_meta;
+                $commission_rate_per_unit = $bundle_rates[ $bundle_key ];
+                
+                // Calculate units: get from variation or use quantity
+                $units = $quantity;
+                if ( $item->get_variation_id() ) {
+                    $variation = wc_get_product( $item->get_variation_id() );
+                    if ( $variation ) {
+                        $variation_units = (int) get_post_meta( $variation->get_id(), '_pls_units', true );
+                        if ( ! $variation_units ) {
+                            // Try pack tier term meta
+                            $attributes = $variation->get_attributes();
+                            if ( isset( $attributes['pa_pack-tier'] ) ) {
+                                $tier_term = get_term_by( 'slug', $attributes['pa_pack-tier'], 'pa_pack-tier' );
+                                if ( $tier_term ) {
+                                    $variation_units = (int) get_term_meta( $tier_term->term_id, '_pls_default_units', true );
+                                }
+                            }
+                        }
+                        if ( $variation_units ) {
+                            $units = $variation_units * $quantity;
+                        }
+                    }
+                    $commission_amount = $commission_rate_per_unit * $units;
+                }
+            }
+            
+            // If no bundle commission found, check for pack tier
+            if ( ! $commission_amount && $item->get_variation_id() ) {
+                // Check if it's a variation (pack tier)
                 $variation = wc_get_product( $item->get_variation_id() );
                 $attributes = $variation->get_attributes();
                 
@@ -208,12 +245,20 @@ final class PLS_Plugin {
                         $tier_key = pls_get_tier_key_from_term( $tier_term->name );
                         if ( $tier_key && isset( $tier_rates[ $tier_key ] ) ) {
                             $commission_rate_per_unit = $tier_rates[ $tier_key ];
-                            $commission_amount = $commission_rate_per_unit * $quantity;
+                            // Get units from variation meta or term meta
+                            $units = (int) get_post_meta( $variation->get_id(), '_pls_units', true );
+                            if ( ! $units ) {
+                                $units = (int) get_term_meta( $tier_term->term_id, '_pls_default_units', true );
+                            }
+                            if ( ! $units ) {
+                                $units = $quantity; // Fallback
+                            }
+                            $commission_amount = $commission_rate_per_unit * $units * $quantity;
                         }
                     }
                 }
             } else {
-                // Check if it's a bundle
+                // Check if it's a bundle product (Grouped Product)
                 $bundle_key = pls_get_bundle_key_from_product( $product_id );
                 if ( $bundle_key && isset( $bundle_rates[ $bundle_key ] ) ) {
                     $commission_rate_per_unit = $bundle_rates[ $bundle_key ];
@@ -222,6 +267,27 @@ final class PLS_Plugin {
             }
 
             if ( $commission_amount > 0 ) {
+                // Calculate actual units sold
+                $units_sold = $quantity;
+                if ( $item->get_variation_id() ) {
+                    $variation = wc_get_product( $item->get_variation_id() );
+                    if ( $variation ) {
+                        $variation_units = (int) get_post_meta( $variation->get_id(), '_pls_units', true );
+                        if ( ! $variation_units ) {
+                            $attributes = $variation->get_attributes();
+                            if ( isset( $attributes['pa_pack-tier'] ) ) {
+                                $tier_term = get_term_by( 'slug', $attributes['pa_pack-tier'], 'pa_pack-tier' );
+                                if ( $tier_term ) {
+                                    $variation_units = (int) get_term_meta( $tier_term->term_id, '_pls_default_units', true );
+                                }
+                            }
+                        }
+                        if ( $variation_units ) {
+                            $units_sold = $variation_units * $quantity;
+                        }
+                    }
+                }
+
                 PLS_Repo_Commission::create(
                     array(
                         'wc_order_id'            => $order_id,
@@ -229,7 +295,7 @@ final class PLS_Plugin {
                         'product_id'             => $product_id,
                         'tier_key'               => $tier_key,
                         'bundle_key'             => $bundle_key,
-                        'units'                  => $quantity,
+                        'units'                  => $units_sold,
                         'commission_rate_per_unit' => $commission_rate_per_unit,
                         'commission_amount'     => $commission_amount,
                         'status'                 => 'pending',

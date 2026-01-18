@@ -117,36 +117,77 @@ wp_localize_script(
                     }
                 }
             }
-            $sync_status = isset( $product['sync_status'] ) ? $product['sync_status'] : null;
-            $sync_label  = __( 'Not synced yet.', 'pls-private-label-store' );
-            if ( $sync_status ) {
-                $status_prefix = ! empty( $sync_status['success'] ) ? __( 'Synced', 'pls-private-label-store' ) : __( 'Sync failed', 'pls-private-label-store' );
-                $ts            = ! empty( $sync_status['timestamp'] ) ? date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $sync_status['timestamp'] ) : '';
-                $msg           = ! empty( $sync_status['message'] ) ? $sync_status['message'] : '';
-                $sync_label    = trim( $status_prefix . ( $ts ? ' – ' . $ts : '' ) . ( $msg ? ' – ' . $msg : '' ) );
+            
+            // Get sync state
+            $sync_state = isset( $product['sync_state'] ) ? $product['sync_state'] : 'not_synced';
+            
+            // Determine sync state badge class and label
+            $sync_badge_class = 'pls-badge--not-synced';
+            $sync_badge_label = __( 'Not Synced', 'pls-private-label-store' );
+            
+            switch ( $sync_state ) {
+                case 'synced_active':
+                    $sync_badge_class = 'pls-badge--synced-active';
+                    $sync_badge_label = __( 'Active', 'pls-private-label-store' );
+                    break;
+                case 'synced_inactive':
+                    $sync_badge_class = 'pls-badge--synced-inactive';
+                    $sync_badge_label = __( 'Inactive', 'pls-private-label-store' );
+                    break;
+                case 'update_available':
+                    $sync_badge_class = 'pls-badge--update-available';
+                    $sync_badge_label = __( 'Update Available', 'pls-private-label-store' );
+                    break;
+                case 'not_synced':
+                default:
+                    $sync_badge_class = 'pls-badge--not-synced';
+                    $sync_badge_label = __( 'Not Synced', 'pls-private-label-store' );
+                    break;
             }
             ?>
-            <div class="pls-card" data-product-id="<?php echo esc_attr( $product['id'] ); ?>">
+            <div class="pls-card pls-card--interactive" data-product-id="<?php echo esc_attr( $product['id'] ); ?>">
               <div class="pls-card__heading">
-                <strong><?php echo esc_html( $product['name'] ); ?></strong>
-                <span class="pls-pill"><?php echo esc_html( ucfirst( $product['status'] ) ); ?></span>
+                <strong style="font-size: 16px; font-weight: 600;"><?php echo esc_html( $product['name'] ); ?></strong>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <span class="pls-badge pls-badge--<?php echo esc_attr( $product['status'] === 'live' ? 'success' : 'info' ); ?>"><?php echo esc_html( ucfirst( $product['status'] ) ); ?></span>
+                  <span class="pls-badge <?php echo esc_attr( $sync_badge_class ); ?>"><?php echo esc_html( $sync_badge_label ); ?></span>
+                </div>
               </div>
               <?php if ( $cat_labels ) : ?>
-                  <div class="pls-chip"><?php esc_html_e( 'Categories', 'pls-private-label-store' ); ?>: <?php echo esc_html( implode( ', ', $cat_labels ) ); ?></div>
+                  <div class="pls-chip" style="margin-top: 8px; margin-bottom: 8px;"><?php echo esc_html( implode( ', ', $cat_labels ) ); ?></div>
               <?php endif; ?>
               <?php if ( ! empty( $product['short_description'] ) ) : ?>
-                  <p class="description"><?php echo esc_html( $product['short_description'] ); ?></p>
+                  <p class="description" style="margin: 8px 0; color: var(--pls-gray-600);"><?php echo esc_html( $product['short_description'] ); ?></p>
               <?php endif; ?>
-              <p class="description pls-sync-meta" data-product-id="<?php echo esc_attr( $product['id'] ); ?>"><?php echo esc_html( $sync_label ); ?></p>
-              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <button class="button pls-edit-product" data-product-id="<?php echo esc_attr( $product['id'] ); ?>"><?php esc_html_e( 'Open editor', 'pls-private-label-store' ); ?></button>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--pls-gray-200);">
+                <button class="button button-small pls-btn--primary pls-edit-product" data-product-id="<?php echo esc_attr( $product['id'] ); ?>"><?php esc_html_e( 'Edit', 'pls-private-label-store' ); ?></button>
                 <?php if ( ! empty( $product['wc_product_id'] ) ) : ?>
-                  <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-product-preview&product_id=' . $product['id'] . '&wc_id=' . $product['wc_product_id'] ) ); ?>" class="button" target="_blank"><?php esc_html_e( 'Preview Frontend', 'pls-private-label-store' ); ?></a>
+                  <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-product-preview&product_id=' . $product['id'] . '&wc_id=' . $product['wc_product_id'] ) ); ?>" class="button button-small pls-btn--ghost" target="_blank"><?php esc_html_e( 'Preview', 'pls-private-label-store' ); ?></a>
                 <?php else : ?>
-                  <button class="button" disabled title="<?php esc_attr_e( 'Sync product first to preview', 'pls-private-label-store' ); ?>"><?php esc_html_e( 'Preview Frontend', 'pls-private-label-store' ); ?></button>
+                  <button class="button button-small pls-btn--ghost" disabled title="<?php esc_attr_e( 'Sync product first to preview', 'pls-private-label-store' ); ?>"><?php esc_html_e( 'Preview', 'pls-private-label-store' ); ?></button>
                 <?php endif; ?>
-                <button class="button pls-sync-product" data-product-id="<?php echo esc_attr( $product['id'] ); ?>" data-wc-product-id="<?php echo esc_attr( isset( $product['wc_product_id'] ) ? $product['wc_product_id'] : 0 ); ?>"><?php esc_html_e( 'Sync', 'pls-private-label-store' ); ?></button>
-                <button class="button-link-delete pls-delete-product" data-product-id="<?php echo esc_attr( $product['id'] ); ?>"><?php esc_html_e( 'Delete', 'pls-private-label-store' ); ?></button>
+                
+                <?php
+                // Conditional buttons based on sync state
+                if ( 'not_synced' === $sync_state ) :
+                    // Not synced: Show Sync button
+                    ?>
+                    <button class="button button-small pls-btn--primary pls-sync-product" data-product-id="<?php echo esc_attr( $product['id'] ); ?>" data-wc-product-id="<?php echo esc_attr( isset( $product['wc_product_id'] ) ? $product['wc_product_id'] : 0 ); ?>"><?php esc_html_e( 'Sync', 'pls-private-label-store' ); ?></button>
+                <?php elseif ( 'update_available' === $sync_state ) : ?>
+                    <!-- Update available: Show Update button (primary) and Deactivate button (ghost) -->
+                    <button class="button button-small pls-btn--primary pls-sync-product pls-update-product" data-product-id="<?php echo esc_attr( $product['id'] ); ?>" data-wc-product-id="<?php echo esc_attr( isset( $product['wc_product_id'] ) ? $product['wc_product_id'] : 0 ); ?>"><?php esc_html_e( 'Update', 'pls-private-label-store' ); ?></button>
+                    <?php if ( $product['status'] === 'live' ) : ?>
+                        <button class="button button-small pls-btn--ghost pls-deactivate-product" data-product-id="<?php echo esc_attr( $product['id'] ); ?>"><?php esc_html_e( 'Deactivate', 'pls-private-label-store' ); ?></button>
+                    <?php endif; ?>
+                <?php elseif ( 'synced_active' === $sync_state ) : ?>
+                    <!-- Synced & Active: Show Deactivate button -->
+                    <button class="button button-small pls-btn--ghost pls-deactivate-product" data-product-id="<?php echo esc_attr( $product['id'] ); ?>"><?php esc_html_e( 'Deactivate', 'pls-private-label-store' ); ?></button>
+                <?php elseif ( 'synced_inactive' === $sync_state ) : ?>
+                    <!-- Synced & Inactive: Show Activate button -->
+                    <button class="button button-small pls-btn--primary pls-activate-product" data-product-id="<?php echo esc_attr( $product['id'] ); ?>"><?php esc_html_e( 'Activate', 'pls-private-label-store' ); ?></button>
+                <?php endif; ?>
+                
+                <button class="button button-small pls-btn--ghost pls-btn--danger pls-delete-product" data-product-id="<?php echo esc_attr( $product['id'] ); ?>"><?php esc_html_e( 'Delete', 'pls-private-label-store' ); ?></button>
               </div>
             </div>
         <?php endforeach; ?>

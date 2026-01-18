@@ -284,19 +284,20 @@ $top_products = array_slice( $revenue_by_product, 0, 5, true );
 
     <!-- Orders Table -->
     <div class="pls-revenue-table-wrapper">
-        <table class="wp-list-table widefat fixed striped">
-            <thead>
-                <tr>
-                    <th><?php esc_html_e( 'Order #', 'pls-private-label-store' ); ?></th>
-                    <th><?php esc_html_e( 'Date', 'pls-private-label-store' ); ?></th>
-                    <th><?php esc_html_e( 'Customer', 'pls-private-label-store' ); ?></th>
-                    <th><?php esc_html_e( 'Products', 'pls-private-label-store' ); ?></th>
-                    <th><?php esc_html_e( 'Tier/Bundle', 'pls-private-label-store' ); ?></th>
-                    <th><?php esc_html_e( 'Total', 'pls-private-label-store' ); ?></th>
-                    <th><?php esc_html_e( 'Status', 'pls-private-label-store' ); ?></th>
-                </tr>
-            </thead>
-            <tbody>
+        <div class="pls-table-modern pls-table-modern--compact">
+            <table>
+                <thead>
+                    <tr>
+                        <th><?php esc_html_e( 'Order #', 'pls-private-label-store' ); ?></th>
+                        <th><?php esc_html_e( 'Date', 'pls-private-label-store' ); ?></th>
+                        <th><?php esc_html_e( 'Customer', 'pls-private-label-store' ); ?></th>
+                        <th><?php esc_html_e( 'Products', 'pls-private-label-store' ); ?></th>
+                        <th><?php esc_html_e( 'Tier/Bundle', 'pls-private-label-store' ); ?></th>
+                        <th><?php esc_html_e( 'Total', 'pls-private-label-store' ); ?></th>
+                        <th><?php esc_html_e( 'Status', 'pls-private-label-store' ); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
                 <?php if ( empty( $pls_orders ) ) : ?>
                     <tr>
                         <td colspan="7"><?php esc_html_e( 'No orders found for this period.', 'pls-private-label-store' ); ?></td>
@@ -356,7 +357,8 @@ $top_products = array_slice( $revenue_by_product, 0, 5, true );
                         </tr>
                     <?php endforeach; ?>
                 <?php endif; ?>
-            </tbody>
-        </table>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>

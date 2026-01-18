@@ -17,6 +17,8 @@ final class PLS_Admin_Ajax {
         add_action( 'wp_ajax_pls_delete_product', array( __CLASS__, 'delete_product' ) );
         add_action( 'wp_ajax_pls_sync_product', array( __CLASS__, 'sync_product' ) );
         add_action( 'wp_ajax_pls_sync_all_products', array( __CLASS__, 'sync_all_products' ) );
+        add_action( 'wp_ajax_pls_activate_product', array( __CLASS__, 'activate_product' ) );
+        add_action( 'wp_ajax_pls_deactivate_product', array( __CLASS__, 'deactivate_product' ) );
         add_action( 'wp_ajax_pls_create_attribute', array( __CLASS__, 'create_attribute' ) );
         add_action( 'wp_ajax_pls_create_attribute_value', array( __CLASS__, 'create_attribute_value' ) );
         add_action( 'wp_ajax_pls_update_attribute_values', array( __CLASS__, 'update_attribute_values' ) );
@@ -41,6 +43,10 @@ final class PLS_Admin_Ajax {
         add_action( 'wp_ajax_pls_mark_commission_paid_monthly', array( __CLASS__, 'mark_commission_paid_monthly' ) );
         add_action( 'wp_ajax_pls_bulk_update_commission', array( __CLASS__, 'bulk_update_commission' ) );
         add_action( 'wp_ajax_pls_send_monthly_report', array( __CLASS__, 'send_monthly_report' ) );
+        add_action( 'wp_ajax_pls_save_bundle', array( __CLASS__, 'save_bundle' ) );
+        add_action( 'wp_ajax_pls_delete_bundle', array( __CLASS__, 'delete_bundle' ) );
+        add_action( 'wp_ajax_pls_sync_bundle', array( __CLASS__, 'sync_bundle' ) );
+        add_action( 'wp_ajax_pls_get_bundle', array( __CLASS__, 'get_bundle' ) );
     }
 
     /**
@@ -485,6 +491,7 @@ final class PLS_Admin_Ajax {
             'key_ingredients'     => $profile_key_ing,
             'attributes'          => $profile_attrs,
             'sync_status'         => self::get_sync_status( $product->id ),
+            'sync_state'          => self::detect_product_sync_state( $product->id ),
         );
     }
 
@@ -535,6 +542,89 @@ final class PLS_Admin_Ajax {
             ),
             false
         );
+    }
+
+    /**
+     * Detect product sync state by comparing PLS product with WooCommerce product.
+     *
+     * @param int $base_product_id PLS base product ID.
+     * @return string Sync state: 'synced_active', 'synced_inactive', 'update_available', or 'not_synced'.
+     */
+    public static function detect_product_sync_state( $base_product_id ) {
+        $base = PLS_Repo_Base_Product::get( $base_product_id );
+        if ( ! $base ) {
+            return 'not_synced';
+        }
+
+        // No WooCommerce product ID means not synced
+        if ( ! $base->wc_product_id ) {
+            return 'not_synced';
+        }
+
+        // Check if WooCommerce product exists
+        if ( ! function_exists( 'wc_get_product' ) ) {
+            return 'not_synced';
+        }
+
+        $wc_product = wc_get_product( $base->wc_product_id );
+        if ( ! $wc_product ) {
+            return 'not_synced';
+        }
+
+        // Get PLS pack tiers (enabled only)
+        $pls_tiers = PLS_Repo_Pack_Tier::for_base( $base_product_id );
+        $enabled_pls_tiers = array_filter( $pls_tiers, function( $tier ) {
+            return (int) $tier->is_enabled === 1;
+        } );
+
+        // Get WC variations
+        $wc_variations = array();
+        if ( $wc_product->is_type( 'variable' ) ) {
+            $variation_ids = $wc_product->get_children();
+            foreach ( $variation_ids as $variation_id ) {
+                $variation = wc_get_product( $variation_id );
+                if ( $variation && $variation->get_status() === 'publish' ) {
+                    $wc_variations[] = $variation;
+                }
+            }
+        }
+
+        // Check if data matches
+        $pls_status = ( 'live' === $base->status ) ? 'publish' : 'draft';
+        $wc_status = $wc_product->get_status();
+
+        // Compare basic fields
+        $name_matches = $wc_product->get_name() === $base->name;
+        $slug_matches = $wc_product->get_slug() === $base->slug;
+        $status_matches = $wc_status === $pls_status;
+
+        // Compare categories
+        $pls_categories = ! empty( $base->category_path ) ? array_map( 'absint', explode( ',', $base->category_path ) ) : array();
+        $pls_categories = array_filter( $pls_categories );
+        sort( $pls_categories );
+
+        $wc_category_ids = $wc_product->get_category_ids();
+        sort( $wc_category_ids );
+
+        $categories_match = $pls_categories === $wc_category_ids;
+
+        // Compare pack tier count
+        $tier_count_matches = count( $enabled_pls_tiers ) === count( $wc_variations );
+
+        // Determine if data matches
+        $data_matches = $name_matches && $slug_matches && $categories_match && $tier_count_matches;
+
+        // Determine sync state
+        if ( $data_matches && $status_matches ) {
+            // Data matches and status matches
+            return ( 'publish' === $wc_status ) ? 'synced_active' : 'synced_inactive';
+        } elseif ( $data_matches && ! $status_matches ) {
+            // Data matches but status differs - still consider synced but inactive/active mismatch
+            return ( 'publish' === $wc_status ) ? 'synced_active' : 'synced_inactive';
+        } else {
+            // Data differs - update available
+            return 'update_available';
+        }
     }
 
     /**
@@ -677,6 +767,90 @@ final class PLS_Admin_Ajax {
         wp_send_json_success(
             array(
                 'message' => $result,
+                'product' => $product_payload,
+            )
+        );
+    }
+
+    /**
+     * AJAX: activate product (set to live and publish in WooCommerce).
+     */
+    public static function activate_product() {
+        check_ajax_referer( 'pls_admin_nonce', 'nonce' );
+
+        if ( ! current_user_can( PLS_Capabilities::CAP_PRODUCTS ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $id   = isset( $_POST['id'] ) ? absint( $_POST['id'] ) : 0;
+        $base = $id ? PLS_Repo_Base_Product::get( $id ) : null;
+        if ( ! $base ) {
+            wp_send_json_error( array( 'message' => __( 'Product not found.', 'pls-private-label-store' ) ), 404 );
+        }
+
+        // Update PLS status to live
+        PLS_Repo_Base_Product::update( $id, array(
+            'slug'          => $base->slug,
+            'name'          => $base->name,
+            'category_path' => $base->category_path,
+            'status'        => 'live',
+        ) );
+
+        // Sync to WooCommerce with publish status
+        $result = self::sync_single_product( $id );
+        if ( is_wp_error( $result ) ) {
+            self::record_sync_status( $id, $result->get_error_message(), false );
+            wp_send_json_error( array( 'message' => $result->get_error_message() ), 500 );
+        }
+
+        self::record_sync_status( $id, __( 'Product activated and synced.', 'pls-private-label-store' ), true );
+        $product_payload = self::format_product_payload( PLS_Repo_Base_Product::get( $id ), 'https://bodocibiophysics.com/label-guide/' );
+
+        wp_send_json_success(
+            array(
+                'message' => __( 'Product activated successfully.', 'pls-private-label-store' ),
+                'product' => $product_payload,
+            )
+        );
+    }
+
+    /**
+     * AJAX: deactivate product (set to draft in both PLS and WooCommerce).
+     */
+    public static function deactivate_product() {
+        check_ajax_referer( 'pls_admin_nonce', 'nonce' );
+
+        if ( ! current_user_can( PLS_Capabilities::CAP_PRODUCTS ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $id   = isset( $_POST['id'] ) ? absint( $_POST['id'] ) : 0;
+        $base = $id ? PLS_Repo_Base_Product::get( $id ) : null;
+        if ( ! $base ) {
+            wp_send_json_error( array( 'message' => __( 'Product not found.', 'pls-private-label-store' ) ), 404 );
+        }
+
+        // Update PLS status to draft
+        PLS_Repo_Base_Product::update( $id, array(
+            'slug'          => $base->slug,
+            'name'          => $base->name,
+            'category_path' => $base->category_path,
+            'status'        => 'draft',
+        ) );
+
+        // Sync to WooCommerce with draft status
+        $result = self::sync_single_product( $id );
+        if ( is_wp_error( $result ) ) {
+            self::record_sync_status( $id, $result->get_error_message(), false );
+            wp_send_json_error( array( 'message' => $result->get_error_message() ), 500 );
+        }
+
+        self::record_sync_status( $id, __( 'Product deactivated and synced.', 'pls-private-label-store' ), true );
+        $product_payload = self::format_product_payload( PLS_Repo_Base_Product::get( $id ), 'https://bodocibiophysics.com/label-guide/' );
+
+        wp_send_json_success(
+            array(
+                'message' => __( 'Product deactivated successfully.', 'pls-private-label-store' ),
                 'product' => $product_payload,
             )
         );
@@ -2276,5 +2450,176 @@ final class PLS_Admin_Ajax {
         } else {
             wp_send_json_error( array( 'message' => __( 'Failed to send report.', 'pls-private-label-store' ) ) );
         }
+    }
+
+    /**
+     * AJAX: save bundle (create or update).
+     */
+    public static function save_bundle() {
+        check_ajax_referer( 'pls_admin_nonce', 'nonce' );
+
+        if ( ! current_user_can( PLS_Capabilities::CAP_PRODUCTS ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $bundle_id = isset( $_POST['bundle_id'] ) ? absint( $_POST['bundle_id'] ) : 0;
+        $name = isset( $_POST['bundle_name'] ) ? sanitize_text_field( wp_unslash( $_POST['bundle_name'] ) ) : '';
+        $bundle_type = isset( $_POST['bundle_type'] ) ? sanitize_text_field( wp_unslash( $_POST['bundle_type'] ) ) : '';
+        $sku_count = isset( $_POST['sku_count'] ) ? absint( $_POST['sku_count'] ) : 0;
+        $units_per_sku = isset( $_POST['units_per_sku'] ) ? absint( $_POST['units_per_sku'] ) : 0;
+        $price_per_unit = isset( $_POST['price_per_unit'] ) ? floatval( $_POST['price_per_unit'] ) : 0;
+        $commission_per_unit = isset( $_POST['commission_per_unit'] ) ? floatval( $_POST['commission_per_unit'] ) : 0;
+        $status = isset( $_POST['bundle_status'] ) ? sanitize_text_field( wp_unslash( $_POST['bundle_status'] ) ) : 'draft';
+
+        if ( empty( $name ) || empty( $bundle_type ) || $sku_count < 2 || $units_per_sku < 1 || $price_per_unit <= 0 ) {
+            wp_send_json_error( array( 'message' => __( 'Please fill in all required fields.', 'pls-private-label-store' ) ), 400 );
+        }
+
+        $slug = sanitize_title( $name );
+        $bundle_key = $bundle_type . '_' . $sku_count . 'x' . $units_per_sku;
+
+        // Calculate totals
+        $total_units = $sku_count * $units_per_sku;
+        $total_price = $total_units * $price_per_unit;
+
+        // Store bundle rules in JSON
+        $offer_rules = array(
+            'bundle_type' => $bundle_type,
+            'sku_count' => $sku_count,
+            'units_per_sku' => $units_per_sku,
+            'price_per_unit' => $price_per_unit,
+            'commission_per_unit' => $commission_per_unit,
+            'total_units' => $total_units,
+            'total_price' => $total_price,
+        );
+
+        $data = array(
+            'bundle_key' => $bundle_key,
+            'slug' => $slug,
+            'name' => $name,
+            'base_price' => $total_price,
+            'pricing_mode' => 'fixed',
+            'status' => $status,
+            'offer_rules_json' => wp_json_encode( $offer_rules ),
+        );
+
+        if ( $bundle_id ) {
+            // Update existing bundle
+            PLS_Repo_Bundle::update( $bundle_id, $data );
+            $bundle = PLS_Repo_Bundle::get( $bundle_id );
+        } else {
+            // Create new bundle
+            $bundle_id = PLS_Repo_Bundle::insert( $data );
+            $bundle = PLS_Repo_Bundle::get( $bundle_id );
+        }
+
+        if ( ! $bundle ) {
+            wp_send_json_error( array( 'message' => __( 'Failed to save bundle.', 'pls-private-label-store' ) ), 500 );
+        }
+
+        wp_send_json_success(
+            array(
+                'message' => $bundle_id ? __( 'Bundle updated.', 'pls-private-label-store' ) : __( 'Bundle created.', 'pls-private-label-store' ),
+                'bundle' => $bundle,
+            )
+        );
+    }
+
+    /**
+     * AJAX: get bundle data.
+     */
+    public static function get_bundle() {
+        check_ajax_referer( 'pls_admin_nonce', 'nonce' );
+
+        if ( ! current_user_can( PLS_Capabilities::CAP_PRODUCTS ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $bundle_id = isset( $_POST['bundle_id'] ) ? absint( $_POST['bundle_id'] ) : 0;
+        $bundle = $bundle_id ? PLS_Repo_Bundle::get( $bundle_id ) : null;
+
+        if ( ! $bundle ) {
+            wp_send_json_error( array( 'message' => __( 'Bundle not found.', 'pls-private-label-store' ) ), 404 );
+        }
+
+        // Parse bundle rules
+        $bundle_rules = ! empty( $bundle->offer_rules_json ) ? json_decode( $bundle->offer_rules_json, true ) : array();
+
+        wp_send_json_success(
+            array(
+                'bundle' => array(
+                    'id' => $bundle->id,
+                    'name' => $bundle->name,
+                    'bundle_type' => isset( $bundle_rules['bundle_type'] ) ? $bundle_rules['bundle_type'] : '',
+                    'sku_count' => isset( $bundle_rules['sku_count'] ) ? $bundle_rules['sku_count'] : 0,
+                    'units_per_sku' => isset( $bundle_rules['units_per_sku'] ) ? $bundle_rules['units_per_sku'] : 0,
+                    'price_per_unit' => isset( $bundle_rules['price_per_unit'] ) ? $bundle_rules['price_per_unit'] : 0,
+                    'commission_per_unit' => isset( $bundle_rules['commission_per_unit'] ) ? $bundle_rules['commission_per_unit'] : 0,
+                    'status' => $bundle->status,
+                ),
+            )
+        );
+    }
+
+    /**
+     * AJAX: delete bundle.
+     */
+    public static function delete_bundle() {
+        check_ajax_referer( 'pls_admin_nonce', 'nonce' );
+
+        if ( ! current_user_can( PLS_Capabilities::CAP_PRODUCTS ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $bundle_id = isset( $_POST['bundle_id'] ) ? absint( $_POST['bundle_id'] ) : 0;
+        $bundle = $bundle_id ? PLS_Repo_Bundle::get( $bundle_id ) : null;
+
+        if ( ! $bundle ) {
+            wp_send_json_error( array( 'message' => __( 'Bundle not found.', 'pls-private-label-store' ) ), 404 );
+        }
+
+        // Delete WooCommerce product if exists
+        if ( $bundle->wc_product_id ) {
+            wp_trash_post( $bundle->wc_product_id );
+        }
+
+        PLS_Repo_Bundle::delete( $bundle_id );
+
+        wp_send_json_success(
+            array(
+                'message' => __( 'Bundle deleted.', 'pls-private-label-store' ),
+                'bundle_id' => $bundle_id,
+            )
+        );
+    }
+
+    /**
+     * AJAX: sync bundle to WooCommerce.
+     */
+    public static function sync_bundle() {
+        check_ajax_referer( 'pls_admin_nonce', 'nonce' );
+
+        if ( ! current_user_can( PLS_Capabilities::CAP_PRODUCTS ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $bundle_id = isset( $_POST['bundle_id'] ) ? absint( $_POST['bundle_id'] ) : 0;
+        $bundle = $bundle_id ? PLS_Repo_Bundle::get( $bundle_id ) : null;
+
+        if ( ! $bundle ) {
+            wp_send_json_error( array( 'message' => __( 'Bundle not found.', 'pls-private-label-store' ) ), 404 );
+        }
+
+        $result = PLS_WC_Sync::sync_bundle_to_wc( $bundle_id );
+        if ( is_wp_error( $result ) ) {
+            wp_send_json_error( array( 'message' => $result->get_error_message() ), 500 );
+        }
+
+        wp_send_json_success(
+            array(
+                'message' => __( 'Bundle synced successfully.', 'pls-private-label-store' ),
+                'bundle' => PLS_Repo_Bundle::get( $bundle_id ),
+            )
+        );
     }
 }
