@@ -1,37 +1,25 @@
-# Sync & Idempotency
+# Sync & Migrations
 
-All sync operations should support:
-- dry-run preview ("what will change")
-- idempotency (no duplicates)
-- diff-based updates
-- backreferences into PLS tables (`wc_product_id`, `wc_variation_id`)
+## Product Sync States
 
-## Sync State Detection (v1.1.0+)
+1. **Synced & Active**: Product synced, WooCommerce product published
+2. **Synced & Inactive**: Product synced, WooCommerce product draft
+3. **Update Available**: PLS product changed, needs re-sync
+4. **Not Synced**: Product not yet synced to WooCommerce
 
-Products have 4 sync states detected by `PLS_Admin_Ajax::detect_product_sync_state()`:
+## Sync Actions
 
-1. **synced_active** - Product matches WooCommerce, both are published/active
-2. **synced_inactive** - Product matches WooCommerce, both are draft/inactive
-3. **update_available** - Product exists in WooCommerce but data differs
-4. **not_synced** - No WooCommerce product exists
+- **Sync**: Create/update WooCommerce product
+- **Activate**: Set WooCommerce product to published
+- **Deactivate**: Set WooCommerce product to draft
+- **Update**: Re-sync when changes detected
 
-**Comparison Checks:**
-- Product name, slug, categories
-- Product status (publish vs draft)
-- Pack tier count and prices
-- Variation count matches enabled pack tier count
+## Migrations
 
-## Sync Methods
+- `v0.8.0`: Pack tier attribute system
+- `v0.9.0`: Tier-variable pricing
+- `v1.0.0`: UI modernization
+- `v1.1.0`: Bundle system
+- `v1.2.0`: Tutorial overhaul, tiered commission
 
-**Product Sync:**
-- `PLS_WC_Sync::sync_base_product_to_wc()` - Sync single product
-- `PLS_Admin_Ajax::sync_product()` - AJAX endpoint
-- `PLS_Admin_Ajax::sync_all_products()` - Bulk sync
-
-**Bundle Sync (v1.1.0+):**
-- `PLS_WC_Sync::sync_bundle_to_wc()` - Sync bundle as Grouped Product
-- `PLS_Admin_Ajax::sync_bundle()` - AJAX endpoint
-- `PLS_WC_Sync::sync_bundles_stub()` - Bulk sync all bundles
-
-**Attribute Sync:**
-- `PLS_WC_Sync::sync_attributes_stub()` - Sync attributes to WooCommerce
+Migrations run automatically on plugin activation/update.

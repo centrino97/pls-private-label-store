@@ -1,39 +1,35 @@
 # WooCommerce Mapping
 
-## Base product -> Variable product
-Each PLS base product should sync into:
-- one Woo variable product
-- configured categories + attributes
+## Product Sync
 
-## Pack tier -> Variation
-Each enabled pack tier should become one variation:
-- attribute `pa_pack-tier` = tier term
-- price set from PLS
-- meta: units (and optional SKU pattern)
+### Base Product → Variable Product
+- Each PLS base product syncs to one WooCommerce variable product
+- Product status: `live` → `publish`, `draft` → `draft`
+- Categories synced from PLS category_path
 
-## Bundles (v1.1.0+)
+### Pack Tier → Variation
+- Each enabled pack tier becomes one WooCommerce variation
+- Attribute: `pa_pack-tier` with tier term
+- Price set from PLS pack tier price
+- Meta: `_pls_units` stores units for commission calculation
 
-**Bundle → Grouped Product:**
+### Bundle → Grouped Product
 - Each PLS bundle syncs to one WooCommerce Grouped Product
-- Grouped product links to child variable products (if bundle items defined)
 - Bundle metadata stored in product meta:
   - `_pls_bundle_id` - PLS bundle ID
   - `_pls_bundle_key` - Bundle key identifier
   - `_pls_bundle_rules` - Bundle rules JSON
 
-**Cart Detection:**
-- Implemented in `includes/wc/class-pls-bundle-cart.php`
-- Hooks into `woocommerce_before_calculate_totals`
-- Automatically detects when cart qualifies for bundle pricing
-- Applies bundle pricing and stores bundle info in cart item data
+## Cart Detection
 
-**Bundle Qualification Logic:**
-1. Count distinct PLS products in cart
-2. Check if quantities match bundle criteria (e.g., 2 products × 250 units each)
-3. Apply bundle pricing automatically
-4. Show bundle discount notice
+- Cart automatically detects when products qualify for bundle pricing
+- Checks total units per product across cart items
+- Applies bundle pricing and adds meta to cart items
+- Meta preserved through checkout to order items
 
-**Customer Choice:**
-- Bundles are customer-choice (customer picks which products to include)
-- No pre-defined product combinations required
-- Cart detection handles dynamic product selection
+## Commission Tracking
+
+- Commission calculated when order status changes to `processing` or `completed`
+- Reads order item meta for bundle information
+- Calculates commission based on tier rates or bundle rates
+- Stores commission records in `pls_order_commission` table

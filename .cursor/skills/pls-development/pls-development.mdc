@@ -2,76 +2,284 @@
 alwaysApply: true
 ---
 
-# PLS Release Workflow - Core Rules
+# PLS Development Workflow
 
-## 🚨 CRITICAL: Why Changes Aren't Visible
+## 🎯 Core Commands
 
-**Users CANNOT see updates until ALL steps complete:**
+### DEVELOP - Start Working
+**Use when:** Beginning new work or resuming development
 
-1. ✅ Version bumped in `pls-private-label-store.php` (line 5 AND line 20)
-2. ✅ Version bumped in `readme.txt` (`Stable tag:`)
-3. ✅ Version bumped in `uupd/index.json` (`version` field)
-4. ✅ `last_updated` timestamp updated in `uupd/index.json`
-5. ✅ Changelog added to both `readme.txt` and `uupd/index.json`
-6. ✅ Committed: `git commit -m "v0.8.X: Description"`
-7. ✅ Tagged: `git tag v0.8.X`
-8. ✅ Pushed branch: `git push origin main`
-9. ✅ Pushed tag: `git push origin v0.8.X`
-10. ✅ GitHub Actions builds ZIP (wait 1-2 min)
-11. ✅ User clicks "Check for updates" in WordPress
+**Actions:**
+1. Get context from codebase
+2. Review current state and recent changes
+3. Understand requirements and scope
+4. Plan implementation approach
+5. Create todo list if needed
 
-**MISSING ANY STEP = Update NOT visible!**
+**Standard Process:**
+- Read relevant files and documentation
+- Understand current architecture
+- Identify dependencies
+- Plan step-by-step implementation
 
 ---
 
-## 📋 Mandatory Release Steps
+### RELEASE - Commit, Push, Tag, Update
+**Use when:** Ready to release a version
 
-### 1. Update Version (3 files)
-- `pls-private-label-store.php`: Line 5 (`* Version:`) AND Line 20 (`define( 'PLS_PLS_VERSION'`)
-- `readme.txt`: Line 7 (`Stable tag:`)
-- `uupd/index.json`: `"version"` field AND `"last_updated"` timestamp
+**MANDATORY STEPS (ALL must be completed):**
 
-### 2. Update Changelog (2 files)
-- `readme.txt`: Add new version section
-- `uupd/index.json`: Add to `"changelog"` field
-
-### 3. Git Operations
-```bash
-git add -A
-git commit -m "v0.8.X: Description"
-git tag v0.8.X
-git push origin main
-git push origin v0.8.X
+#### 1. Update Version (3 files)
+```php
+// pls-private-label-store.php
+* Version: 1.2.3
+define( 'PLS_PLS_VERSION', '1.2.3' );
 ```
 
-### 4. Inform User
-- Wait 1-2 minutes for GitHub Actions
-- Tell user to click "Check for updates" in WordPress
+```txt
+// readme.txt
+Stable tag: 1.2.3
+```
+
+```json
+// uupd/index.json
+{
+  "version": "1.2.3",
+  "last_updated": "2026-01-18 23:30:00"
+}
+```
+
+#### 2. Update Changelog (2 files)
+- Add version section to `readme.txt`
+- Add to `"changelog"` field in `uupd/index.json`
+
+#### 3. Standardized Git Operations
+```bash
+git add -A
+git commit -m "Release v1.2.3: Brief description of changes"
+git tag v1.2.3
+git push origin main
+git push origin v1.2.3
+```
+
+#### 4. Wait for GitHub Actions
+- Wait 1-2 minutes for workflow to complete
+- Verify release at: https://github.com/centrino97/pls-private-label-store/releases
+
+**Standard Commit Message Format:**
+```
+Release vX.Y.Z: Brief feature description
+
+- Feature 1: Description
+- Feature 2: Description
+- Bug fix: Description
+- Updated version to X.Y.Z in all files
+```
 
 ---
 
-## 🔍 How UUPD Works
+### STOP - Stop Working, Record Context
+**Use when:** Pausing work or completing a session
 
-1. **WordPress checks:** `uupd/index.json` version
-2. **Compares:** JSON version vs `PLS_PLS_VERSION` constant
-3. **If JSON > constant:** Shows update notification
-4. **Downloads:** ZIP from GitHub releases
+**Actions:**
+1. Document current state
+2. Record what was completed
+3. Note what remains to be done
+4. Save any important context or decisions
+5. Commit any uncommitted work (if appropriate)
 
-**Key Point:** `uupd/index.json` version MUST be higher than plugin version for update to appear!
-
----
-
-## ⚡ Quick Reference
-
-- **Version files:** `pls-private-label-store.php`, `readme.txt`, `uupd/index.json`
-- **GitHub Actions:** Triggers on tag push (`v*`), builds ZIP automatically
-- **ZIP URL:** `https://github.com/centrino97/pls-private-label-store/releases/latest/download/pls-private-label-store.zip`
-- **JSON URL:** `https://raw.githubusercontent.com/centrino97/pls-private-label-store/main/uupd/index.json`
+**Standard Process:**
+- Summarize completed work
+- List pending tasks
+- Note any blockers or decisions made
+- Update documentation if needed
 
 ---
 
-## 🎯 Golden Rule
+## 📋 Standardized Commit Messages
 
-**ALWAYS bump version in ALL 3 files + update timestamp + push tag = Update visible**
+### Format
+```
+<type>: <description>
 
-**MISSING ANY STEP = Update NOT visible**
+<optional detailed explanation>
+```
+
+### Types
+- `Release vX.Y.Z:` - Version release (must include version bump)
+- `Feature:` - New feature implementation
+- `Fix:` - Bug fix
+- `Refactor:` - Code refactoring
+- `Docs:` - Documentation updates
+- `Style:` - Code style/formatting changes
+- `Test:` - Test additions/updates
+
+### Examples
+```
+Release v1.2.3: Enhanced sample data with full product options
+
+- Products now include complete product options (Package Type, Color, Cap, Fragrances)
+- Added bundle-qualified orders for testing
+- Updated version to 1.2.3 in all files
+```
+
+```
+Feature: Add tiered commission calculation for custom orders
+
+- Implemented threshold-based commission rates
+- Added settings UI for threshold and rates
+- Auto-calculates commission when order status changes to Done
+```
+
+```
+Fix: Correct bundle commission calculation in order processing
+
+- Fixed bundle key parsing for commission lookup
+- Corrected units calculation for bundle items
+```
+
+---
+
+## 🚨 CRITICAL Release Checklist
+
+**MISSING ANY STEP = Update NOT visible to users!**
+
+- [ ] Code changes completed and tested
+- [ ] Version bumped in `pls-private-label-store.php` (line 5 AND line 20)
+- [ ] Version bumped in `readme.txt` (`Stable tag:`)
+- [ ] Version bumped in `uupd/index.json` (`version` field)
+- [ ] `last_updated` timestamp updated in `uupd/index.json`
+- [ ] Changelog added to `readme.txt`
+- [ ] Changelog added to `uupd/index.json`
+- [ ] Committed with standardized message: `git commit -m "Release vX.Y.Z: Description"`
+- [ ] Tagged: `git tag vX.Y.Z`
+- [ ] Pushed branch: `git push origin main`
+- [ ] Pushed tag: `git push origin vX.Y.Z`
+- [ ] Waited 1-2 minutes for GitHub Actions
+- [ ] Verified release exists with ZIP file
+
+---
+
+## 🔄 Release Workflow
+
+### Step-by-Step Process
+
+1. **Complete Development**
+   - All code changes done
+   - Testing completed
+   - Documentation updated
+
+2. **Version Bump (3 files)**
+   - `pls-private-label-store.php`: Header + constant
+   - `readme.txt`: Stable tag
+   - `uupd/index.json`: Version + timestamp
+
+3. **Changelog Update (2 files)**
+   - `readme.txt`: Add version section
+   - `uupd/index.json`: Add to changelog field
+
+4. **Git Operations**
+   ```bash
+   git add -A
+   git commit -m "Release vX.Y.Z: Description"
+   git tag vX.Y.Z
+   git push origin main
+   git push origin vX.Y.Z
+   ```
+
+5. **Verify Release**
+   - Check GitHub Actions: https://github.com/centrino97/pls-private-label-store/actions
+   - Verify release: https://github.com/centrino97/pls-private-label-store/releases
+   - Confirm ZIP file attached
+
+---
+
+## 📁 File Locations
+
+### Version Files
+- `pls-private-label-store.php` - Plugin header + version constant
+- `readme.txt` - Stable tag + changelog
+- `uupd/index.json` - Version + changelog + metadata
+
+### Key URLs
+- **JSON:** `https://raw.githubusercontent.com/centrino97/pls-private-label-store/main/uupd/index.json`
+- **ZIP:** `https://github.com/centrino97/pls-private-label-store/releases/latest/download/pls-private-label-store.zip`
+- **Releases:** `https://github.com/centrino97/pls-private-label-store/releases`
+- **Actions:** `https://github.com/centrino97/pls-private-label-store/actions`
+
+---
+
+## ⚠️ Common Mistakes
+
+1. **Forgetting to bump version in `uupd/index.json`**
+   - Result: Update not detected
+   - Fix: Always update version AND timestamp
+
+2. **Not pushing the tag**
+   - Result: GitHub Actions doesn't run, no ZIP built
+   - Fix: Always push both branch AND tag
+
+3. **Not updating `last_updated` timestamp**
+   - Result: WordPress cache may not refresh
+   - Fix: Always update timestamp when bumping version
+
+4. **Incomplete changelog**
+   - Result: Users don't know what changed
+   - Fix: Add changelog to both files
+
+5. **Wrong commit message format**
+   - Result: Hard to track releases
+   - Fix: Use standardized format: `Release vX.Y.Z: Description`
+
+---
+
+## 🎯 Golden Rules
+
+1. **ALWAYS bump version in ALL 3 files + update timestamp + push tag = Update visible**
+2. **MISSING ANY STEP = Update NOT visible**
+3. **Use standardized commit messages for releases**
+4. **Wait 1-2 minutes after pushing tag before verifying**
+5. **Users must click "Check for updates" in WordPress**
+
+---
+
+## 📚 Quick Reference
+
+### Version Format
+- Semantic versioning: `MAJOR.MINOR.PATCH`
+- Examples: `1.2.0`, `1.2.1`, `1.2.2`
+- Major: Breaking changes
+- Minor: New features (backward compatible)
+- Patch: Bug fixes
+
+### Tag Format
+- Always prefix with `v`: `v1.2.3`
+- Must match version exactly
+
+### Timestamp Format
+- `YYYY-MM-DD HH:MM:SS`
+- Example: `2026-01-18 23:30:00`
+- Use 24-hour format
+
+---
+
+## 🔍 Troubleshooting
+
+### Update Not Detected
+1. Check all 3 version files match
+2. Verify tag exists: `git tag --list | grep vX.Y.Z`
+3. Check release exists on GitHub
+4. Verify JSON accessible at raw URL
+5. Clear WordPress transients or wait for cache expiration
+
+### ZIP Not Built
+1. Check GitHub Actions workflow ran
+2. Verify tag was pushed: `git ls-remote --tags origin`
+3. Check workflow logs for errors
+4. Manually create release if needed
+
+### Workflow Not Triggered
+1. Verify tag format: Must start with `v`
+2. Check `.github/workflows/build-release-zip.yml` exists
+3. Verify tag was pushed: `git push origin vX.Y.Z`
+4. Check GitHub Actions tab for workflow status

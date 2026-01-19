@@ -1,57 +1,55 @@
-# Data Model (Phase 1)
+# Data Model
 
-Tables are created on activation using `dbDelta()` and prefixed with `wp_pls_...`.
+## Core Entities
 
-- `pls_base_product`
-- `pls_pack_tier`
-- `pls_bundle`
-- `pls_bundle_item`
-- `pls_attribute`
-- `pls_attribute_value`
-- `pls_swatch`
+### Base Product
+- Stores product name, slug, category, status
+- Linked to WooCommerce product via `wc_product_id`
+- Has multiple pack tiers (variations)
+- Has product profile (description, images, options)
 
-See: `includes/core/class-pls-activator.php`
+### Pack Tier
+- Defines units and price for a tier level
+- Maps to WooCommerce variation
+- Tier levels: 1-5 (50, 100, 250, 500, 1000 units)
 
-## pls_attribute Table (v0.8.3+)
+### Bundle
+- Defines bundle type (mini_line, starter_line, growth_line, premium_line)
+- Stores SKU count, units per SKU, pricing
+- Synced to WooCommerce as Grouped Product
+- Cart automatically detects bundle qualification
 
-The `pls_attribute` table supports hierarchical product options with the following columns:
+### Custom Order
+- Lead capture from frontend form
+- Kanban stages: new_lead → sampling → production → done
+- Financial tracking: production_cost, total_value, commission
 
-- `id`: Primary key
-- `parent_attribute_id`: NULL for root options, attribute ID for children (future use)
-- `wc_attribute_id`: Linked WooCommerce attribute ID
-- `attr_key`: Unique key identifier
-- `label`: Display label
-- `option_type`: 'pack-tier' | 'product-option' | 'ingredient'
-- `is_primary`: 1 for Pack Tier (only one can be primary), 0 for others
-- `is_variation`: Whether this attribute is used for variations
-- `sort_order`: Display order
+### Commission
+- Linked to WooCommerce orders or custom orders
+- Tracks units sold, commission rate, amount
+- Status flow: pending → invoiced → paid
 
-The Pack Tier attribute is marked with `is_primary = 1` and `option_type = 'pack-tier'`. All other product options use `option_type = 'product-option'`. Ingredients are synced with `option_type = 'ingredient'`.
+### Attribute & Attribute Value
+- Product options (Package Type, Color, Cap, Fragrances)
+- Tier-based pricing rules
+- Tier restrictions (min_tier_level)
 
-## Bundle Tables (v1.1.0+)
+## Relationships
 
-### pls_bundle Table
-Stores bundle definitions with pricing and commission rules.
+```
+Base Product
+├── Pack Tiers (1:N)
+├── Product Profile (1:1)
+├── Attributes (M:N via basics_json)
+└── Ingredients (M:N via taxonomy)
 
-**Key Fields:**
-- `bundle_key` - Unique identifier (e.g., `mini_line_2x250`)
-- `offer_rules_json` - JSON containing:
-  - `bundle_type` - Type identifier (mini_line, starter_line, etc.)
-  - `sku_count` - Number of SKUs (2, 3, 4, 6)
-  - `units_per_sku` - Units per SKU (250, 300, 400, 500)
-  - `price_per_unit` - Bundle price per unit
-  - `commission_per_unit` - Commission rate per unit
-  - `total_units` - Calculated total units
-  - `total_price` - Calculated total price
+Bundle
+├── Bundle Items (1:N) - optional
+└── WooCommerce Grouped Product (1:1)
 
-### pls_bundle_item Table
-Stores products included in bundles (optional - for pre-defined bundles).
+WooCommerce Order
+└── Commissions (1:N)
 
-**Note**: Most bundles are customer-choice (customer picks products), so this table may be empty. It's used for pre-defined bundle combinations.
-
-## Why custom tables?
-Pack tiers and bundle compositions are structured and benefit from:
-- validation
-- predictable queries
-- reliable bulk editing
-- safe re-sync without postmeta sprawl
+Custom Order
+└── Commission (1:1) - when status is "done"
+```

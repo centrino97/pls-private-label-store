@@ -1,22 +1,30 @@
 # Elementor Integration
 
-This plugin registers:
-- Elementor Widgets:
-  - PLS Configurator
-  - PLS Bundle Offer
-- Elementor Dynamic Tags:
-  - PLS Pack Units (stub)
+## Widgets
 
-Registration:
-- `elementor/widgets/register`
-- `elementor/dynamic_tags/register`
+### PLS Product Info
+- Displays product description, directions, skin types, key ingredients
+- Used on product pages via Elementor Theme Builder
 
-Files:
-- `includes/elementor/class-pls-elementor.php`
-- `includes/elementor/widgets/*`
-- `includes/elementor/dynamic-tags/*`
+### PLS Configurator
+- Product configuration interface
+- Pack tier selection
+- Product options selection
+- Price calculation
 
-## Elementor Pro Popup workflow
-The Bundle Offer widget supports a "Popup Selector" control.
-Designers can configure an Elementor Pro Popup to open on click "By selector"
-and set that selector to the button class name used in the widget.
+### PLS Bundle Offer
+- Displays bundle offers
+- Shows bundle pricing and rules
+
+## Dynamic Tags
+
+### Pack Units
+- Returns units for selected pack tier
+- Used in product displays
+
+## Theme Builder
+
+- Use Hello Elementor theme
+- Create Elementor Theme Builder templates
+- Assign templates to product categories
+- Use PLS widgets in templates
