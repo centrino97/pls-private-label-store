@@ -22,8 +22,8 @@
             currentPageSteps = onboardingData.steps[ currentPage ].steps || [];
         }
 
-        // Start tutorial button handler (both header and banner buttons)
-        $('#pls-start-tutorial, #pls-start-tutorial-banner').on('click', function() {
+        // Start tutorial button handler (banner button only - header button removed)
+        $('#pls-start-tutorial-banner').on('click', function() {
             $.ajax({
                 url: PLS_Onboarding.ajax_url,
                 type: 'POST',
@@ -64,17 +64,14 @@
         // Inject help buttons into modals
         injectModalHelpButtons();
 
-        // Show tutorial panel if active (only when not in modal)
+        // Show spotlight tutorial if active (only when not in modal)
         function checkAndShowTutorial() {
             if ( onboardingData.is_active && !$('.pls-modal.is-active').length ) {
-                if (!$('#pls-tutorial-panel').length) {
-                    initTutorialPanel();
+                if (!$('.pls-tutorial-overlay').length) {
+                    initSpotlightTutorial();
                 }
-                $('#pls-tutorial-panel').show();
-                // Hide old floating card if it exists
-                $('#pls-onboarding-card').hide();
             } else {
-                $('#pls-tutorial-panel').hide();
+                destroySpotlightTutorial();
             }
         }
 
@@ -91,6 +88,11 @@
                 injectModalHelpButtons();
                 checkAndShowTutorial();
             }, 300);
+        });
+
+        // Re-check tutorial on page navigation
+        $(window).on('load', function() {
+            setTimeout(checkAndShowTutorial, 500);
         });
 
         // Watch for modal class changes using MutationObserver
@@ -307,7 +309,16 @@
         return contentMap[page] && contentMap[page][section] ? contentMap[page][section] : null;
     }
 
-    function initTutorialPanel() {
+    // Spotlight Tutorial System
+    let spotlightTutorial = {
+        currentStepIndex: 0,
+        steps: [],
+        overlay: null,
+        spotlight: null,
+        tooltip: null
+    };
+
+    function initSpotlightTutorial() {
         if (!onboardingData.tutorial_flow) {
             return;
         }
@@ -320,79 +331,281 @@
             return;
         }
 
-        // Get completed steps from progress
-        const completedSteps = onboardingData.progress && onboardingData.progress.completed_steps 
-            ? JSON.parse( onboardingData.progress.completed_steps ) 
-            : [];
-
-        // Calculate overall progress
-        const totalSteps = Object.keys(tutorialFlow).length;
-        const currentStepNum = currentStep.step_number;
-        const progressPercent = ((currentStepNum - 1) / totalSteps) * 100;
-
-        // Count completed sub-steps for current section
-        const stepKey = currentPage + '_';
-        const currentCompleted = completedSteps.filter(s => s.startsWith(stepKey)).length;
-        const totalSubSteps = currentStep.steps.length;
-        const canProceed = currentCompleted >= Math.min(3, totalSubSteps); // At least 3 key steps done
-
-        // Build step items HTML
-        const stepsHtml = currentStep.steps.map((step, index) => {
-            const subStepKey = stepKey + index;
-            const isCompleted = completedSteps.includes(subStepKey);
-            return `
-                <li class="pls-tutorial-panel__step-item ${isCompleted ? 'is-completed' : ''}" data-step-index="${index}">
-                    <input type="checkbox" class="pls-tutorial-panel__step-checkbox" ${isCompleted ? 'checked' : ''} />
-                    <span class="pls-tutorial-panel__step-text">${step}</span>
-                </li>
-            `;
-        }).join('');
-
-        // Build panel HTML
-        const panelHtml = `
-            <div class="pls-tutorial-panel" id="pls-tutorial-panel">
-                <div class="pls-tutorial-panel__header">
-                    <div class="pls-tutorial-panel__header-left">
-                        <span class="pls-tutorial-panel__step-badge">Step ${currentStepNum} of ${totalSteps}</span>
-                        <h3 class="pls-tutorial-panel__title">${currentStep.title}</h3>
-                    </div>
-                    <div class="pls-tutorial-panel__progress">${currentStepNum} / ${totalSteps}</div>
-                </div>
-                <div class="pls-tutorial-panel__body">
-                    <p class="pls-tutorial-panel__description">
-                        ${currentStep.description || (currentStep.page === 'attributes' ? 'Review and configure your product options before creating products.' : '')}
-                        ${!currentStep.description && currentStep.page === 'products' ? 'Create your first product with all the options you configured. Follow each step carefully.' : ''}
-                        ${!currentStep.description && currentStep.page === 'bundles' ? 'Create bundles to offer special pricing for multiple products.' : ''}
-                        ${!currentStep.description && currentStep.page === 'categories' ? 'Review and organize your product categories.' : ''}
-                    </p>
-                    <ul class="pls-tutorial-panel__steps">
-                        ${stepsHtml}
-                    </ul>
-                </div>
-                <div class="pls-tutorial-panel__footer">
-                    <button type="button" class="pls-tutorial-panel__skip-btn" id="pls-tutorial-skip">Skip Tutorial</button>
-                    <div class="pls-tutorial-panel__nav-buttons">
-                        ${currentStepNum > 1 ? `<button type="button" class="pls-tutorial-panel__prev-btn" data-prev-page="${getPreviousPage(currentPage, tutorialFlow)}">Previous</button>` : ''}
-                        <button type="button" class="pls-tutorial-panel__next-btn" id="pls-tutorial-next" 
-                                data-next-page="${currentStep.next_page || ''}" 
-                                ${!canProceed ? 'disabled' : ''}>
-                            ${currentStep.next_title || 'Complete'}
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        // Insert at top of page content (after page head if exists)
-        const $pageHead = $('.pls-page-head');
-        if ($pageHead.length) {
-            $pageHead.after(panelHtml);
-        } else {
-            $('.pls-wrap').prepend(panelHtml);
+        // Define spotlight steps for each page
+        const spotlightSteps = getSpotlightSteps(currentPage);
+        if (spotlightSteps.length === 0) {
+            return; // No spotlight steps defined for this page
         }
 
-        // Attach event handlers
-        attachTutorialHandlers(currentPage, tutorialFlow, completedSteps);
+        spotlightTutorial.steps = spotlightSteps;
+        spotlightTutorial.currentStepIndex = 0;
+
+        // Create overlay
+        spotlightTutorial.overlay = $('<div class="pls-tutorial-overlay"></div>');
+        $('body').append(spotlightTutorial.overlay);
+
+        // Start first step
+        showSpotlightStep(0);
+    }
+
+    function getSpotlightSteps(page) {
+        // Define spotlight steps with selectors and messages for each page
+        const stepsMap = {
+            'attributes': [
+                {
+                    selector: '.pls-attribute-row:first',
+                    title: 'Step 1 of 4: Product Options',
+                    message: 'This is where you configure your product options. Let\'s start by reviewing Pack Tier settings.',
+                    position: 'bottom'
+                },
+                {
+                    selector: '.pls-admin-nav__item[href*="pls-products"]',
+                    title: 'Ready for Next Step?',
+                    message: 'Once you\'ve reviewed your options, click "Products" in the navigation to create your first product.',
+                    position: 'bottom',
+                    action: 'navigate',
+                    actionUrl: 'admin.php?page=pls-products'
+                }
+            ],
+            'products': [
+                {
+                    selector: '.pls-page-head .button-primary, [data-pls-open-modal="add-product"]',
+                    title: 'Step 2 of 4: Create Your First Product',
+                    message: 'Click this button to add a new product. We\'ll guide you through each step.',
+                    position: 'bottom'
+                }
+            ],
+            'bundles': [
+                {
+                    selector: '.button-primary:contains("Create Bundle"), [data-pls-open-modal="add-bundle"]',
+                    title: 'Step 3 of 4: Create Bundles',
+                    message: 'Click here to create a bundle. Bundles offer special pricing when customers buy multiple products.',
+                    position: 'bottom'
+                }
+            ],
+            'categories': [
+                {
+                    selector: '.pls-page-head, .pls-wrap h1',
+                    title: 'Step 4 of 4: Review Categories',
+                    message: 'Great job! Review your categories here. You\'re almost done with the tutorial!',
+                    position: 'bottom'
+                }
+            ]
+        };
+
+        return stepsMap[page] || [];
+    }
+
+    function showSpotlightStep(stepIndex) {
+        if (stepIndex >= spotlightTutorial.steps.length) {
+            // Tutorial complete for this page
+            completeSpotlightTutorial();
+            return;
+        }
+
+        const step = spotlightTutorial.steps[stepIndex];
+        const $target = $(step.selector).first();
+
+        if ($target.length === 0) {
+            // Element not found, try next step
+            setTimeout(() => showSpotlightStep(stepIndex + 1), 500);
+            return;
+        }
+
+        // Scroll to element
+        $('html, body').animate({
+            scrollTop: $target.offset().top - 100
+        }, 500);
+
+        // Wait for scroll, then show spotlight
+        setTimeout(() => {
+            highlightElement($target, step);
+        }, 600);
+    }
+
+    function highlightElement($element, step) {
+        // Remove existing spotlight
+        $('.pls-tutorial-spotlight').remove();
+        $('.pls-tutorial-tooltip').remove();
+
+        // Get element position
+        const offset = $element.offset();
+        const width = $element.outerWidth();
+        const height = $element.outerHeight();
+
+        // Create spotlight
+        spotlightTutorial.spotlight = $('<div class="pls-tutorial-spotlight"></div>');
+        spotlightTutorial.spotlight.css({
+            top: offset.top + 'px',
+            left: offset.left + 'px',
+            width: width + 'px',
+            height: height + 'px'
+        });
+        $('body').append(spotlightTutorial.spotlight);
+
+        // Add highlight class to element
+        $element.addClass('pls-tutorial-highlighted');
+
+        // Create tooltip
+        createTooltip($element, step);
+    }
+
+    function createTooltip($element, step) {
+        const offset = $element.offset();
+        const width = $element.outerWidth();
+        const height = $element.outerHeight();
+        const tooltipWidth = 400;
+        const tooltipHeight = 200;
+        const spacing = 20;
+
+        let tooltipTop, tooltipLeft, arrowClass, arrowStyle = '';
+
+        // Position tooltip based on step.position
+        if (step.position === 'bottom' || !step.position) {
+            tooltipTop = offset.top + height + spacing;
+            tooltipLeft = offset.left + (width / 2) - (tooltipWidth / 2);
+            arrowClass = 'pls-tutorial-tooltip__arrow--top';
+            arrowStyle = `left: ${tooltipWidth / 2 - 12}px;`;
+        } else if (step.position === 'top') {
+            tooltipTop = offset.top - tooltipHeight - spacing;
+            tooltipLeft = offset.left + (width / 2) - (tooltipWidth / 2);
+            arrowClass = 'pls-tutorial-tooltip__arrow--bottom';
+            arrowStyle = `left: ${tooltipWidth / 2 - 12}px;`;
+        } else if (step.position === 'right') {
+            tooltipTop = offset.top + (height / 2) - (tooltipHeight / 2);
+            tooltipLeft = offset.left + width + spacing;
+            arrowClass = 'pls-tutorial-tooltip__arrow--left';
+            arrowStyle = `top: ${tooltipHeight / 2 - 12}px;`;
+        } else { // left
+            tooltipTop = offset.top + (height / 2) - (tooltipHeight / 2);
+            tooltipLeft = offset.left - tooltipWidth - spacing;
+            arrowClass = 'pls-tutorial-tooltip__arrow--right';
+            arrowStyle = `top: ${tooltipHeight / 2 - 12}px;`;
+        }
+
+        // Keep tooltip in viewport
+        if (tooltipLeft < 20) tooltipLeft = 20;
+        if (tooltipLeft + tooltipWidth > $(window).width() - 20) {
+            tooltipLeft = $(window).width() - tooltipWidth - 20;
+        }
+        if (tooltipTop < 20) tooltipTop = 20;
+        if (tooltipTop + tooltipHeight > $(window).height() - 20) {
+            tooltipTop = $(window).height() - tooltipHeight - 20;
+        }
+
+        const isLastStep = spotlightTutorial.currentStepIndex === spotlightTutorial.steps.length - 1;
+        const nextButtonText = step.action === 'navigate' ? 'Continue' : (isLastStep ? 'Got it!' : 'Next');
+
+        spotlightTutorial.tooltip = $(`
+            <div class="pls-tutorial-tooltip">
+                <div class="pls-tutorial-tooltip__arrow ${arrowClass}" style="${arrowStyle}"></div>
+                <div class="pls-tutorial-tooltip__header">
+                    <div>
+                        <div class="pls-tutorial-tooltip__step">${step.title}</div>
+                        <h3 class="pls-tutorial-tooltip__title">${step.title}</h3>
+                    </div>
+                </div>
+                <div class="pls-tutorial-tooltip__body">${step.message}</div>
+                <div class="pls-tutorial-tooltip__footer">
+                    <button type="button" class="pls-tutorial-tooltip__skip" id="pls-spotlight-skip">Skip Tutorial</button>
+                    <button type="button" class="pls-tutorial-tooltip__next" id="pls-spotlight-next">${nextButtonText}</button>
+                </div>
+            </div>
+        `);
+
+        spotlightTutorial.tooltip.css({
+            top: tooltipTop + 'px',
+            left: tooltipLeft + 'px'
+        });
+
+        $('body').append(spotlightTutorial.tooltip);
+
+        // Attach handlers
+        $('#pls-spotlight-next').on('click', function() {
+            if (step.action === 'navigate' && step.actionUrl) {
+                const adminBase = PLS_Onboarding.admin_url || (window.location.origin + '/wp-admin/');
+                window.location.href = adminBase + step.actionUrl;
+            } else {
+                nextSpotlightStep();
+            }
+        });
+
+        $('#pls-spotlight-skip').on('click', function() {
+            if (confirm('Skip the tutorial? You can restart it anytime from the dashboard.')) {
+                skipSpotlightTutorial();
+            }
+        });
+    }
+
+    function nextSpotlightStep() {
+        spotlightTutorial.currentStepIndex++;
+        $('.pls-tutorial-spotlight').remove();
+        $('.pls-tutorial-tooltip').remove();
+        $('.pls-tutorial-highlighted').removeClass('pls-tutorial-highlighted');
+        
+        if (spotlightTutorial.currentStepIndex < spotlightTutorial.steps.length) {
+            showSpotlightStep(spotlightTutorial.currentStepIndex);
+        } else {
+            completeSpotlightTutorial();
+        }
+    }
+
+    function completeSpotlightTutorial() {
+        destroySpotlightTutorial();
+        
+        // Check if we should navigate to next page
+        const currentPage = onboardingData.current_page || 'attributes';
+        const tutorialFlow = onboardingData.tutorial_flow;
+        const currentStep = tutorialFlow[currentPage];
+        
+        if (currentStep && currentStep.next_page) {
+            const nextUrl = getAdminUrlForPage(currentStep.next_page);
+            if (nextUrl) {
+                setTimeout(() => {
+                    window.location.href = nextUrl;
+                }, 500);
+            }
+        } else {
+            // Tutorial complete
+            $.ajax({
+                url: PLS_Onboarding.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'pls_complete_onboarding',
+                    nonce: PLS_Onboarding.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert('Tutorial completed! You\'re all set to start creating products.');
+                        location.reload();
+                    }
+                }
+            });
+        }
+    }
+
+    function skipSpotlightTutorial() {
+        destroySpotlightTutorial();
+        $.ajax({
+            url: PLS_Onboarding.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'pls_skip_onboarding',
+                nonce: PLS_Onboarding.nonce
+            },
+            success: function() {
+                location.reload();
+            }
+        });
+    }
+
+    function destroySpotlightTutorial() {
+        $('.pls-tutorial-overlay').remove();
+        $('.pls-tutorial-spotlight').remove();
+        $('.pls-tutorial-tooltip').remove();
+        $('.pls-tutorial-highlighted').removeClass('pls-tutorial-highlighted');
+        spotlightTutorial.currentStepIndex = 0;
+        spotlightTutorial.steps = [];
     }
 
     function getPreviousPage(currentPage, tutorialFlow) {

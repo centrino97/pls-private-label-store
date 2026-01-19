@@ -67,7 +67,7 @@
    ============================================ */
 
 .pls-wrap {
-  padding: var(--pls-space-md) var(--pls-space-lg);
+  padding: var(--pls-space-sm) var(--pls-space-md);
   font-family: var(--pls-font-family);
   font-size: var(--pls-font-size-base);
   line-height: 1.5;
@@ -78,7 +78,7 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: var(--pls-space-md);
+  margin-bottom: var(--pls-space-sm);
 }
 
 .pls-page-head h1 {
@@ -232,13 +232,13 @@ select.pls-select:focus {
 .pls-card {
   background: #fff;
   border: 1px solid var(--pls-gray-200);
-  border-radius: var(--pls-radius-lg);
-  padding: var(--pls-space-md) var(--pls-space-lg);
+  border-radius: var(--pls-radius-md);
+  padding: var(--pls-space-sm) var(--pls-space-md);
   box-shadow: var(--pls-shadow-sm);
 }
 
 .pls-card--compact {
-  padding: var(--pls-space-md);
+  padding: var(--pls-space-sm);
 }
 
 .pls-card--interactive {
@@ -488,7 +488,7 @@ select.pls-select:focus {
   background: #fff;
   border: 1px solid var(--pls-gray-200);
   border-radius: var(--pls-radius-xl);
-  padding: var(--pls-space-lg);
+  padding: var(--pls-space-md);
   box-shadow: var(--pls-shadow-md);
 }
 
@@ -609,7 +609,7 @@ select.pls-select:focus {
 }
 
 .pls-card--panel {
-  padding: var(--pls-space-xl);
+  padding: var(--pls-space-lg);
 }
 
 .pls-field-row {
@@ -1681,7 +1681,7 @@ body.pls-modal-open {
   background: #fff;
   border: 1px solid var(--pls-gray-200);
   border-radius: var(--pls-radius-md);
-  padding: var(--pls-space-md);
+  padding: var(--pls-space-xs) var(--pls-space-sm);
   box-shadow: var(--pls-shadow-sm);
 }
 
@@ -1771,17 +1771,17 @@ body.pls-modal-open {
 /* Welcome Banner */
 .pls-welcome-banner {
   background: linear-gradient(135deg, var(--pls-accent-light) 0%, #fff 100%);
-  border: 2px solid var(--pls-accent);
-  border-radius: var(--pls-radius-lg);
-  padding: var(--pls-space-2xl);
-  margin-bottom: var(--pls-space-2xl);
-  box-shadow: var(--pls-shadow-md);
+  border: 1px solid var(--pls-accent);
+  border-radius: var(--pls-radius-md);
+  padding: var(--pls-space-md);
+  margin-bottom: var(--pls-space-md);
+  box-shadow: var(--pls-shadow-sm);
 }
 
 .pls-welcome-banner__content {
   display: flex;
   align-items: flex-start;
-  gap: var(--pls-space-xl);
+  gap: var(--pls-space-lg);
 }
 
 .pls-welcome-banner__icon {
@@ -1823,8 +1823,8 @@ body.pls-modal-open {
 .pls-welcome-banner__steps {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: var(--pls-space-md);
-  margin-bottom: var(--pls-space-lg);
+  gap: var(--pls-space-sm);
+  margin-bottom: var(--pls-space-md);
 }
 
 .pls-welcome-step {
@@ -2699,10 +2699,10 @@ body.pls-modal-open {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--pls-space-lg) var(--pls-space-xl);
+  padding: var(--pls-space-sm) var(--pls-space-md);
   background: #fff;
   border-bottom: 1px solid var(--pls-gray-200);
-  margin: 0 calc(-1 * var(--pls-space-lg)) var(--pls-space-xl);
+  margin: 0 calc(-1 * var(--pls-space-md)) var(--pls-space-md);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -2730,12 +2730,12 @@ body.pls-modal-open {
 }
 
 .pls-admin-nav__item {
-  padding: var(--pls-space-sm) var(--pls-space-md);
+  padding: var(--pls-space-xs) var(--pls-space-sm);
   text-decoration: none;
   color: var(--pls-gray-600);
   font-size: var(--pls-font-size-sm);
   font-weight: 500;
-  border-radius: var(--pls-radius-md);
+  border-radius: var(--pls-radius-sm);
   transition: all 0.2s ease;
 }
 

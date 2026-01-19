@@ -44,6 +44,5 @@ $current_page = isset( $_GET['page'] ) ? sanitize_text_field( wp_unslash( $_GET[
     </nav>
     <div class="pls-admin-header__user">
         <span class="pls-admin-header__user-name"><?php echo esc_html( $current_user->display_name ); ?></span>
-        <a href="<?php echo esc_url( admin_url( 'profile.php' ) ); ?>" class="pls-admin-header__user-link"><?php echo esc_html__( 'Profile', 'pls-private-label-store' ); ?></a>
     </div>
 </div>

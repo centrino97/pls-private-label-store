@@ -6,7 +6,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Get statistics
 $total_products = count( PLS_Repo_Base_Product::all() );
 
-// Get active orders (last 30 days)
+// Get active orders (last 30 days) - only orders with PLS products
 $orders_query = new WC_Order_Query(
     array(
         'limit'    => -1,
@@ -14,7 +14,38 @@ $orders_query = new WC_Order_Query(
         'status'   => array( 'wc-completed', 'wc-processing', 'wc-on-hold' ),
     )
 );
-$active_orders = count( $orders_query->get_orders() );
+$all_orders = $orders_query->get_orders();
+
+// Get all PLS product WooCommerce IDs
+$pls_products = PLS_Repo_Base_Product::all();
+$pls_wc_product_ids = array();
+foreach ( $pls_products as $pls_product ) {
+    if ( $pls_product->wc_product_id ) {
+        $pls_wc_product_ids[] = $pls_product->wc_product_id;
+        // Also include variation IDs if product is variable
+        $wc_product = wc_get_product( $pls_product->wc_product_id );
+        if ( $wc_product && $wc_product->is_type( 'variable' ) ) {
+            $variations = $wc_product->get_children();
+            $pls_wc_product_ids = array_merge( $pls_wc_product_ids, $variations );
+        }
+    }
+}
+
+// Count only orders containing PLS products
+$active_orders = 0;
+foreach ( $all_orders as $order ) {
+    foreach ( $order->get_items() as $item ) {
+        $product_id = $item->get_product_id();
+        $variation_id = $item->get_variation_id();
+        
+        // Check if order contains PLS product
+        if ( in_array( $product_id, $pls_wc_product_ids, true ) || 
+             ( $variation_id && in_array( $variation_id, $pls_wc_product_ids, true ) ) ) {
+            $active_orders++;
+            break; // Count order only once
+        }
+    }
+}
 
 // Get pending custom orders
 $pending_custom_orders = PLS_Repo_Custom_Order::count_by_status( 'new_lead' ) + 
@@ -53,16 +84,12 @@ $pending_commission = PLS_Repo_Commission::get_total(
             <h1><?php esc_html_e( 'PLS Overview', 'pls-private-label-store' ); ?></h1>
             <p class="description"><?php esc_html_e( 'Quick overview of your PLS operations.', 'pls-private-label-store' ); ?></p>
         </div>
-        <?php if ( ! $has_completed_onboarding ) : ?>
-            <div>
-                <button type="button" class="button button-primary button-hero" id="pls-start-tutorial">
-                    <?php esc_html_e( 'Start Tutorial', 'pls-private-label-store' ); ?>
-                </button>
-            </div>
-        <?php endif; ?>
     </div>
 
-    <?php if ( ! $has_completed_onboarding ) : ?>
+    <?php if ( ! $has_completed_onboarding ) : 
+        $user_name = PLS_Onboarding::get_user_name();
+        $greeting = $user_name ? sprintf( __( 'Hi %s,', 'pls-private-label-store' ), $user_name ) : __( 'Hi there,', 'pls-private-label-store' );
+    ?>
         <!-- Welcome Banner for New Users -->
         <div class="pls-welcome-banner" id="pls-welcome-banner">
             <div class="pls-welcome-banner__content">
@@ -70,8 +97,8 @@ $pending_commission = PLS_Repo_Commission::get_total(
                     <span class="dashicons dashicons-welcome-learn-more"></span>
                 </div>
                 <div class="pls-welcome-banner__text">
-                    <h2><?php esc_html_e( 'Welcome to PLS!', 'pls-private-label-store' ); ?></h2>
-                    <p><?php esc_html_e( 'Get started with our quick tutorial. We\'ll guide you through setting up your product options, creating your first product, and configuring bundles.', 'pls-private-label-store' ); ?></p>
+                    <h2><?php echo esc_html( $greeting ); ?></h2>
+                    <p><?php echo esc_html( __( 'Let\'s get you set up quickly. Follow the tutorial to configure options, create your first product, and set up bundles.', 'pls-private-label-store' ) ); ?></p>
                     <div class="pls-welcome-banner__steps">
                         <div class="pls-welcome-step">
                             <span class="pls-welcome-step__number">1</span>

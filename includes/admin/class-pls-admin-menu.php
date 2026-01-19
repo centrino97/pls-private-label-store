@@ -16,6 +16,128 @@ final class PLS_Admin_Menu {
         add_action( 'admin_enqueue_scripts', array( __CLASS__, 'assets' ) );
         add_action( 'admin_post_pls_save_label_settings', array( __CLASS__, 'save_label_settings' ) );
         add_action( 'admin_notices', array( __CLASS__, 'render_custom_header' ), 1 );
+        add_action( 'admin_init', array( __CLASS__, 'restrict_bodoci_users' ) );
+        add_action( 'wp_login', array( __CLASS__, 'redirect_bodoci_on_login' ), 10, 2 );
+        add_action( 'admin_head', array( __CLASS__, 'hide_wp_admin_menu' ) );
+    }
+
+    /**
+     * Check if current user is a Bodoci user (restricted access).
+     *
+     * @return bool
+     */
+    public static function is_bodoci_user() {
+        $current_user = wp_get_current_user();
+        if ( ! $current_user || ! $current_user->ID ) {
+            return false;
+        }
+
+        $email = strtolower( $current_user->user_email );
+        
+        // Check by email domain
+        $bodoci_domains = array( 'bodocibiophysics.com', 'bodoci.com' );
+        foreach ( $bodoci_domains as $domain ) {
+            if ( strpos( $email, '@' . $domain ) !== false ) {
+                return true;
+            }
+        }
+
+        // Check by role (if you want to use a specific role)
+        // if ( in_array( 'bodoci_user', $current_user->roles, true ) ) {
+        //     return true;
+        // }
+
+        return false;
+    }
+
+    /**
+     * Restrict Bodoci users to PLS pages only.
+     */
+    public static function restrict_bodoci_users() {
+        if ( ! self::is_bodoci_user() ) {
+            return;
+        }
+
+        // Allow PLS pages
+        $pls_pages = array(
+            'pls-dashboard',
+            'pls-products',
+            'pls-bundles',
+            'pls-custom-orders',
+            'pls-orders',
+            'pls-categories',
+            'pls-attributes',
+            'pls-bi',
+            'pls-commission',
+            'pls-revenue',
+            'pls-product-preview',
+        );
+
+        $current_page = isset( $_GET['page'] ) ? sanitize_text_field( wp_unslash( $_GET['page'] ) ) : '';
+
+        // Allow AJAX requests
+        if ( defined( 'DOING_AJAX' ) && DOING_AJAX ) {
+            return;
+        }
+
+        // Allow PLS pages
+        if ( in_array( $current_page, $pls_pages, true ) ) {
+            return;
+        }
+
+        // Allow admin-ajax.php
+        if ( strpos( $_SERVER['REQUEST_URI'], 'admin-ajax.php' ) !== false ) {
+            return;
+        }
+
+        // Redirect to PLS dashboard
+        wp_safe_redirect( admin_url( 'admin.php?page=pls-dashboard' ) );
+        exit;
+    }
+
+    /**
+     * Redirect Bodoci users to PLS dashboard on login.
+     *
+     * @param string $user_login User login name.
+     * @param WP_User $user User object.
+     */
+    public static function redirect_bodoci_on_login( $user_login, $user ) {
+        if ( ! $user || ! $user->ID ) {
+            return;
+        }
+
+        $email = strtolower( $user->user_email );
+        $bodoci_domains = array( 'bodocibiophysics.com', 'bodoci.com' );
+        
+        foreach ( $bodoci_domains as $domain ) {
+            if ( strpos( $email, '@' . $domain ) !== false ) {
+                wp_safe_redirect( admin_url( 'admin.php?page=pls-dashboard' ) );
+                exit;
+            }
+        }
+    }
+
+    /**
+     * Hide WordPress admin menu for Bodoci users.
+     */
+    public static function hide_wp_admin_menu() {
+        if ( ! self::is_bodoci_user() ) {
+            return;
+        }
+
+        echo '<style>
+            #adminmenuback,
+            #adminmenuwrap,
+            #wpadminbar {
+                display: none !important;
+            }
+            #wpcontent {
+                margin-left: 0 !important;
+            }
+            #wpbody {
+                padding-top: 0 !important;
+            }
+        </style>';
     }
 
     /**
@@ -168,7 +290,7 @@ final class PLS_Admin_Menu {
         );
 
         // Hide WordPress admin elements on PLS pages
-        wp_add_inline_style( 'pls-admin', '
+        $hide_admin_css = '
             #wpadminbar,
             #adminmenuback,
             #adminmenuwrap,
@@ -187,7 +309,19 @@ final class PLS_Admin_Menu {
             .pls-wrap {
                 padding-top: 0;
             }
-        ' );
+        ';
+
+        // Hide WP admin menu for Bodoci users everywhere
+        if ( self::is_bodoci_user() ) {
+            $hide_admin_css .= '
+                #adminmenuback,
+                #adminmenuwrap {
+                    display: none !important;
+                }
+            ';
+        }
+
+        wp_add_inline_style( 'pls-admin', $hide_admin_css );
 
         wp_enqueue_script(
             'pls-admin',

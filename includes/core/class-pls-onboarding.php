@@ -12,6 +12,45 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class PLS_Onboarding {
 
     /**
+     * Get user's first name for personalization.
+     *
+     * @param int $user_id User ID.
+     * @return string User's first name or empty string.
+     */
+    public static function get_user_name( $user_id = null ) {
+        if ( ! $user_id ) {
+            $user_id = get_current_user_id();
+        }
+        
+        $user = get_userdata( $user_id );
+        if ( ! $user ) {
+            return '';
+        }
+        
+        $email = strtolower( $user->user_email );
+        
+        // Identify users by email
+        if ( strpos( $email, 'robert' ) !== false || strpos( $email, 'robertbodoci' ) !== false ) {
+            return 'Robert';
+        } elseif ( strpos( $email, 'raniya' ) !== false ) {
+            return 'Raniya';
+        }
+        
+        // Fallback to display name or first name
+        $first_name = get_user_meta( $user_id, 'first_name', true );
+        if ( $first_name ) {
+            return $first_name;
+        }
+        
+        $display_name = $user->display_name;
+        if ( $display_name ) {
+            return explode( ' ', $display_name )[0];
+        }
+        
+        return '';
+    }
+
+    /**
      * Initialize onboarding system.
      */
     public static function init() {
@@ -156,11 +195,15 @@ final class PLS_Onboarding {
      * @return array Sequential tutorial steps.
      */
     public static function get_tutorial_flow() {
+        $user_name = self::get_user_name();
+        $greeting = $user_name ? sprintf( __( 'Hi %s,', 'pls-private-label-store' ), $user_name ) : '';
+        
         return array(
             'attributes' => array(
                 'step_number' => 1,
                 'title' => __( 'Step 1: Product Options', 'pls-private-label-store' ),
                 'page' => 'attributes',
+                'description' => $user_name ? sprintf( __( '%s Let\'s review your product options.', 'pls-private-label-store' ), $greeting ) : __( 'Let\'s review your product options.', 'pls-private-label-store' ),
                 'steps' => array(
                     __( 'Review Pack Tier settings (units and prices)', 'pls-private-label-store' ),
                     __( 'Modify pricing if needed, or confirm defaults are OK', 'pls-private-label-store' ),
@@ -177,7 +220,7 @@ final class PLS_Onboarding {
                 'step_number' => 2,
                 'title' => __( 'Step 2: Create Your First Product', 'pls-private-label-store' ),
                 'page' => 'products',
-                'description' => __( 'Follow these steps to create your first product. Each section builds on the previous one.', 'pls-private-label-store' ),
+                'description' => $user_name ? sprintf( __( '%s Create your first product. Follow each step carefully.', 'pls-private-label-store' ), $greeting ) : __( 'Create your first product. Follow each step carefully.', 'pls-private-label-store' ),
                 'steps' => array(
                     __( 'Click the "Add Product" button in the top right corner', 'pls-private-label-store' ),
                     __( 'General Tab: Enter a descriptive product name (e.g., "Collagen Serum")', 'pls-private-label-store' ),
@@ -213,6 +256,7 @@ final class PLS_Onboarding {
                 'step_number' => 3,
                 'title' => __( 'Step 3: Create Bundles', 'pls-private-label-store' ),
                 'page' => 'bundles',
+                'description' => $user_name ? sprintf( __( '%s Set up bundles for special pricing.', 'pls-private-label-store' ), $greeting ) : __( 'Set up bundles for special pricing.', 'pls-private-label-store' ),
                 'steps' => array(
                     __( 'Click "Create Bundle" button', 'pls-private-label-store' ),
                     __( 'Select bundle type (Mini Line, Starter Line, Growth Line, Premium Line)', 'pls-private-label-store' ),
@@ -230,12 +274,13 @@ final class PLS_Onboarding {
                 'step_number' => 4,
                 'title' => __( 'Step 4: Review Categories', 'pls-private-label-store' ),
                 'page' => 'categories',
+                'description' => $user_name ? sprintf( __( '%s Final step: review categories.', 'pls-private-label-store' ), $greeting ) : __( 'Final step: review categories.', 'pls-private-label-store' ),
                 'steps' => array(
                     __( 'Review existing product categories', 'pls-private-label-store' ),
                     __( 'Create a new category if needed for your products', 'pls-private-label-store' ),
                 ),
                 'next_page' => null,
-                'next_title' => __( 'Tutorial Complete!', 'pls-private-label-store' ),
+                'next_title' => $user_name ? sprintf( __( 'All set, %s!', 'pls-private-label-store' ), $user_name ) : __( 'Tutorial Complete!', 'pls-private-label-store' ),
             ),
         );
     }

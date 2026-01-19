@@ -51,7 +51,38 @@ final class PLS_Sample_Data {
     private static function cleanup() {
         global $wpdb;
 
-        // Delete all products
+        // Delete WooCommerce products that were synced from PLS
+        $pls_products = PLS_Repo_Base_Product::all();
+        foreach ( $pls_products as $pls_product ) {
+            if ( $pls_product->wc_product_id ) {
+                wp_delete_post( $pls_product->wc_product_id, true );
+            }
+        }
+
+        // Delete WooCommerce bundles
+        $pls_bundles = PLS_Repo_Bundle::all();
+        foreach ( $pls_bundles as $bundle ) {
+            if ( $bundle->wc_product_id ) {
+                wp_delete_post( $bundle->wc_product_id, true );
+            }
+        }
+
+        // Delete sample WooCommerce orders (only those created by sample data)
+        $sample_orders = wc_get_orders( array(
+            'limit' => -1,
+            'meta_query' => array(
+                array(
+                    'key' => '_pls_sample_order',
+                    'value' => '1',
+                    'compare' => '='
+                )
+            )
+        ) );
+        foreach ( $sample_orders as $order ) {
+            wp_delete_post( $order->get_id(), true );
+        }
+
+        // Delete all PLS products
         $products_table = $wpdb->prefix . 'pls_base_product';
         $wpdb->query( "TRUNCATE TABLE {$products_table}" );
 
@@ -106,14 +137,46 @@ final class PLS_Sample_Data {
 
         $bundle_items_table = $wpdb->prefix . 'pls_bundle_item';
         $wpdb->query( "TRUNCATE TABLE {$bundle_items_table}" );
+
+        // Delete product categories except Face parent
+        $face_category = get_term_by( 'slug', 'face', 'product_cat' );
+        $all_categories = get_terms( array(
+            'taxonomy' => 'product_cat',
+            'hide_empty' => false,
+        ) );
+
+        foreach ( $all_categories as $category ) {
+            // Keep Face category if it exists
+            if ( $face_category && $category->term_id === $face_category->term_id ) {
+                continue;
+            }
+            wp_delete_term( $category->term_id, 'product_cat' );
+        }
     }
 
     /**
      * Add sample categories.
      */
     private static function add_categories() {
-        $categories = array(
-            'Face Cleansers' => 'Gentle cleansers for all skin types',
+        // Create or get Face parent category
+        $face_term = term_exists( 'Face', 'product_cat' );
+        if ( ! $face_term ) {
+            $face_result = wp_insert_term( 'Face', 'product_cat', array(
+                'description' => 'Face skincare products',
+                'slug' => 'face'
+            ) );
+            $face_term_id = is_wp_error( $face_result ) ? null : $face_result['term_id'];
+        } else {
+            $face_term_id = is_array( $face_term ) ? $face_term['term_id'] : $face_term->term_id;
+        }
+
+        if ( ! $face_term_id ) {
+            return; // Could not create/get Face category
+        }
+
+        // Create subcategories under Face
+        $subcategories = array(
+            'Cleansers' => 'Gentle cleansers for all skin types',
             'Toning Mists' => 'Refreshing toners and facial mists',
             'Moisturisers' => 'Hydrating creams and lotions',
             'Serums & Oils' => 'Concentrated treatments and facial oils',
@@ -121,10 +184,17 @@ final class PLS_Sample_Data {
             'Eye & Lip Care' => 'Specialized eye creams and lip treatments',
         );
 
-        foreach ( $categories as $name => $description ) {
+        foreach ( $subcategories as $name => $description ) {
             $term = term_exists( $name, 'product_cat' );
             if ( ! $term ) {
-                wp_insert_term( $name, 'product_cat', array( 'description' => $description ) );
+                wp_insert_term( $name, 'product_cat', array(
+                    'description' => $description,
+                    'parent' => $face_term_id
+                ) );
+            } else {
+                // Update parent if exists
+                $term_id = is_array( $term ) ? $term['term_id'] : $term->term_id;
+                wp_update_term( $term_id, 'product_cat', array( 'parent' => $face_term_id ) );
             }
         }
     }
@@ -416,7 +486,7 @@ final class PLS_Sample_Data {
                 'label' => $label,
             ) );
             if ( $value_id ) {
-                PLS_Repo_Attributes::update_value_tier_rules( $data['min_tier'], $value_id, $data['tier_prices'] );
+                PLS_Repo_Attributes::update_value_tier_rules( $value_id, $data['min_tier'], $data['tier_prices'] );
             }
         }
 
@@ -473,7 +543,7 @@ final class PLS_Sample_Data {
         $products = array(
             array(
                 'name' => 'Milk Cleanser',
-                'category' => 'Face Cleansers',
+                'category' => 'Cleansers',
                 'description' => 'Turns out you can bottle heaven, and it looks a little something like this milk cleanser. Vegan, natural and the ultimate hero for dry or sensitive skin.',
                 'directions' => 'Drench skin, add 1-2 pumps to twinkling fingertips and gently massage into the face and neck in circular motions. Rinse with warm water.',
                 'skin_types' => 'All Skin Types / Dry / Sensitive',
@@ -485,6 +555,21 @@ final class PLS_Sample_Data {
                     array( 'tier_key' => 'tier_5', 'units' => 1000, 'price' => 11.00, 'enabled' => 1 ),
                 ),
                 'key_ingredients' => array( 'Emu Apple', 'Cucumber', 'Desert Lime' ),
+            ),
+            array(
+                'name' => 'Gel Cleanser',
+                'category' => 'Cleansers',
+                'description' => 'Deep cleansing gel formula that removes excess oil and impurities without stripping the skin. Perfect for oily and combination skin types.',
+                'directions' => 'Wet face with warm water, massage a small amount into skin in circular motions. Rinse thoroughly and pat dry.',
+                'skin_types' => 'Oily / Combination',
+                'pack_tiers' => array(
+                    array( 'tier_key' => 'tier_1', 'units' => 50, 'price' => 18.00, 'enabled' => 1 ),
+                    array( 'tier_key' => 'tier_2', 'units' => 100, 'price' => 16.00, 'enabled' => 1 ),
+                    array( 'tier_key' => 'tier_3', 'units' => 250, 'price' => 14.00, 'enabled' => 1 ),
+                    array( 'tier_key' => 'tier_4', 'units' => 500, 'price' => 12.00, 'enabled' => 1 ),
+                    array( 'tier_key' => 'tier_5', 'units' => 1000, 'price' => 10.00, 'enabled' => 1 ),
+                ),
+                'key_ingredients' => array( 'Cucumber', 'Desert Lime' ),
             ),
             array(
                 'name' => 'Hydrating Toner',
@@ -502,19 +587,49 @@ final class PLS_Sample_Data {
                 'key_ingredients' => array( 'Cucumber', 'Kakadu Plum' ),
             ),
             array(
-                'name' => 'Nourishing Moisturiser',
-                'category' => 'Moisturisers',
-                'description' => 'Rich, hydrating cream that locks in moisture and supports skin barrier function.',
-                'directions' => 'Apply to face and neck morning and night after cleansing and toning.',
+                'name' => 'Rose Water Mist',
+                'category' => 'Toning Mists',
+                'description' => 'Soothing floral facial mist with rose water to calm and hydrate the skin. Ideal for sensitive and dry skin types.',
+                'directions' => 'Spritz onto face throughout the day or after cleansing to refresh and hydrate.',
                 'skin_types' => 'Dry / Sensitive',
                 'pack_tiers' => array(
-                    array( 'tier_key' => 'tier_1', 'units' => 50, 'price' => 22.00, 'enabled' => 1 ),
-                    array( 'tier_key' => 'tier_2', 'units' => 100, 'price' => 20.00, 'enabled' => 1 ),
-                    array( 'tier_key' => 'tier_3', 'units' => 250, 'price' => 18.00, 'enabled' => 1 ),
-                    array( 'tier_key' => 'tier_4', 'units' => 500, 'price' => 16.00, 'enabled' => 1 ),
-                    array( 'tier_key' => 'tier_5', 'units' => 1000, 'price' => 14.00, 'enabled' => 1 ),
+                    array( 'tier_key' => 'tier_1', 'units' => 50, 'price' => 17.00, 'enabled' => 1 ),
+                    array( 'tier_key' => 'tier_2', 'units' => 100, 'price' => 15.50, 'enabled' => 1 ),
+                    array( 'tier_key' => 'tier_3', 'units' => 250, 'price' => 13.50, 'enabled' => 1 ),
+                    array( 'tier_key' => 'tier_4', 'units' => 500, 'price' => 11.50, 'enabled' => 1 ),
+                    array( 'tier_key' => 'tier_5', 'units' => 1000, 'price' => 9.50, 'enabled' => 1 ),
                 ),
-                'key_ingredients' => array( 'Hyaluronic Acid', 'Ceramides', 'Emu Apple' ),
+                'key_ingredients' => array( 'Emu Apple', 'Quandong' ),
+            ),
+            array(
+                'name' => 'Daily Moisturiser',
+                'category' => 'Moisturisers',
+                'description' => 'Lightweight daily hydration that absorbs quickly without leaving a greasy feel. Perfect for all skin types.',
+                'directions' => 'Apply to face and neck morning and night after cleansing and toning.',
+                'skin_types' => 'All Skin Types',
+                'pack_tiers' => array(
+                    array( 'tier_key' => 'tier_1', 'units' => 50, 'price' => 21.00, 'enabled' => 1 ),
+                    array( 'tier_key' => 'tier_2', 'units' => 100, 'price' => 19.00, 'enabled' => 1 ),
+                    array( 'tier_key' => 'tier_3', 'units' => 250, 'price' => 17.00, 'enabled' => 1 ),
+                    array( 'tier_key' => 'tier_4', 'units' => 500, 'price' => 15.00, 'enabled' => 1 ),
+                    array( 'tier_key' => 'tier_5', 'units' => 1000, 'price' => 13.00, 'enabled' => 1 ),
+                ),
+                'key_ingredients' => array( 'Hyaluronic Acid', 'Cucumber' ),
+            ),
+            array(
+                'name' => 'Rich Night Cream',
+                'category' => 'Moisturisers',
+                'description' => 'Intensive overnight repair cream that works while you sleep to restore and rejuvenate the skin.',
+                'directions' => 'Apply generously to face and neck before bed. Massage in gently until absorbed.',
+                'skin_types' => 'Dry / Sensitive',
+                'pack_tiers' => array(
+                    array( 'tier_key' => 'tier_1', 'units' => 50, 'price' => 25.00, 'enabled' => 1 ),
+                    array( 'tier_key' => 'tier_2', 'units' => 100, 'price' => 23.00, 'enabled' => 1 ),
+                    array( 'tier_key' => 'tier_3', 'units' => 250, 'price' => 21.00, 'enabled' => 1 ),
+                    array( 'tier_key' => 'tier_4', 'units' => 500, 'price' => 19.00, 'enabled' => 1 ),
+                    array( 'tier_key' => 'tier_5', 'units' => 1000, 'price' => 17.00, 'enabled' => 1 ),
+                ),
+                'key_ingredients' => array( 'Ceramides', 'Hyaluronic Acid', 'Peptides' ),
             ),
             array(
                 'name' => 'Vitamin C Serum',
@@ -532,7 +647,22 @@ final class PLS_Sample_Data {
                 'key_ingredients' => array( 'Vitamin C', 'Kakadu Plum', 'Desert Lime' ),
             ),
             array(
-                'name' => 'Detoxifying Face Mask',
+                'name' => 'Hyaluronic Serum',
+                'category' => 'Serums & Oils',
+                'description' => 'Deep hydration plumping serum with multiple molecular weights of hyaluronic acid for maximum moisture retention.',
+                'directions' => 'Apply 2-3 drops to clean, damp skin morning and night. Follow with moisturizer.',
+                'skin_types' => 'All Skin Types',
+                'pack_tiers' => array(
+                    array( 'tier_key' => 'tier_1', 'units' => 50, 'price' => 26.00, 'enabled' => 1 ),
+                    array( 'tier_key' => 'tier_2', 'units' => 100, 'price' => 24.00, 'enabled' => 1 ),
+                    array( 'tier_key' => 'tier_3', 'units' => 250, 'price' => 21.00, 'enabled' => 1 ),
+                    array( 'tier_key' => 'tier_4', 'units' => 500, 'price' => 18.00, 'enabled' => 1 ),
+                    array( 'tier_key' => 'tier_5', 'units' => 1000, 'price' => 15.00, 'enabled' => 1 ),
+                ),
+                'key_ingredients' => array( 'Hyaluronic Acid', 'Niacinamide', 'Cucumber' ),
+            ),
+            array(
+                'name' => 'Clay Detox Mask',
                 'category' => 'Masks & Exfoliants',
                 'description' => 'Deep cleansing clay mask that draws out impurities and refines pores.',
                 'directions' => 'Apply a thin layer to clean skin, leave for 10-15 minutes, then rinse with warm water. Use 1-2 times per week.',
@@ -547,9 +677,9 @@ final class PLS_Sample_Data {
                 'key_ingredients' => array( 'Cucumber', 'Quandong' ),
             ),
             array(
-                'name' => 'Eye Cream',
+                'name' => 'Eye Repair Cream',
                 'category' => 'Eye & Lip Care',
-                'description' => 'Gentle eye cream that reduces puffiness and fine lines around the delicate eye area.',
+                'description' => 'Anti-aging eye treatment that reduces fine lines, dark circles, and puffiness around the delicate eye area.',
                 'directions' => 'Apply a small amount around the eye area using your ring finger, morning and night.',
                 'skin_types' => 'All Skin Types',
                 'pack_tiers' => array(
@@ -897,7 +1027,7 @@ final class PLS_Sample_Data {
 
         // Get pack tier variations for products
         $orders_data = array(
-            // Regular order with single product
+            // Completed orders (2-3)
             array(
                 'date' => date( 'Y-m-d H:i:s', strtotime( '-5 days' ) ),
                 'status' => 'completed',
@@ -916,7 +1046,6 @@ final class PLS_Sample_Data {
                     array( 'product_index' => 1, 'tier' => 'tier_3', 'quantity' => 1 ),
                 ),
             ),
-            // Bundle-qualified order (Mini Line: 2 SKUs × 250 units)
             array(
                 'date' => date( 'Y-m-d H:i:s', strtotime( '-4 days' ) ),
                 'status' => 'completed',
@@ -931,50 +1060,29 @@ final class PLS_Sample_Data {
                     'country' => 'AU',
                 ),
                 'items' => array(
-                    array( 'product_index' => 0, 'tier' => 'tier_3', 'quantity' => 1 ), // 250 units
-                    array( 'product_index' => 1, 'tier' => 'tier_3', 'quantity' => 1 ), // 250 units
+                    array( 'product_index' => 0, 'tier' => 'tier_3', 'quantity' => 1 ),
+                    array( 'product_index' => 1, 'tier' => 'tier_3', 'quantity' => 1 ),
                 ),
                 'bundle_qualified' => 'mini_line',
             ),
-            // Bundle-qualified order (Starter Line: 3 SKUs × 300 units)
             array(
-                'date' => date( 'Y-m-d H:i:s', strtotime( '-3 days' ) ),
+                'date' => date( 'Y-m-d H:i:s', strtotime( '-10 days' ) ),
                 'status' => 'completed',
                 'customer' => array(
-                    'first_name' => 'David',
-                    'last_name' => 'Brown',
-                    'email' => 'david.brown@example.com',
-                    'address' => '321 King St',
-                    'city' => 'Perth',
-                    'state' => 'WA',
-                    'postcode' => '6000',
+                    'first_name' => 'Thomas',
+                    'last_name' => 'Anderson',
+                    'email' => 'thomas.anderson@example.com',
+                    'address' => '555 Flinders St',
+                    'city' => 'Adelaide',
+                    'state' => 'SA',
+                    'postcode' => '5000',
                     'country' => 'AU',
                 ),
                 'items' => array(
-                    array( 'product_index' => 2, 'tier' => 'tier_3', 'quantity' => 1 ), // 250 units (close enough)
-                    array( 'product_index' => 3, 'tier' => 'tier_3', 'quantity' => 1 ), // 250 units
-                    array( 'product_index' => 4, 'tier' => 'tier_3', 'quantity' => 1 ), // 250 units
-                ),
-                'bundle_qualified' => 'starter_line',
-            ),
-            array(
-                'date' => date( 'Y-m-d H:i:s', strtotime( '-2 days' ) ),
-                'status' => 'completed',
-                'customer' => array(
-                    'first_name' => 'Michael',
-                    'last_name' => 'Chen',
-                    'email' => 'michael.chen@example.com',
-                    'address' => '456 Collins St',
-                    'city' => 'Melbourne',
-                    'state' => 'VIC',
-                    'postcode' => '3000',
-                    'country' => 'AU',
-                ),
-                'items' => array(
-                    array( 'product_index' => 2, 'tier' => 'tier_1', 'quantity' => 3 ),
-                    array( 'product_index' => 3, 'tier' => 'tier_4', 'quantity' => 1 ),
+                    array( 'product_index' => 2, 'tier' => 'tier_5', 'quantity' => 5 ),
                 ),
             ),
+            // Processing orders (2)
             array(
                 'date' => date( 'Y-m-d H:i:s', strtotime( '-1 day' ) ),
                 'status' => 'processing',
@@ -994,38 +1102,58 @@ final class PLS_Sample_Data {
                 ),
             ),
             array(
-                'date' => date( 'Y-m-d H:i:s', strtotime( '-10 days' ) ),
-                'status' => 'completed',
+                'date' => date( 'Y-m-d H:i:s', strtotime( '-2 days' ) ),
+                'status' => 'processing',
                 'customer' => array(
-                    'first_name' => 'Thomas',
-                    'last_name' => 'Anderson',
-                    'email' => 'thomas.anderson@example.com',
-                    'address' => '555 Flinders St',
-                    'city' => 'Adelaide',
-                    'state' => 'SA',
-                    'postcode' => '5000',
+                    'first_name' => 'Michael',
+                    'last_name' => 'Chen',
+                    'email' => 'michael.chen@example.com',
+                    'address' => '456 Collins St',
+                    'city' => 'Melbourne',
+                    'state' => 'VIC',
+                    'postcode' => '3000',
                     'country' => 'AU',
                 ),
                 'items' => array(
-                    array( 'product_index' => 0, 'tier' => 'tier_5', 'quantity' => 5 ),
+                    array( 'product_index' => 6, 'tier' => 'tier_1', 'quantity' => 3 ),
+                    array( 'product_index' => 7, 'tier' => 'tier_4', 'quantity' => 1 ),
                 ),
             ),
+            // On-hold order (1)
             array(
-                'date' => date( 'Y-m-d H:i:s', strtotime( '-7 days' ) ),
-                'status' => 'completed',
+                'date' => date( 'Y-m-d H:i:s', strtotime( '-3 days' ) ),
+                'status' => 'on-hold',
                 'customer' => array(
-                    'first_name' => 'Lisa',
-                    'last_name' => 'Anderson',
-                    'email' => 'lisa.anderson@example.com',
-                    'address' => '654 Flinders St',
-                    'city' => 'Adelaide',
-                    'state' => 'SA',
-                    'postcode' => '5000',
+                    'first_name' => 'David',
+                    'last_name' => 'Brown',
+                    'email' => 'david.brown@example.com',
+                    'address' => '321 King St',
+                    'city' => 'Perth',
+                    'state' => 'WA',
+                    'postcode' => '6000',
                     'country' => 'AU',
                 ),
                 'items' => array(
-                    array( 'product_index' => 1, 'tier' => 'tier_4', 'quantity' => 3 ),
-                    array( 'product_index' => 2, 'tier' => 'tier_3', 'quantity' => 2 ),
+                    array( 'product_index' => 8, 'tier' => 'tier_3', 'quantity' => 1 ),
+                    array( 'product_index' => 9, 'tier' => 'tier_2', 'quantity' => 2 ),
+                ),
+            ),
+            // Pending payment order (1)
+            array(
+                'date' => date( 'Y-m-d H:i:s', strtotime( '-6 hours' ) ),
+                'status' => 'pending',
+                'customer' => array(
+                    'first_name' => 'Jessica',
+                    'last_name' => 'Martinez',
+                    'email' => 'jessica.martinez@example.com',
+                    'address' => '888 Bourke St',
+                    'city' => 'Melbourne',
+                    'state' => 'VIC',
+                    'postcode' => '3000',
+                    'country' => 'AU',
+                ),
+                'items' => array(
+                    array( 'product_index' => 3, 'tier' => 'tier_2', 'quantity' => 1 ),
                 ),
             ),
         );
@@ -1119,6 +1247,10 @@ final class PLS_Sample_Data {
             }
 
             $order->calculate_totals();
+            
+            // Mark as sample order for cleanup
+            $order->update_meta_data( '_pls_sample_order', '1' );
+            
             $order->save();
         }
     }
@@ -1138,6 +1270,7 @@ final class PLS_Sample_Data {
         $category_id = ! empty( $categories ) ? $categories[0]->term_id : null;
 
         $custom_orders = array(
+            // New Leads (2)
             array(
                 'contact_name' => 'Jennifer Martinez',
                 'contact_email' => 'jennifer.martinez@example.com',
@@ -1152,6 +1285,20 @@ final class PLS_Sample_Data {
                 'created_at' => date( 'Y-m-d H:i:s', strtotime( '-2 days' ) ),
             ),
             array(
+                'contact_name' => 'Alexandra Green',
+                'contact_email' => 'alexandra.green@example.com',
+                'contact_phone' => '+61 400 111 222',
+                'company_name' => 'Eco Beauty Essentials',
+                'category_id' => $category_id,
+                'quantity' => 750,
+                'budget' => 18000.00,
+                'timeline' => '5-7 weeks',
+                'message' => 'Interested in organic skincare products with eco-friendly packaging.',
+                'status' => 'new_lead',
+                'created_at' => date( 'Y-m-d H:i:s', strtotime( '-1 day' ) ),
+            ),
+            // Sampling (2)
+            array(
                 'contact_name' => 'Robert Thompson',
                 'contact_email' => 'robert.thompson@example.com',
                 'contact_phone' => '+61 400 234 567',
@@ -1163,6 +1310,19 @@ final class PLS_Sample_Data {
                 'message' => 'Interested in a complete skincare line. Would like samples first.',
                 'status' => 'sampling',
                 'created_at' => date( 'Y-m-d H:i:s', strtotime( '-5 days' ) ),
+            ),
+            array(
+                'contact_name' => 'Rachel Kim',
+                'contact_email' => 'rachel.kim@example.com',
+                'contact_phone' => '+61 400 333 444',
+                'company_name' => 'Glow Skincare Studio',
+                'category_id' => $category_id,
+                'quantity' => 600,
+                'budget' => 16000.00,
+                'timeline' => '4-6 weeks',
+                'message' => 'Need samples for our new product line launch. Testing formulations.',
+                'status' => 'sampling',
+                'created_at' => date( 'Y-m-d H:i:s', strtotime( '-7 days' ) ),
             ),
             array(
                 'contact_name' => 'Amanda Lee',
