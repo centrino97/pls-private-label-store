@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.4.0
+Stable tag: 1.5.0
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,20 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 1.5.0 =
+* **NEW:** Spotlight-style guided tutorial system with blur overlay and element highlighting.
+* **NEW:** Step-by-step tutorial flow with auto-scroll and animated tooltips pointing to UI elements.
+* **NEW:** Comprehensive sample data generator with 10 skincare products, complete product options, and tier rules.
+* **NEW:** Sample orders across all stages (completed, processing, on-hold, pending) for testing.
+* **NEW:** Sample custom orders in all Kanban stages (new leads, sampling, production, on-hold, done).
+* **IMPROVED:** Dashboard "Active Orders" now correctly filters to only orders containing PLS products.
+* **IMPROVED:** Compact Apple-style UI with reduced padding and tighter spacing throughout.
+* **IMPROVED:** Welcome banner made more compact with reduced spacing.
+* **IMPROVED:** Summary cards have tighter spacing for cleaner appearance.
+* **FIXED:** Removed redundant "Start Tutorial" button from header (kept only banner button).
+* **FIXED:** Removed "Profile" link from admin header.
+* **FIXED:** WP admin access properly restricted for Bodoci users with automatic redirects.
+
 = 1.4.0 =
 * **NEW:** Enhanced onboarding system with comprehensive first product creation guide (26 detailed steps).
 * **NEW:** Feature exploration system - optional guided tours for Custom Orders, Revenue, Commission, and BI Dashboard.
