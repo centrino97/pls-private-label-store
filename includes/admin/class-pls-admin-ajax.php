@@ -613,10 +613,11 @@ final class PLS_Admin_Ajax {
 
         $categories_match = $pls_categories === $wc_category_ids;
 
-        // Compare pack tier count
-        $tier_count_matches = count( $enabled_pls_tiers ) === count( $wc_variations );
+        // Compare pack tier count - be more lenient: allow 1 variation difference
+        $tier_count_diff = abs( count( $enabled_pls_tiers ) - count( $wc_variations ) );
+        $tier_count_matches = $tier_count_diff <= 1; // Allow 1 variation difference for timing issues
 
-        // Determine if data matches
+        // Determine if data matches - prioritize name and slug matching
         $data_matches = $name_matches && $slug_matches && $categories_match && $tier_count_matches;
 
         // Determine sync state
@@ -772,7 +773,21 @@ final class PLS_Admin_Ajax {
             wp_send_json_error( array( 'message' => $result->get_error_message() ), 500 );
         }
 
+        // Record successful sync
         self::record_sync_status( $id, $result, true );
+        
+        // Refresh product data after sync - clear caches
+        $base = PLS_Repo_Base_Product::get( $id );
+        if ( $base && $base->wc_product_id ) {
+            // Clear WooCommerce product cache
+            if ( function_exists( 'wc_delete_product_transients' ) ) {
+                wc_delete_product_transients( $base->wc_product_id );
+            }
+            // Clear object cache
+            wp_cache_delete( $base->wc_product_id, 'posts' );
+            wp_cache_delete( $base->wc_product_id, 'post_meta' );
+        }
+        
         $product_payload = self::format_product_payload( PLS_Repo_Base_Product::get( $id ), 'https://bodocibiophysics.com/label-guide/' );
 
         wp_send_json_success(

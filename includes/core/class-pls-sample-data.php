@@ -318,10 +318,9 @@ final class PLS_Sample_Data {
         }
 
         $package_colors = array(
-            'Standard White (White Lid & Pump)' => array( 'price' => 0, 'tier_prices' => array() ),
-            'Standard Frosted (White Lid & Pump)' => array( 'price' => 0, 'tier_prices' => array() ),
-            'Amber Bottle (White Lid & Pump)' => array( 'price' => 2.50, 'tier_prices' => array( 1 => 3.00, 2 => 2.75, 3 => 2.50, 4 => 2.00, 5 => 1.50 ) ),
-            'Silver Pump & Lid (Upgrade)' => array( 'price' => 1.50, 'tier_prices' => array( 1 => 2.00, 2 => 1.75, 3 => 1.50, 4 => 1.00, 5 => 0.75 ) ),
+            'Standard White' => array( 'price' => 0, 'tier_prices' => array() ),
+            'Standard Frosted' => array( 'price' => 0, 'tier_prices' => array() ),
+            'Amber Bottle' => array( 'price' => 2.50, 'tier_prices' => array( 1 => 3.00, 2 => 2.75, 3 => 2.50, 4 => 2.00, 5 => 1.50 ) ),
         );
 
         // Check existing values
@@ -356,6 +355,8 @@ final class PLS_Sample_Data {
         }
 
         $package_caps = array(
+            'White Pump & White Lid' => array( 'price' => 0, 'tier_prices' => array() ),
+            'Silver Pump & Silver Lid' => array( 'price' => 1.50, 'tier_prices' => array( 1 => 2.00, 2 => 1.75, 3 => 1.50, 4 => 1.00, 5 => 0.75 ) ),
             'White Pump' => array( 'price' => 0, 'tier_prices' => array() ),
             'Silver Pump' => array( 'price' => 1.50, 'tier_prices' => array( 1 => 2.00, 2 => 1.75, 3 => 1.50, 4 => 1.00, 5 => 0.75 ) ),
             'White Lid' => array( 'price' => 0, 'tier_prices' => array() ),
@@ -401,11 +402,11 @@ final class PLS_Sample_Data {
             'Professional Label Application' => array( 
                 'price' => $label_price_tier_1_2, 
                 'tier_prices' => array( 
-                    'tier_1' => $label_price_tier_1_2, 
-                    'tier_2' => $label_price_tier_1_2,
-                    'tier_3' => 0,
-                    'tier_4' => 0,
-                    'tier_5' => 0,
+                    1 => $label_price_tier_1_2, 
+                    2 => $label_price_tier_1_2,
+                    3 => 0,
+                    4 => 0,
+                    5 => 0,
                 ),
                 'min_tier' => 1 
             ),
@@ -821,6 +822,46 @@ final class PLS_Sample_Data {
                 }
             }
             
+            // Get Label Application attribute and values
+            $label_app_attr = $wpdb->get_row( "SELECT * FROM {$attributes_table} WHERE attr_key = 'label-application' LIMIT 1" );
+            $label_app_values_list = array();
+            if ( $label_app_attr ) {
+                $label_app_values_list = PLS_Repo_Attributes::values_for_attr( $label_app_attr->id );
+            }
+            
+            // Get Custom Printed Bottles attribute and values (Tier 4+)
+            $custom_bottle_attr = $wpdb->get_row( "SELECT * FROM {$attributes_table} WHERE attr_key = 'custom-bottles' LIMIT 1" );
+            $custom_bottle_values_list = array();
+            if ( $custom_bottle_attr ) {
+                $custom_bottle_values_list = PLS_Repo_Attributes::values_for_attr( $custom_bottle_attr->id );
+            }
+            
+            // Get External Box Packaging attribute and values (Tier 4+)
+            $box_packaging_attr = $wpdb->get_row( "SELECT * FROM {$attributes_table} WHERE attr_key = 'box-packaging' LIMIT 1" );
+            $box_packaging_values_list = array();
+            if ( $box_packaging_attr ) {
+                $box_packaging_values_list = PLS_Repo_Attributes::values_for_attr( $box_packaging_attr->id );
+            }
+            
+            // Add Label Application (all tiers)
+            if ( $label_app_attr && ! empty( $label_app_values_list ) ) {
+                $label_app_values_array = array();
+                foreach ( $label_app_values_list as $label_app ) {
+                    $label_app_values_array[] = array(
+                        'value_id' => $label_app->id,
+                        'value_label' => $label_app->label,
+                        'price' => 0,
+                    );
+                }
+                if ( ! empty( $label_app_values_array ) ) {
+                    $basics_attrs[] = array(
+                        'attribute_id' => $label_app_attr->id,
+                        'attribute_label' => $label_app_attr->label,
+                        'values' => $label_app_values_array,
+                    );
+                }
+            }
+            
             // Add Fragrances for Tier 3+ products (select 2-3 fragrances)
             $product_tier = ! empty( $product_data['pack_tiers'] ) && isset( $product_data['pack_tiers'][2] ) ? 3 : 1;
             if ( $fragrance_attr && ! empty( $fragrance_values ) && $product_tier >= 3 ) {
@@ -838,6 +879,44 @@ final class PLS_Sample_Data {
                         'attribute_id' => $fragrance_attr->id,
                         'attribute_label' => $fragrance_attr->label,
                         'values' => $fragrance_values_array,
+                    );
+                }
+            }
+            
+            // Add Custom Printed Bottles for Tier 4+ products
+            if ( $custom_bottle_attr && ! empty( $custom_bottle_values_list ) && $product_tier >= 4 ) {
+                $custom_bottle_values_array = array();
+                foreach ( $custom_bottle_values_list as $custom_bottle ) {
+                    $custom_bottle_values_array[] = array(
+                        'value_id' => $custom_bottle->id,
+                        'value_label' => $custom_bottle->label,
+                        'price' => 0,
+                    );
+                }
+                if ( ! empty( $custom_bottle_values_array ) ) {
+                    $basics_attrs[] = array(
+                        'attribute_id' => $custom_bottle_attr->id,
+                        'attribute_label' => $custom_bottle_attr->label,
+                        'values' => $custom_bottle_values_array,
+                    );
+                }
+            }
+            
+            // Add External Box Packaging for Tier 4+ products
+            if ( $box_packaging_attr && ! empty( $box_packaging_values_list ) && $product_tier >= 4 ) {
+                $box_packaging_values_array = array();
+                foreach ( $box_packaging_values_list as $box_packaging ) {
+                    $box_packaging_values_array[] = array(
+                        'value_id' => $box_packaging->id,
+                        'value_label' => $box_packaging->label,
+                        'price' => 0,
+                    );
+                }
+                if ( ! empty( $box_packaging_values_array ) ) {
+                    $basics_attrs[] = array(
+                        'attribute_id' => $box_packaging_attr->id,
+                        'attribute_label' => $box_packaging_attr->label,
+                        'values' => $box_packaging_values_array,
                     );
                 }
             }

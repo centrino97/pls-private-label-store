@@ -123,6 +123,84 @@ final class PLS_Onboarding {
     public static function get_helper_content( $page, $section = '' ) {
         $content = array();
 
+        // Dashboard helper content
+        if ( 'dashboard' === $page ) {
+            $content = array(
+                'overview' => array(
+                    'title' => __( 'Dashboard Overview', 'pls-private-label-store' ),
+                    'tips' => array(
+                        __( 'Dashboard shows key metrics: total products, active orders, pending custom orders, monthly revenue, and pending commission.', 'pls-private-label-store' ),
+                        __( 'Click on any summary card to navigate to the detailed page.', 'pls-private-label-store' ),
+                        __( 'Use the "Start Tutorial" button to begin the guided onboarding process.', 'pls-private-label-store' ),
+                        __( 'After onboarding, explore features using the "Take Tour" buttons on exploration cards.', 'pls-private-label-store' ),
+                    ),
+                ),
+            );
+        }
+
+        // Product Options (Attributes) helper content
+        if ( 'attributes' === $page ) {
+            $content = array(
+                'overview' => array(
+                    'title' => __( 'Product Options Management', 'pls-private-label-store' ),
+                    'tips' => array(
+                        __( 'Product Options define all configurable aspects of your products: Package Type, Color, Cap, Fragrances, Ingredients, etc.', 'pls-private-label-store' ),
+                        __( 'Pack Tier is the PRIMARY option - it determines pricing and available features.', 'pls-private-label-store' ),
+                        __( 'Package Type: Choose container sizes (30ml, 50ml, 120ml bottle or 50gr jar).', 'pls-private-label-store' ),
+                        __( 'Package Color: Standard White, Standard Frosted, or Amber Bottle (Amber has additional cost).', 'pls-private-label-store' ),
+                        __( 'Package Cap: White or Silver pump/lid options (Silver has tier-based pricing).', 'pls-private-label-store' ),
+                        __( 'Fragrances: Available from Tier 3+ with tier-based pricing.', 'pls-private-label-store' ),
+                        __( 'Label Application: Configure pricing for Tier 1-2 (Tier 3-5 are automatically FREE).', 'pls-private-label-store' ),
+                        __( 'Custom Printed Bottles & External Box Packaging: Available from Tier 4+.', 'pls-private-label-store' ),
+                    ),
+                ),
+            );
+        }
+
+        // Bundles helper content
+        if ( 'bundles' === $page ) {
+            $content = array(
+                'overview' => array(
+                    'title' => __( 'Bundle Management', 'pls-private-label-store' ),
+                    'tips' => array(
+                        __( 'Bundles offer special pricing when customers purchase multiple products.', 'pls-private-label-store' ),
+                        __( 'Bundle rules: Set minimum SKU count (number of different products) and units per SKU.', 'pls-private-label-store' ),
+                        __( 'When cart qualifies for a bundle, pricing is automatically applied.', 'pls-private-label-store' ),
+                        __( 'Bundles sync to WooCommerce as Grouped Products.', 'pls-private-label-store' ),
+                        __( 'Customers see bundle offers on product pages and in cart notices.', 'pls-private-label-store' ),
+                    ),
+                ),
+            );
+        }
+
+        // Categories helper content
+        if ( 'categories' === $page ) {
+            $content = array(
+                'overview' => array(
+                    'title' => __( 'Category Management', 'pls-private-label-store' ),
+                    'tips' => array(
+                        __( 'Categories help organize products in your store.', 'pls-private-label-store' ),
+                        __( 'Categories sync to WooCommerce product categories.', 'pls-private-label-store' ),
+                        __( 'Assign categories when creating products.', 'pls-private-label-store' ),
+                    ),
+                ),
+            );
+        }
+
+        // Orders helper content
+        if ( 'orders' === $page ) {
+            $content = array(
+                'overview' => array(
+                    'title' => __( 'Order Management', 'pls-private-label-store' ),
+                    'tips' => array(
+                        __( 'View all WooCommerce orders containing PLS products.', 'pls-private-label-store' ),
+                        __( 'Commissions are automatically calculated based on pack tier pricing.', 'pls-private-label-store' ),
+                        __( 'Filter orders by status, date range, or product.', 'pls-private-label-store' ),
+                    ),
+                ),
+            );
+        }
+
         // Product creation modal sections
         if ( 'products' === $page ) {
             $content = array(
@@ -161,8 +239,8 @@ final class PLS_Onboarding {
             );
         }
 
-        // Bundle creation
-        if ( 'bundles' === $page ) {
+        // Bundle creation (already handled above, but keep for modal sections)
+        if ( 'bundles' === $page && empty( $content ) ) {
             $content = array(
                 'create' => array(
                     'title' => __( 'Create Bundle', 'pls-private-label-store' ),
@@ -176,6 +254,21 @@ final class PLS_Onboarding {
                         __( 'Bundle name is required.', 'pls-private-label-store' ),
                         __( 'SKU count must be at least 2.', 'pls-private-label-store' ),
                         __( 'Units per SKU and price per unit must be greater than 0.', 'pls-private-label-store' ),
+                    ),
+                ),
+            );
+        }
+
+        // Settings helper content
+        if ( 'settings' === $page ) {
+            $content = array(
+                'overview' => array(
+                    'title' => __( 'Settings Overview', 'pls-private-label-store' ),
+                    'tips' => array(
+                        __( 'Configure commission rates for pack tiers, bundles, and custom orders.', 'pls-private-label-store' ),
+                        __( 'Set commission email recipients for automated monthly reports.', 'pls-private-label-store' ),
+                        __( 'Generate sample data to populate your store with realistic products and orders.', 'pls-private-label-store' ),
+                        __( 'Reset onboarding progress if you want to restart the tutorial.', 'pls-private-label-store' ),
                     ),
                 ),
             );
@@ -400,6 +493,10 @@ final class PLS_Onboarding {
             return 'attributes';
         } elseif ( strpos( $hook, 'pls-bundles' ) !== false ) {
             return 'bundles';
+        } elseif ( strpos( $hook, 'pls-settings' ) !== false ) {
+            return 'settings';
+        } elseif ( strpos( $hook, 'pls-revenue' ) !== false ) {
+            return 'revenue';
         } elseif ( strpos( $hook, 'pls-settings' ) !== false ) {
             return 'settings';
         }

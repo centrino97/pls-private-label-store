@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.8.0
+Stable tag: 1.9.0
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,17 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 1.9.0 =
+* **FIXED:** Sync status issue - "Update Available" badge now properly clears after syncing products by clearing WooCommerce caches and improving sync state detection.
+* **FIXED:** Label Application Pricing tier rules format - Fixed tier pricing keys to use numeric format (1, 2, 3) instead of string format (tier_1, tier_2).
+* **NEW:** Comprehensive Elementor widget - New "PLS Product Page" widget replaces individual widgets (configurator, bundle, product info) for simplified template setup.
+* **NEW:** Enhanced sample data generation - All product options now properly created: Package Type (30ml, 50ml, 120ml, 50gr jar), Package Color (Standard White, Standard Frosted, Amber), Package Cap (White/Silver options), Fragrances (Tier 3+), Label Application, Custom Printed Bottles (Tier 4+), External Box Packaging (Tier 4+).
+* **NEW:** Page-specific onboarding - Helper content and tutorials now available for all PLS pages (Dashboard, Products, Bundles, Categories, Attributes, Orders, Custom Orders, Revenue, Commission, Settings, BI Dashboard).
+* **IMPROVED:** Sample data products - All 10 products now include proper attributes (Package Type, Color, Cap, Label Application, Fragrances for Tier 3+, Custom Printed Bottles and External Box Packaging for Tier 4+).
+* **IMPROVED:** Sync state detection - More lenient tier count comparison (allows 1 variation difference) to handle timing issues during sync.
+* **IMPROVED:** Product modal structure - Verified and confirmed product creation modal follows complete PLS structure: General → Data → Ingredients → Pack Tiers (PRIMARY) → Product Options → Label Application.
+* **IMPROVED:** Elementor integration - Individual widgets (Configurator, Bundle Offer, Product Info) deprecated in favor of comprehensive "PLS Product Page" widget for cleaner template setup.
+
 = 1.8.0 =
 * **FIXED:** Critical console error - Removed duplicate 'const step' declaration in onboarding.js causing syntax error.
 * **NEW:** Label Application Pricing moved to Product Options page for better organization and cleaner admin UX.

@@ -23,13 +23,13 @@ final class PLS_Elementor {
             return;
         }
 
-        require_once PLS_PLS_DIR . 'includes/elementor/widgets/class-pls-widget-configurator.php';
-        require_once PLS_PLS_DIR . 'includes/elementor/widgets/class-pls-widget-bundle-offer.php';
-        require_once PLS_PLS_DIR . 'includes/elementor/widgets/class-pls-widget-product-info.php';
+        // Register comprehensive product page widget (replaces individual widgets)
+        require_once PLS_PLS_DIR . 'includes/elementor/widgets/class-pls-widget-product-page.php';
+        $widgets_manager->register( new \PLS_Widget_Product_Page() );
 
-        $widgets_manager->register( new \PLS_Widget_Configurator() );
-        $widgets_manager->register( new \PLS_Widget_Bundle_Offer() );
-        $widgets_manager->register( new \PLS_Widget_Product_Info() );
+        // Individual widgets are deprecated - use PLS Product Page widget instead
+        // Keeping files for backward compatibility but not registering them
+        // This ensures users only see the comprehensive widget
     }
 
     public static function register_dynamic_tags( $dynamic_tags ) {
