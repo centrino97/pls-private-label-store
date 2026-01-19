@@ -54,13 +54,22 @@ Stable tag: 1.2.3
 - Add to `"changelog"` field in `uupd/index.json`
 
 #### 3. Standardized Git Operations
+**IMPORTANT: When committing, ALWAYS create and push tag automatically!**
+
 ```bash
 git add -A
 git commit -m "Release v1.2.3: Brief description of changes"
-git tag v1.2.3
+git tag -a v1.2.3 -m "Release v1.2.3"
 git push origin main
-git push origin v1.2.3
+git push origin v1.2.3  # This triggers GitHub Actions workflow!
 ```
+
+**Or use the automated script:**
+```powershell
+.\push-with-tag.ps1
+```
+
+**The tag push is CRITICAL** - it triggers the GitHub Actions workflow that builds the ZIP and creates the release for UUPD updates.
 
 #### 4. Wait for GitHub Actions
 - Wait 1-2 minutes for workflow to complete
@@ -178,14 +187,16 @@ Fix: Correct bundle commission calculation in order processing
    - `readme.txt`: Add version section
    - `uupd/index.json`: Add to changelog field
 
-4. **Git Operations**
+4. **Git Operations (AUTOMATIC TAG CREATION)**
    ```bash
    git add -A
    git commit -m "Release vX.Y.Z: Description"
-   git tag vX.Y.Z
+   git tag -a vX.Y.Z -m "Release vX.Y.Z"  # Create annotated tag
    git push origin main
-   git push origin vX.Y.Z
+   git push origin vX.Y.Z  # CRITICAL: Tag push triggers GitHub Actions!
    ```
+   
+   **AI Assistant MUST:** Automatically create and push tag when committing version changes. This ensures the GitHub Actions workflow runs and builds the release ZIP for UUPD updates.
 
 5. **Verify Release**
    - Check GitHub Actions: https://github.com/centrino97/pls-private-label-store/actions
@@ -233,13 +244,34 @@ Fix: Correct bundle commission calculation in order processing
 
 ---
 
+## 🤖 AUTOMATIC TAG CREATION ON COMMIT
+
+**CRITICAL: When user asks to commit, ALWAYS automatically create and push a tag if:**
+- Version files (`pls-private-label-store.php`, `readme.txt`, `uupd/index.json`) have been modified, OR
+- Commit message contains "Release v" or version number, OR
+- User explicitly requests a release/version update
+
+**Automatic Tag Process:**
+1. Extract version from `pls-private-label-store.php` (look for `Version: X.Y.Z` or `PLS_PLS_VERSION`)
+2. Create tag: `git tag -a vX.Y.Z -m "Release vX.Y.Z"`
+3. Push commits first: `git push origin main`
+4. Push tag: `git push origin vX.Y.Z`
+5. Inform user that GitHub Actions will trigger automatically
+
+**Why:** Tags trigger GitHub Actions workflow which builds the ZIP and creates the release for UUPD updates. Without a tag, the workflow doesn't run and users won't see updates.
+
+**Use `push-with-tag.ps1` script if available:** The script automates this entire process safely.
+
+---
+
 ## 🎯 Golden Rules
 
 1. **ALWAYS bump version in ALL 3 files + update timestamp + push tag = Update visible**
 2. **MISSING ANY STEP = Update NOT visible**
 3. **Use standardized commit messages for releases**
-4. **Wait 1-2 minutes after pushing tag before verifying**
-5. **Users must click "Check for updates" in WordPress**
+4. **ALWAYS create and push tag when committing version changes** (triggers GitHub Actions)
+5. **Wait 1-2 minutes after pushing tag before verifying**
+6. **Users must click "Check for updates" in WordPress**
 
 ---
 
