@@ -2727,6 +2727,29 @@ body.pls-modal-open {
   gap: var(--pls-space-md);
   flex: 1;
   justify-content: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--pls-gray-300) transparent;
+  -webkit-overflow-scrolling: touch;
+  min-width: 0; /* Allow flex item to shrink */
+}
+
+.pls-admin-nav::-webkit-scrollbar {
+  height: 4px;
+}
+
+.pls-admin-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.pls-admin-nav::-webkit-scrollbar-thumb {
+  background: var(--pls-gray-300);
+  border-radius: 2px;
+}
+
+.pls-admin-nav::-webkit-scrollbar-thumb:hover {
+  background: var(--pls-gray-400);
 }
 
 .pls-admin-nav__item {
@@ -2737,6 +2760,8 @@ body.pls-modal-open {
   font-weight: 500;
   border-radius: var(--pls-radius-sm);
   transition: all 0.2s ease;
+  white-space: nowrap; /* Prevent text wrapping */
+  flex-shrink: 0; /* Prevent items from shrinking */
 }
 
 .pls-admin-nav__item:hover {

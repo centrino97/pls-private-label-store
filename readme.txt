@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.7.0
+Stable tag: 1.8.0
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,16 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 1.8.0 =
+* **FIXED:** Critical console error - Removed duplicate 'const step' declaration in onboarding.js causing syntax error.
+* **NEW:** Label Application Pricing moved to Product Options page for better organization and cleaner admin UX.
+* **NEW:** Settings link now visible in admin header navigation for administrators.
+* **NEW:** Comprehensive product page shortcode [pls_product_page] - Single shortcode combining configurator, product info, and bundle offers.
+* **NEW:** Bundle upsell system - Cart popup notices when products qualify for bundle pricing and upsell messages when close to qualifying.
+* **NEW:** "Frequently Bought Together" banner on product pages showing applicable bundle offers.
+* **IMPROVED:** Admin navigation menu now handles overflow with horizontal scrolling and proper styling.
+* **IMPROVED:** Sample data generation verified to create properly synced variable products and grouped bundle products.
+
 = 1.7.0 =
 * **NEW:** PLS User role - New WordPress role for Rober and Raniya with full PLS access and no restrictions.
 * **NEW:** Role-based access control - Replaced email-domain restrictions with flexible role-based system.

@@ -147,6 +147,45 @@ require_once PLS_PLS_DIR . 'includes/core/class-pls-tier-rules.php';
                 <?php endif; ?>
             </div>
         </div>
+        </div>
+
+    <!-- Label Application Pricing Section -->
+    <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-top: 24px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+            <div>
+                <h2 style="margin: 0; font-size: 18px; font-weight: 600;"><?php esc_html_e( 'Label Application Pricing', 'pls-private-label-store' ); ?></h2>
+                <p class="description" style="margin: 4px 0 0;"><?php esc_html_e( 'Set automatic pricing for label application based on tier. Tier 3-5 are automatically FREE.', 'pls-private-label-store' ); ?></p>
+            </div>
+        </div>
+        
+        <?php
+        $label_price = get_option( 'pls_label_price_tier_1_2', '0.50' );
+        ?>
+        
+        <form id="pls-label-pricing-form" style="max-width: 500px;">
+            <div class="pls-input-group" style="margin-bottom: 16px;">
+                <label for="label_price_tier_1_2" style="display: block; margin-bottom: 8px; font-weight: 600;"><?php esc_html_e( 'Tier 1-2 Price:', 'pls-private-label-store' ); ?></label>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="color: var(--pls-gray-600); font-size: 16px;">$</span>
+                    <input type="number" step="0.01" id="label_price_tier_1_2" name="label_price_tier_1_2" 
+                           value="<?php echo esc_attr( $label_price ); ?>" 
+                           class="pls-input" style="width: 150px;" min="0" />
+                    <span class="description" style="font-size: 13px; color: var(--pls-gray-500);"><?php esc_html_e( 'per unit', 'pls-private-label-store' ); ?></span>
+                </div>
+                <p class="description" style="margin-top: 8px;"><?php esc_html_e( 'This price will be multiplied by the number of units in the pack tier for Tier 1 and Tier 2 orders.', 'pls-private-label-store' ); ?></p>
+            </div>
+            
+            <div style="padding: 12px; background: var(--pls-success-light); border-radius: 8px; margin-bottom: 16px;">
+                <strong style="color: var(--pls-success);"><?php esc_html_e( 'Tier 3-5: FREE', 'pls-private-label-store' ); ?></strong>
+                <span style="margin-left: 8px; color: var(--pls-gray-500); font-size: 13px;">
+                    <?php esc_html_e( '(automatically applied)', 'pls-private-label-store' ); ?>
+                </span>
+            </div>
+            
+            <div style="text-align: right;">
+                <button type="submit" class="button button-primary"><?php esc_html_e( 'Save Label Pricing', 'pls-private-label-store' ); ?></button>
+            </div>
+        </form>
     </div>
 
     <!-- Add/Edit Option Modal -->
@@ -610,6 +649,27 @@ jQuery(document).ready(function($) {
                 refreshPageData();
             } else {
                 showNotice(resp.data.message || 'Error deleting value', 'error');
+            }
+        });
+    });
+    
+    // Label Pricing form submit
+    $('#pls-label-pricing-form').on('submit', function(e) {
+        e.preventDefault();
+        var labelPrice = parseFloat($('#label_price_tier_1_2').val()) || 0;
+        if (labelPrice < 0) {
+            labelPrice = 0;
+        }
+        
+        $.post(ajaxurl, {
+            action: 'pls_update_label_pricing',
+            nonce: nonce,
+            label_price_tier_1_2: labelPrice
+        }, function(resp) {
+            if (resp.success) {
+                showNotice(resp.data.message || 'Label pricing saved successfully');
+            } else {
+                showNotice(resp.data.message || 'Error saving label pricing', 'error');
             }
         });
     });

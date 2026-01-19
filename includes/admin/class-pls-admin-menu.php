@@ -14,7 +14,6 @@ final class PLS_Admin_Menu {
     public static function init() {
         add_action( 'admin_menu', array( __CLASS__, 'register_menu' ) );
         add_action( 'admin_enqueue_scripts', array( __CLASS__, 'assets' ) );
-        add_action( 'admin_post_pls_save_label_settings', array( __CLASS__, 'save_label_settings' ) );
         add_action( 'admin_notices', array( __CLASS__, 'render_custom_header' ), 1 );
         add_action( 'admin_init', array( __CLASS__, 'restrict_bodoci_users' ) );
         add_action( 'wp_login', array( __CLASS__, 'redirect_bodoci_on_login' ), 10, 2 );
@@ -477,25 +476,4 @@ final class PLS_Admin_Menu {
         require PLS_PLS_DIR . 'includes/admin/screens/settings.php';
     }
 
-    /**
-     * Handle label settings form submission.
-     */
-    public static function save_label_settings() {
-        check_admin_referer( 'pls_save_label_settings', 'pls_label_settings_nonce' );
-
-        if ( ! current_user_can( 'manage_woocommerce' ) ) {
-            wp_die( esc_html__( 'Insufficient permissions.', 'pls-private-label-store' ) );
-        }
-
-        $label_price = isset( $_POST['label_price_tier_1_2'] ) ? round( floatval( $_POST['label_price_tier_1_2'] ), 2 ) : 0.50;
-        
-        if ( $label_price < 0 ) {
-            $label_price = 0;
-        }
-
-        update_option( 'pls_label_price_tier_1_2', $label_price );
-
-        wp_safe_redirect( add_query_arg( 'settings-updated', 'true', admin_url( 'admin.php?page=pls-dashboard' ) ) );
-        exit;
-    }
 }

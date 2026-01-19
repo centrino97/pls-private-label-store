@@ -29,6 +29,7 @@ final class PLS_Admin_Ajax {
         add_action( 'wp_ajax_pls_delete_attribute_value', array( __CLASS__, 'delete_attribute_value' ) );
         add_action( 'wp_ajax_pls_update_attribute_value', array( __CLASS__, 'update_attribute_value' ) );
         add_action( 'wp_ajax_pls_update_pack_tier_defaults', array( __CLASS__, 'update_pack_tier_defaults' ) );
+        add_action( 'wp_ajax_pls_update_label_pricing', array( __CLASS__, 'update_label_pricing' ) );
         add_action( 'wp_ajax_pls_get_product_options_data', array( __CLASS__, 'get_product_options_data' ) );
         add_action( 'wp_ajax_pls_preview_product', array( __CLASS__, 'preview_product' ) );
         add_action( 'wp_ajax_pls_custom_product_request', array( __CLASS__, 'custom_product_request' ) );
@@ -1667,6 +1668,26 @@ final class PLS_Admin_Ajax {
         }
 
         wp_send_json_success( array( 'message' => __( 'Pack tier defaults updated.', 'pls-private-label-store' ) ) );
+    }
+
+    /**
+     * Update label application pricing via AJAX.
+     */
+    public static function update_label_pricing() {
+        check_ajax_referer( 'pls_admin_nonce', 'nonce' );
+
+        if ( ! current_user_can( PLS_Capabilities::CAP_ATTRS ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $label_price = isset( $_POST['label_price_tier_1_2'] ) ? round( floatval( $_POST['label_price_tier_1_2'] ), 2 ) : 0.50;
+        if ( $label_price < 0 ) {
+            $label_price = 0;
+        }
+
+        update_option( 'pls_label_price_tier_1_2', $label_price );
+
+        wp_send_json_success( array( 'message' => __( 'Label pricing updated successfully.', 'pls-private-label-store' ) ) );
     }
 
     /**

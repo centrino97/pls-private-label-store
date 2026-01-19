@@ -427,7 +427,7 @@
                 $element[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
                 setTimeout(function() {
                     if ($element.is(':visible')) {
-                        highlightElement($element, step, stepIndex);
+                        highlightElement($element, step);
                     } else {
                         // Element still not visible, skip step
                         console.warn('Tutorial step element not visible:', step.selector);
@@ -439,7 +439,7 @@
                 return;
             }
 
-            highlightElement($element, step, stepIndex);
+            highlightElement($element, step);
         });
     }
 
@@ -467,75 +467,6 @@
         }, 500);
     }
 
-    /**
-     * Highlight element and show tooltip with improved error handling.
-     */
-    function highlightElement($element, step, stepIndex) {
-        if (stepIndex >= spotlightTutorial.steps.length) {
-            // Tutorial complete for this page
-            completeSpotlightTutorial();
-            return;
-        }
-
-        const step = spotlightTutorial.steps[stepIndex];
-        if (!step || !step.selector) {
-            console.warn('Tutorial step missing selector:', step);
-            setTimeout(() => showSpotlightStep(stepIndex + 1), 500);
-            return;
-        }
-
-        // Wait for element with retry logic (up to 5 seconds)
-        waitForElementWithRetry(step.selector, function($target) {
-            if (!$target || $target.length === 0) {
-                console.warn('Tutorial step element not found after retries:', step.selector);
-                // Skip to next step if element doesn't exist
-                setTimeout(() => showSpotlightStep(stepIndex + 1), 500);
-                return;
-            }
-
-            // Ensure element is visible
-            if (!$target.is(':visible')) {
-                // Try scrolling to element
-                try {
-                    $target[0].scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
-                } catch (e) {
-                    // Fallback scroll
-                    $('html, body').animate({
-                        scrollTop: $target.offset().top - 100
-                    }, 500);
-                }
-                
-                // Wait and check visibility again
-                setTimeout(() => {
-                    if ($target.is(':visible')) {
-                        highlightElement($target, step);
-                    } else {
-                        console.warn('Tutorial step element not visible after scroll:', step.selector);
-                        // Skip step if still not visible
-                        setTimeout(() => showSpotlightStep(stepIndex + 1), 500);
-                    }
-                }, 600);
-                return;
-            }
-
-            // Element found and visible, highlight it
-            try {
-                // Scroll to element smoothly
-                $target[0].scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
-                setTimeout(() => {
-                    highlightElement($target, step);
-                }, 600);
-            } catch (e) {
-                // Fallback scroll
-                $('html, body').animate({
-                    scrollTop: $target.offset().top - 100
-                }, 500);
-                setTimeout(() => {
-                    highlightElement($target, step);
-                }, 600);
-            }
-        });
-    }
 
     /**
      * Wait for element to exist with retry logic (up to 5 seconds).

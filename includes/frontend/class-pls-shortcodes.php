@@ -18,6 +18,7 @@ final class PLS_Shortcodes {
         add_shortcode( 'pls_product', array( __CLASS__, 'product_shortcode' ) );
         add_shortcode( 'pls_configurator', array( __CLASS__, 'configurator_shortcode' ) );
         add_shortcode( 'pls_bundle', array( __CLASS__, 'bundle_shortcode' ) );
+        add_shortcode( 'pls_product_page', array( __CLASS__, 'product_page_shortcode' ) );
     }
 
     /**
@@ -204,6 +205,163 @@ final class PLS_Shortcodes {
                     <p><?php echo esc_html__( 'Price per unit:', 'pls-private-label-store' ); ?> <?php echo wc_price( $bundle_rules['price_per_unit'] ?? 0 ); ?></p>
                 </div>
             <?php endif; ?>
+        </div>
+        <?php
+        return ob_get_clean();
+    }
+
+    /**
+     * Comprehensive product page shortcode.
+     * 
+     * Usage: [pls_product_page product_id="123"]
+     * 
+     * Combines configurator, product info, and bundle offers in one shortcode.
+     *
+     * @param array $atts Shortcode attributes.
+     * @return string
+     */
+    public static function product_page_shortcode( $atts ) {
+        $atts = shortcode_atts(
+            array(
+                'product_id' => 0,
+            ),
+            $atts,
+            'pls_product_page'
+        );
+
+        $product_id = absint( $atts['product_id'] );
+        if ( ! $product_id ) {
+            // Try to get from current WooCommerce product
+            global $product;
+            if ( $product instanceof WC_Product ) {
+                $product_id = $product->get_id();
+            }
+        }
+
+        if ( ! $product_id ) {
+            return '<div class="pls-note">' . esc_html__( 'Product ID required.', 'pls-private-label-store' ) . '</div>';
+        }
+
+        // Get PLS product data
+        global $wpdb;
+        $table = $wpdb->prefix . 'pls_base_product';
+        $base_product = $wpdb->get_row(
+            $wpdb->prepare( "SELECT * FROM {$table} WHERE wc_product_id = %d LIMIT 1", $product_id ),
+            OBJECT
+        );
+        if ( ! $base_product ) {
+            return '<div class="pls-note">' . esc_html__( 'PLS product not found.', 'pls-private-label-store' ) . '</div>';
+        }
+
+        $wc_product = wc_get_product( $product_id );
+        if ( ! $wc_product ) {
+            return '<div class="pls-note">' . esc_html__( 'WooCommerce product not found.', 'pls-private-label-store' ) . '</div>';
+        }
+
+        $profile = PLS_Repo_Product_Profile::get( $base_product->id );
+        
+        // Enqueue required scripts/styles
+        wp_enqueue_style( 'pls-offers' );
+        wp_enqueue_script( 'pls-offers' );
+
+        // Get applicable bundles for this product
+        $bundles = PLS_Repo_Bundle::all();
+        $applicable_bundles = array();
+        foreach ( $bundles as $bundle ) {
+            if ( 'live' === $bundle->status ) {
+                $applicable_bundles[] = $bundle;
+            }
+        }
+
+        ob_start();
+        ?>
+        <div class="pls-product-page" data-product-id="<?php echo esc_attr( $product_id ); ?>">
+            
+            <!-- Configurator Section -->
+            <?php if ( $wc_product->is_type( 'variable' ) ) : ?>
+                <div class="pls-product-page__configurator">
+                    <?php echo self::configurator_shortcode( array( 'product_id' => $product_id ) ); ?>
+                </div>
+            <?php endif; ?>
+
+            <!-- Product Info Section -->
+            <div class="pls-product-page__info">
+                <?php if ( $profile ) : ?>
+                    <?php if ( ! empty( $profile->long_description ) ) : ?>
+                        <div class="pls-product-info__description">
+                            <h2><?php esc_html_e( 'Product Description', 'pls-private-label-store' ); ?></h2>
+                            <?php echo wp_kses_post( wpautop( $profile->long_description ) ); ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if ( ! empty( $profile->directions ) ) : ?>
+                        <div class="pls-product-info__directions">
+                            <h3><?php esc_html_e( 'Directions', 'pls-private-label-store' ); ?></h3>
+                            <?php echo wp_kses_post( wpautop( $profile->directions ) ); ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if ( ! empty( $profile->skin_types ) ) : ?>
+                        <div class="pls-product-info__skin-types">
+                            <h3><?php esc_html_e( 'Suitable for Skin Types', 'pls-private-label-store' ); ?></h3>
+                            <p><?php echo esc_html( $profile->skin_types ); ?></p>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if ( ! empty( $profile->benefits ) ) : ?>
+                        <div class="pls-product-info__benefits">
+                            <h3><?php esc_html_e( 'Benefits', 'pls-private-label-store' ); ?></h3>
+                            <?php echo wp_kses_post( wpautop( $profile->benefits ) ); ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if ( ! empty( $profile->ingredients_list ) ) : ?>
+                        <div class="pls-product-info__ingredients">
+                            <h3><?php esc_html_e( 'Ingredients', 'pls-private-label-store' ); ?></h3>
+                            <p><?php echo esc_html( $profile->ingredients_list ); ?></p>
+                        </div>
+                    <?php endif; ?>
+                <?php endif; ?>
+            </div>
+
+            <!-- Bundle Offers Section -->
+            <?php if ( ! empty( $applicable_bundles ) ) : ?>
+                <div class="pls-product-page__bundles">
+                    <h2><?php esc_html_e( 'Frequently Bought Together', 'pls-private-label-store' ); ?></h2>
+                    <div class="pls-bundle-banner">
+                        <?php foreach ( $applicable_bundles as $bundle ) : ?>
+                            <?php
+                            $bundle_rules = ! empty( $bundle->offer_rules_json ) ? json_decode( $bundle->offer_rules_json, true ) : array();
+                            if ( empty( $bundle_rules ) ) {
+                                continue;
+                            }
+                            $required_sku_count = isset( $bundle_rules['sku_count'] ) ? (int) $bundle_rules['sku_count'] : 0;
+                            $required_units_per_sku = isset( $bundle_rules['units_per_sku'] ) ? (int) $bundle_rules['units_per_sku'] : 0;
+                            $bundle_price_per_unit = isset( $bundle_rules['price_per_unit'] ) ? floatval( $bundle_rules['price_per_unit'] ) : 0;
+                            ?>
+                            <div class="pls-bundle-banner__item">
+                                <div class="pls-bundle-banner__content">
+                                    <h3><?php echo esc_html( $bundle->name ); ?></h3>
+                                    <p class="pls-bundle-banner__description">
+                                        <?php
+                                        printf(
+                                            esc_html__( 'Buy %d or more products with at least %d units each and save!', 'pls-private-label-store' ),
+                                            $required_sku_count,
+                                            $required_units_per_sku
+                                        );
+                                        ?>
+                                    </p>
+                                    <div class="pls-bundle-banner__pricing">
+                                        <span class="pls-bundle-banner__price-label"><?php esc_html_e( 'Bundle Price:', 'pls-private-label-store' ); ?></span>
+                                        <span class="pls-bundle-banner__price-value"><?php echo wc_price( $bundle_price_per_unit ); ?> <?php esc_html_e( 'per unit', 'pls-private-label-store' ); ?></span>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            <?php endif; ?>
+
         </div>
         <?php
         return ob_get_clean();

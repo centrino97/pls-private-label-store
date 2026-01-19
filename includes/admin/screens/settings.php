@@ -97,7 +97,6 @@ if ( empty( $custom_order_config ) && isset( $commission_rates['custom_order_per
 $custom_order_threshold = isset( $custom_order_config['threshold'] ) ? floatval( $custom_order_config['threshold'] ) : 100000.00;
 $custom_order_rate_below = isset( $custom_order_config['rate_below'] ) ? floatval( $custom_order_config['rate_below'] ) : 3.00;
 $custom_order_rate_above = isset( $custom_order_config['rate_above'] ) ? floatval( $custom_order_config['rate_above'] ) : 5.00;
-$label_price      = get_option( 'pls_label_price_tier_1_2', '0.50' );
 $email_recipients = get_option( 'pls_commission_email_recipients', array() );
 $email_recipients_string = is_array( $email_recipients ) ? implode( ', ', $email_recipients ) : '';
 
@@ -268,34 +267,6 @@ if ( isset( $_GET['message'] ) && 'settings-saved' === $_GET['message'] ) {
                 </div>
             </div>
 
-            <!-- Label Pricing Section -->
-            <div class="pls-accordion__item is-collapsed">
-                <button type="button" class="pls-accordion__header">
-                    <?php esc_html_e( 'Label Application Pricing', 'pls-private-label-store' ); ?>
-                </button>
-                <div class="pls-accordion__content">
-                    <p class="description" style="margin-top: 0;"><?php esc_html_e( 'Set automatic pricing for label application based on tier. Tier 3-5 are automatically FREE.', 'pls-private-label-store' ); ?></p>
-                    
-                    <div class="pls-input-group" style="max-width: 300px; margin-bottom: 16px;">
-                        <label for="label_price_tier_1_2"><?php esc_html_e( 'Tier 1-2:', 'pls-private-label-store' ); ?></label>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="color: var(--pls-gray-600);">$</span>
-                            <input type="number" step="0.01" id="label_price_tier_1_2" name="label_price_tier_1_2" 
-                                   value="<?php echo esc_attr( $label_price ); ?>" 
-                                   class="pls-input" style="width: 100px;" min="0" />
-                            <span class="description" style="font-size: 12px; color: var(--pls-gray-500);"><?php esc_html_e( 'per unit', 'pls-private-label-store' ); ?></span>
-                        </div>
-                        <p class="description" style="margin-top: 4px;"><?php esc_html_e( 'This price will be multiplied by the number of units in the pack tier.', 'pls-private-label-store' ); ?></p>
-                    </div>
-                    
-                    <div style="padding: 12px; background: var(--pls-success-light); border-radius: 8px; display: inline-block;">
-                        <strong style="color: var(--pls-success);"><?php esc_html_e( 'Tier 3-5: FREE', 'pls-private-label-store' ); ?></strong>
-                        <span style="margin-left: 8px; color: var(--pls-gray-500); font-size: 13px;">
-                            <?php esc_html_e( '(automatically applied)', 'pls-private-label-store' ); ?>
-                        </span>
-                    </div>
-                </div>
-            </div>
 
             <!-- Commission Email Settings -->
             <div class="pls-accordion__item is-collapsed">

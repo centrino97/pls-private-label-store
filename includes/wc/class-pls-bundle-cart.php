@@ -21,6 +21,7 @@ final class PLS_Bundle_Cart {
 
         add_action( 'woocommerce_before_calculate_totals', array( __CLASS__, 'detect_and_apply_bundle_pricing' ), 10, 1 );
         add_filter( 'woocommerce_cart_item_price', array( __CLASS__, 'display_bundle_price' ), 10, 3 );
+        add_action( 'woocommerce_add_to_cart', array( __CLASS__, 'check_bundle_upsell' ), 10, 6 );
     }
 
     /**
@@ -205,6 +206,130 @@ final class PLS_Bundle_Cart {
         }
 
         return $price;
+    }
+
+    /**
+     * Check for bundle upsell opportunities when product is added to cart.
+     *
+     * @param string $cart_item_key Cart item key.
+     * @param int    $product_id Product ID.
+     * @param int    $quantity Quantity.
+     * @param int    $variation_id Variation ID.
+     * @param array  $variation Variation data.
+     * @param array  $cart_item_data Cart item data.
+     */
+    public static function check_bundle_upsell( $cart_item_key, $product_id, $quantity, $variation_id, $variation, $cart_item_data ) {
+        if ( is_admin() && ! defined( 'DOING_AJAX' ) ) {
+            return;
+        }
+
+        if ( ! function_exists( 'WC' ) || ! WC()->cart ) {
+            return;
+        }
+
+        // Get all bundles
+        $bundles = PLS_Repo_Bundle::all();
+        if ( empty( $bundles ) ) {
+            return;
+        }
+
+        // Get PLS products mapping
+        $pls_products = PLS_Repo_Base_Product::all();
+        $pls_wc_ids = array();
+        foreach ( $pls_products as $product ) {
+            if ( $product->wc_product_id ) {
+                $pls_wc_ids[ $product->wc_product_id ] = $product->id;
+            }
+        }
+
+        // Skip if not a PLS product
+        if ( ! isset( $pls_wc_ids[ $product_id ] ) ) {
+            return;
+        }
+
+        // Check if cart already qualifies for any bundle
+        $cart = WC()->cart;
+        $pls_items = array();
+        foreach ( $cart->get_cart() as $item_key => $item ) {
+            $item_product_id = $item['product_id'];
+            if ( ! isset( $pls_wc_ids[ $item_product_id ] ) ) {
+                continue;
+            }
+
+            $item_variation_id = isset( $item['variation_id'] ) ? $item['variation_id'] : 0;
+            $units_per_item = 0;
+            if ( $item_variation_id ) {
+                $item_variation = wc_get_product( $item_variation_id );
+                if ( $item_variation ) {
+                    $units_per_item = (int) get_post_meta( $item_variation_id, '_pls_units', true );
+                    if ( ! $units_per_item ) {
+                        $attributes = $item_variation->get_attributes();
+                        if ( isset( $attributes['pa_pack-tier'] ) ) {
+                            $tier_term = get_term_by( 'slug', $attributes['pa_pack-tier'], 'pa_pack-tier' );
+                            if ( $tier_term ) {
+                                $units_per_item = (int) get_term_meta( $tier_term->term_id, '_pls_default_units', true );
+                            }
+                        }
+                    }
+                }
+            }
+            if ( ! $units_per_item ) {
+                $units_per_item = 1;
+            }
+
+            $base_product_id = $pls_wc_ids[ $item_product_id ];
+            if ( ! isset( $pls_items[ $base_product_id ] ) ) {
+                $pls_items[ $base_product_id ] = array(
+                    'total_units' => 0,
+                );
+            }
+            $pls_items[ $base_product_id ]['total_units'] += $units_per_item * $item['quantity'];
+        }
+
+        // Check each bundle for potential qualification
+        foreach ( $bundles as $bundle ) {
+            if ( 'live' !== $bundle->status ) {
+                continue;
+            }
+
+            $bundle_rules = ! empty( $bundle->offer_rules_json ) ? json_decode( $bundle->offer_rules_json, true ) : array();
+            if ( empty( $bundle_rules ) ) {
+                continue;
+            }
+
+            $required_sku_count = isset( $bundle_rules['sku_count'] ) ? (int) $bundle_rules['sku_count'] : 0;
+            $required_units_per_sku = isset( $bundle_rules['units_per_sku'] ) ? (int) $bundle_rules['units_per_sku'] : 0;
+            $bundle_price_per_unit = isset( $bundle_rules['price_per_unit'] ) ? floatval( $bundle_rules['price_per_unit'] ) : 0;
+
+            if ( $required_sku_count < 2 || $required_units_per_sku < 1 || $bundle_price_per_unit <= 0 ) {
+                continue;
+            }
+
+            // Count products that meet requirements
+            $qualified_products = 0;
+            foreach ( $pls_items as $item ) {
+                if ( $item['total_units'] >= $required_units_per_sku ) {
+                    $qualified_products++;
+                }
+            }
+
+            // If close but not quite qualified, show upsell message
+            if ( $qualified_products > 0 && $qualified_products < $required_sku_count ) {
+                $needed = $required_sku_count - $qualified_products;
+                $message = sprintf(
+                    __( 'Add %d more product%s to qualify for bundle pricing: %s (Save up to %s per unit)', 'pls-private-label-store' ),
+                    $needed,
+                    $needed > 1 ? 's' : '',
+                    $bundle->name,
+                    wc_price( $bundle_price_per_unit )
+                );
+                
+                if ( ! wc_has_notice( $message, 'info' ) ) {
+                    wc_add_notice( $message, 'info' );
+                }
+                break; // Only show one upsell message at a time
+            }
+        }
     }
 
     /**
