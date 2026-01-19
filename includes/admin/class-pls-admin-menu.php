@@ -22,13 +22,49 @@ final class PLS_Admin_Menu {
     }
 
     /**
+     * Check if current user is Nikola (full access, no restrictions).
+     *
+     * @param WP_User|null $user Optional user object. If not provided, uses current user.
+     * @return bool
+     */
+    public static function is_nikola_user( $user = null ) {
+        if ( null === $user ) {
+            $user = wp_get_current_user();
+        }
+        
+        if ( ! $user || ! $user->ID ) {
+            return false;
+        }
+
+        // Check by username (case-insensitive)
+        $username = strtolower( $user->user_login );
+        if ( 'nikola' === $username ) {
+            return true;
+        }
+
+        // Check by display name (case-insensitive)
+        $display_name = strtolower( $user->display_name );
+        if ( 'nikola' === $display_name ) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Check if current user is a Bodoci user (restricted access).
+     * Note: Nikola is excluded from restrictions and has full access.
      *
      * @return bool
      */
     public static function is_bodoci_user() {
         $current_user = wp_get_current_user();
         if ( ! $current_user || ! $current_user->ID ) {
+            return false;
+        }
+
+        // Nikola has full access - skip all restrictions
+        if ( self::is_nikola_user( $current_user ) ) {
             return false;
         }
 
@@ -97,12 +133,18 @@ final class PLS_Admin_Menu {
 
     /**
      * Redirect Bodoci users to PLS dashboard on login.
+     * Note: Nikola is excluded from redirects and can access all pages.
      *
      * @param string $user_login User login name.
      * @param WP_User $user User object.
      */
     public static function redirect_bodoci_on_login( $user_login, $user ) {
         if ( ! $user || ! $user->ID ) {
+            return;
+        }
+
+        // Nikola has full access - skip redirect
+        if ( self::is_nikola_user( $user ) ) {
             return;
         }
 

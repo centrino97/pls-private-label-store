@@ -23,6 +23,10 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 1.6.0 =
+* **NEW:** Nikola user exception - Nikola can now access all WordPress admin settings and pages while bodoci domain users remain restricted to PLS pages only.
+* **IMPROVED:** Access control system now supports user-specific exceptions for full admin access.
+
 = 1.5.0 =
 * **NEW:** Spotlight-style guided tutorial system with blur overlay and element highlighting.
 * **NEW:** Step-by-step tutorial flow with auto-scroll and animated tooltips pointing to UI elements.

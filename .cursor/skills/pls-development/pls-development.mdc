@@ -4,6 +4,25 @@ alwaysApply: true
 
 # PLS Development Workflow
 
+## ⚠️ CRITICAL: Cross-Platform Command Compatibility
+
+**ALWAYS use semicolon (`;`) for command chaining, NOT `&&`**
+
+- **Windows PowerShell:** `&&` fails with error: `The token '&&' is not a valid statement separator`
+- **macOS/Linux:** Both `;` and `&&` work, but use `;` for compatibility
+- **Best Practice:** Run commands separately OR use `;` to chain them
+
+**Example:**
+```bash
+# ✅ CORRECT - Works everywhere
+cd "path"; git add .; git commit -m "Message"
+
+# ❌ WRONG - Fails on Windows PowerShell
+cd "path" && git add . && git commit -m "Message"
+```
+
+See full details in the "Cross-Platform Command Compatibility" section below.
+
 ## 🎯 Core Commands
 
 ### DEVELOP - Start Working
@@ -11,57 +30,134 @@ alwaysApply: true
 
 **Actions:**
 1. **Check for handoff context** - If user provides a handoff message from previous session, read and understand it first
-2. Get context from codebase
-3. Review current state and recent changes (check git status, recent commits)
-4. Understand requirements and scope
-5. Plan implementation approach
-6. Create todo list if needed
+2. **Get current version context** - Read version from `pls-private-label-store.php` to understand current release state
+3. Get context from codebase
+4. Review current state and recent changes (check git status, recent commits)
+5. Understand requirements and scope
+6. Plan implementation approach
+7. Create todo list if needed
 
 **Standard Process:**
 - **If handoff message exists:** Read it first to understand what was done and what's pending
+- **Version awareness:** Read current version from `pls-private-label-store.php` (line 5 and line 20) to understand release state
+- **UUPD awareness:** Check `uupd/index.json` to see last release version and ensure consistency
 - Read relevant files and documentation
 - Understand current architecture
 - Check git status for uncommitted changes
-- Review recent commits to understand recent work
+- Review recent commits to understand recent work (especially look for version releases)
 - Identify dependencies
 - Plan step-by-step implementation
 - **If resuming:** Start with the pending tasks from handoff message
+- **Version context:** Note current version in handoff/context for next RELEASE command
 
 ---
 
-### RELEASE - Commit, Push, Tag, Update
+### RELEASE - Complete Release Workflow
 **Use when:** Ready to release a version
 
-**MANDATORY STEPS (ALL must be completed):**
+**⚠️ CRITICAL: RELEASE command MUST automatically perform ALL steps below in sequence!**
 
-#### 1. Update Version (3 files)
+**When user says "RELEASE" or "RELEASE vX.Y.Z", the AI MUST:**
+
+#### 1. Determine Version
+- **If version specified:** Use that version (e.g., "RELEASE v1.5.0" → use 1.5.0)
+- **If not specified:** Read current version from `pls-private-label-store.php` and increment:
+  - Check last commit message for version pattern
+  - Increment patch version by default (1.4.0 → 1.4.1)
+  - Or follow semantic versioning based on changes (major/minor/patch)
+
+#### 2. Update Version in ALL 3 Files (AUTOMATIC)
+**MUST update all three files with the new version:**
+
 ```php
 // pls-private-label-store.php
-* Version: 1.2.3
-define( 'PLS_PLS_VERSION', '1.2.3' );
+* Version: 1.5.0          // Line 5
+define( 'PLS_PLS_VERSION', '1.5.0' );  // Line 20
 ```
 
 ```txt
 // readme.txt
-Stable tag: 1.2.3
+Stable tag: 1.5.0
 ```
 
 ```json
 // uupd/index.json
 {
-  "version": "1.2.3",
-  "last_updated": "2026-01-18 23:30:00"
+  "version": "1.5.0",
+  "last_updated": "2026-01-19 04:00:00"  // Current timestamp in YYYY-MM-DD HH:MM:SS format
 }
 ```
 
-#### 2. Update Changelog (2 files)
-- Add version section to `readme.txt`
-- Add to `"changelog"` field in `uupd/index.json`
+#### 3. Update Changelog in BOTH Files (AUTOMATIC)
+**MUST add changelog entry to both files:**
 
-#### 3. Standardized Git Operations
-**IMPORTANT: When committing, ALWAYS create and push tag automatically!**
+- **readme.txt:** Add version section with changelog
+- **uupd/index.json:** Add to `"changelog"` field in sections object
+
+**Changelog should summarize:**
+- Key features added
+- Bug fixes
+- Improvements
+- Breaking changes (if any)
+
+#### 4. Git Operations (AUTOMATIC - ALL IN ONE SEQUENCE)
+**MUST execute all git commands in sequence:**
 
 ```bash
+# Step 1: Stage all changes
+git add -A
+
+# Step 2: Commit with standardized message
+git commit -m "Release v1.5.0: Brief description of changes"
+
+# Step 3: Create annotated tag (CRITICAL for GitHub Actions)
+git tag -a v1.5.0 -m "Release v1.5.0"
+
+# Step 4: Push commits to main branch
+git push origin main
+
+# Step 5: Push tag (TRIGGERS GitHub Actions workflow!)
+git push origin v1.5.0
+```
+
+**⚠️ CROSS-PLATFORM: Use semicolon (`;`) for chaining OR run commands separately**
+
+**The tag push is CRITICAL** - it triggers the GitHub Actions workflow that builds the ZIP and creates the release for UUPD updates.
+
+#### 5. Verify Release (AUTOMATIC CHECK)
+- Wait 1-2 minutes for GitHub Actions to complete
+- Verify release exists at: https://github.com/centrino97/pls-private-label-store/releases
+- Confirm ZIP file is attached to release
+- Verify UUPD metadata is accessible at: https://raw.githubusercontent.com/centrino97/pls-private-label-store/main/uupd/index.json
+
+**Standard Commit Message Format:**
+```
+Release vX.Y.Z: Brief feature description
+
+- Feature 1: Description
+- Feature 2: Description
+- Bug fix: Description
+- Updated version to X.Y.Z in all files
+- Updated UUPD metadata for automatic updates
+```
+
+**⚠️ CROSS-PLATFORM COMMAND CHAINING:**
+- **Windows PowerShell:** Use `;` (semicolon) to chain commands
+- **macOS/Linux Bash:** Can use `&&` or `;` (semicolon works on both)
+- **Best Practice:** Always use `;` for compatibility across all platforms
+
+```bash
+# ✅ CORRECT - Works on Windows PowerShell, macOS, and Linux
+cd "path/to/dir"; git add -A; git commit -m "Release v1.2.3: Brief description"; git tag -a v1.2.3 -m "Release v1.2.3"; git push origin main; git push origin v1.2.3
+
+# ❌ WRONG - Will fail on Windows PowerShell (older versions)
+cd "path/to/dir" && git add -A && git commit -m "Release v1.2.3" && git push origin main
+```
+
+**For multi-line readability, run commands separately:**
+```bash
+# Windows PowerShell / macOS / Linux compatible
+cd "path/to/dir"
 git add -A
 git commit -m "Release v1.2.3: Brief description of changes"
 git tag -a v1.2.3 -m "Release v1.2.3"
@@ -98,19 +194,22 @@ Release vX.Y.Z: Brief feature description
 **CRITICAL OUTPUT:** Generate a ready-to-paste handoff message for the next agent session.
 
 **Actions:**
-1. Document current state
-2. Record what was completed
-3. Note what remains to be done
-4. Save any important context or decisions
-5. Commit any uncommitted work (if appropriate)
-6. **Generate handoff message** (see format below)
+1. **Get current version** - Read version from `pls-private-label-store.php` to include in handoff
+2. Document current state
+3. Record what was completed
+4. Note what remains to be done
+5. Save any important context or decisions
+6. Commit any uncommitted work (if appropriate)
+7. **Generate handoff message** (see format below)
 
 **Standard Process:**
+- **Version awareness:** Read and include current version in handoff message
+- **UUPD state:** Note if UUPD metadata needs updating on next release
 - Summarize completed work
 - List pending tasks
 - Note any blockers or decisions made
 - Update documentation if needed
-- **Generate formatted handoff message**
+- **Generate formatted handoff message with version context**
 
 **Handoff Message Format:**
 When user says "STOP" or "CLOSE", generate a formatted message like this:
@@ -126,17 +225,20 @@ When user says "STOP" or "CLOSE", generate a formatted message like this:
 ### 🔄 Current State
 - [What's working]
 - [What's partially done]
-- [Current version: X.Y.Z]
+- **Current version: X.Y.Z** (from pls-private-label-store.php)
+- **UUPD version: X.Y.Z** (from uupd/index.json - should match)
 
 ### 📋 Pending Tasks / Next Steps
 - [What needs to be done next]
 - [Known issues to address]
 - [Planned features]
+- **Next release:** Should be vX.Y.Z+1 (increment appropriately)
 
 ### 🚨 Important Context / Decisions
 - [Any architectural decisions made]
 - [Important notes for next developer]
 - [Files to pay attention to]
+- **Version consistency:** Ensure all 3 version files match before RELEASE
 
 ### 📁 Key Files Modified
 - `path/to/file1.php` - [what changed]
@@ -144,6 +246,7 @@ When user says "STOP" or "CLOSE", generate a formatted message like this:
 
 ### 🎯 Ready to Continue
 When you start, use DEVELOP command to get full context, then continue with [specific next task].
+**For next RELEASE:** Remember to update version in all 3 files + UUPD metadata + create tag.
 ```
 
 **The handoff message should be:**
@@ -239,11 +342,15 @@ Fix: Correct bundle commission calculation in order processing
 
 4. **Git Operations (AUTOMATIC TAG CREATION)**
    ```bash
+   # ✅ Run commands separately (cross-platform compatible)
    git add -A
    git commit -m "Release vX.Y.Z: Description"
    git tag -a vX.Y.Z -m "Release vX.Y.Z"  # Create annotated tag
    git push origin main
    git push origin vX.Y.Z  # CRITICAL: Tag push triggers GitHub Actions!
+   
+   # ⚠️ If chaining, use semicolon (;) not && for Windows compatibility
+   git add -A; git commit -m "Release vX.Y.Z: Description"; git tag -a vX.Y.Z -m "Release vX.Y.Z"; git push origin main; git push origin vX.Y.Z
    ```
    
    **AI Assistant MUST:** Automatically create and push tag when committing version changes. This ensures the GitHub Actions workflow runs and builds the release ZIP for UUPD updates.
@@ -294,23 +401,44 @@ Fix: Correct bundle commission calculation in order processing
 
 ---
 
-## 🤖 AUTOMATIC TAG CREATION ON COMMIT
+## 🤖 AUTOMATIC RELEASE WORKFLOW
 
-**CRITICAL: When user asks to commit, ALWAYS automatically create and push a tag if:**
-- Version files (`pls-private-label-store.php`, `readme.txt`, `uupd/index.json`) have been modified, OR
-- Commit message contains "Release v" or version number, OR
-- User explicitly requests a release/version update
+**CRITICAL: When user says "RELEASE" or "RELEASE vX.Y.Z", AUTOMATICALLY perform ALL steps:**
 
-**Automatic Tag Process:**
-1. Extract version from `pls-private-label-store.php` (look for `Version: X.Y.Z` or `PLS_PLS_VERSION`)
-2. Create tag: `git tag -a vX.Y.Z -m "Release vX.Y.Z"`
-3. Push commits first: `git push origin main`
-4. Push tag: `git push origin vX.Y.Z`
-5. Inform user that GitHub Actions will trigger automatically
+### Complete RELEASE Workflow (AUTOMATIC)
 
-**Why:** Tags trigger GitHub Actions workflow which builds the ZIP and creates the release for UUPD updates. Without a tag, the workflow doesn't run and users won't see updates.
+1. **Determine Version**
+   - If version specified: Use it
+   - If not: Read from `pls-private-label-store.php` and increment appropriately
 
-**Use `push-with-tag.ps1` script if available:** The script automates this entire process safely.
+2. **Update Version Files (3 files)**
+   - `pls-private-label-store.php` - Line 5 (`* Version:`) AND Line 20 (`define('PLS_PLS_VERSION')`)
+   - `readme.txt` - `Stable tag:` line
+   - `uupd/index.json` - `version` field AND `last_updated` timestamp
+
+3. **Update Changelog (2 files)**
+   - `readme.txt` - Add version section
+   - `uupd/index.json` - Add to `changelog` field
+
+4. **Git Operations (ALL IN SEQUENCE)**
+   ```bash
+   git add -A
+   git commit -m "Release vX.Y.Z: Description"
+   git tag -a vX.Y.Z -m "Release vX.Y.Z"
+   git push origin main
+   git push origin vX.Y.Z  # CRITICAL: Triggers GitHub Actions!
+   ```
+
+5. **Verify Release**
+   - Wait 1-2 minutes
+   - Check GitHub Actions completed
+   - Verify release exists with ZIP
+
+**Why:** Complete workflow ensures UUPD updates work flawlessly. Missing any step = users won't see updates.
+
+**Version Consistency:** All 3 files MUST have matching version numbers. UUPD metadata MUST match plugin version.
+
+**Context Passing:** DEVELOP and STOP commands maintain version awareness for seamless workflow.
 
 ---
 
@@ -322,6 +450,8 @@ Fix: Correct bundle commission calculation in order processing
 4. **ALWAYS create and push tag when committing version changes** (triggers GitHub Actions)
 5. **Wait 1-2 minutes after pushing tag before verifying**
 6. **Users must click "Check for updates" in WordPress**
+7. **ALWAYS use semicolon (`;`) for command chaining, NEVER `&&`** (Windows compatibility)
+8. **Run commands separately when possible** (best readability and compatibility)
 
 ---
 
@@ -365,3 +495,90 @@ Fix: Correct bundle commission calculation in order processing
 2. Check `.github/workflows/build-release-zip.yml` exists
 3. Verify tag was pushed: `git push origin vX.Y.Z`
 4. Check GitHub Actions tab for workflow status
+
+---
+
+## 🌐 Cross-Platform Command Compatibility
+
+### ⚠️ CRITICAL: Windows PowerShell vs macOS/Linux Differences
+
+**When running terminal commands, ALWAYS consider the user's OS:**
+- **Windows:** Uses PowerShell (may be version 5.1 or 7+)
+- **macOS/Linux:** Uses Bash/Zsh
+
+### Command Chaining
+
+**❌ WRONG - Will fail on Windows PowerShell (older versions):**
+```bash
+cd "path/to/dir" && git add -A && git commit -m "Message"
+```
+**Error:** `The token '&&' is not a valid statement separator in this version.`
+
+**✅ CORRECT - Works on all platforms:**
+```bash
+# Option 1: Use semicolon (;) - works everywhere
+cd "path/to/dir"; git add -A; git commit -m "Message"
+
+# Option 2: Run commands separately (best for readability)
+cd "path/to/dir"
+git add -A
+git commit -m "Message"
+```
+
+### Path Handling
+
+**Windows PowerShell:**
+```powershell
+# Use quotes for paths with spaces
+cd "c:\Users\HP ProBook\Desktop\pls\pls-private-label-store"
+```
+
+**macOS/Linux:**
+```bash
+# Quotes also work, but spaces can be escaped
+cd "/Users/username/Desktop/pls/pls-private-label-store"
+# or
+cd ~/Desktop/pls/pls-private-label-store
+```
+
+### Best Practices for AI Assistant
+
+1. **Always detect OS from user_info** - Check `OS Version` field
+2. **Use semicolon (`;`) for command chaining** - Works on all platforms
+3. **Run commands separately when possible** - Better readability and compatibility
+4. **Use quotes for paths** - Especially on Windows with spaces
+5. **Test command syntax** - If unsure, run commands separately
+
+### Common Command Patterns
+
+**✅ Cross-platform compatible:**
+```bash
+# Single command
+git status
+
+# Multiple commands with semicolon
+cd "path"; git add .; git commit -m "Message"
+
+# Multiple commands separately (best practice)
+cd "path"
+git add .
+git commit -m "Message"
+```
+
+**❌ Platform-specific (avoid):**
+```bash
+# Only works on Bash/Zsh (macOS/Linux)
+cd "path" && git add . && git commit -m "Message"
+
+# Only works on PowerShell 7+ (not PowerShell 5.1)
+cd "path" && git add . && git commit -m "Message"
+```
+
+### Detecting Platform in Commands
+
+When running commands, check the workspace path:
+- **Windows:** `c:\Users\...` or `C:\Users\...`
+- **macOS:** `/Users/...`
+- **Linux:** `/home/...` or `/root/...`
+
+**Always use semicolon (`;`) for chaining to ensure compatibility!**
