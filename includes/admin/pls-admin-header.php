@@ -31,7 +31,7 @@ $current_page = isset( $_GET['page'] ) ? sanitize_text_field( wp_unslash( $_GET[
             'pls-bi'             => __( 'Analytics', 'pls-private-label-store' ),
             'pls-commission'     => __( 'Commission', 'pls-private-label-store' ),
             'pls-revenue'        => __( 'Revenue', 'pls-private-label-store' ),
-            'pls-settings'       => __( 'Settings', 'pls-private-label-store' ),
+            // Settings hidden from UI
         );
 
         // Show all menu items to everyone (WordPress capabilities handle access control)

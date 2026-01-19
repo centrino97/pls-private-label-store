@@ -37,6 +37,14 @@ final class PLS_Migration_v130 {
         // Create revenue_snapshot table
         self::create_revenue_snapshot_table( $charset_collate );
 
+        // Add explored_features column to onboarding_progress table
+        $onboarding_table = $wpdb->prefix . 'pls_onboarding_progress';
+        $explored_exists = $wpdb->get_results( "SHOW COLUMNS FROM {$onboarding_table} LIKE 'explored_features'" );
+        
+        if ( empty( $explored_exists ) ) {
+            $wpdb->query( "ALTER TABLE {$onboarding_table} ADD COLUMN explored_features LONGTEXT NULL DEFAULT NULL AFTER completed_at" );
+        }
+
         // Set migration flag
         update_option( 'pls_migration_v130_complete', true );
         update_option( 'pls_db_version', '1.3.0' );

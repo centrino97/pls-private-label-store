@@ -131,14 +131,15 @@ final class PLS_Admin_Menu {
             array( __CLASS__, 'render_bundles' )
         );
 
-        add_submenu_page(
-            'pls-dashboard',
-            __( 'PLS – Settings', 'pls-private-label-store' ),
-            __( 'Settings', 'pls-private-label-store' ),
-            'manage_woocommerce',
-            'pls-settings',
-            array( __CLASS__, 'render_settings' )
-        );
+        // Settings page hidden from UI - functionality remains in codebase for future use
+        // add_submenu_page(
+        //     'pls-dashboard',
+        //     __( 'PLS – Settings', 'pls-private-label-store' ),
+        //     __( 'Settings', 'pls-private-label-store' ),
+        //     'manage_woocommerce',
+        //     'pls-settings',
+        //     array( __CLASS__, 'render_settings' )
+        // );
 
         // Hidden preview page (accessed via direct link)
         add_submenu_page(

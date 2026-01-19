@@ -44,6 +44,8 @@ $pending_commission = PLS_Repo_Commission::get_total(
     $current_user_id = get_current_user_id();
     $onboarding_progress = PLS_Onboarding::get_progress( $current_user_id );
     $has_completed_onboarding = $onboarding_progress && $onboarding_progress->completed_at;
+    $explored_features = $has_completed_onboarding ? PLS_Onboarding::get_explored_features( $current_user_id ) : array();
+    $exploration_flows = PLS_Onboarding::get_exploration_flows();
     ?>
     <div class="pls-page-head">
         <div>
@@ -53,12 +55,53 @@ $pending_commission = PLS_Repo_Commission::get_total(
         </div>
         <?php if ( ! $has_completed_onboarding ) : ?>
             <div>
-                <button type="button" class="button button-primary" id="pls-start-tutorial">
+                <button type="button" class="button button-primary button-hero" id="pls-start-tutorial">
                     <?php esc_html_e( 'Start Tutorial', 'pls-private-label-store' ); ?>
                 </button>
             </div>
         <?php endif; ?>
     </div>
+
+    <?php if ( ! $has_completed_onboarding ) : ?>
+        <!-- Welcome Banner for New Users -->
+        <div class="pls-welcome-banner" id="pls-welcome-banner">
+            <div class="pls-welcome-banner__content">
+                <div class="pls-welcome-banner__icon">
+                    <span class="dashicons dashicons-welcome-learn-more"></span>
+                </div>
+                <div class="pls-welcome-banner__text">
+                    <h2><?php esc_html_e( 'Welcome to PLS!', 'pls-private-label-store' ); ?></h2>
+                    <p><?php esc_html_e( 'Get started with our quick tutorial. We\'ll guide you through setting up your product options, creating your first product, and configuring bundles.', 'pls-private-label-store' ); ?></p>
+                    <div class="pls-welcome-banner__steps">
+                        <div class="pls-welcome-step">
+                            <span class="pls-welcome-step__number">1</span>
+                            <span class="pls-welcome-step__text"><?php esc_html_e( 'Configure Product Options', 'pls-private-label-store' ); ?></span>
+                        </div>
+                        <div class="pls-welcome-step">
+                            <span class="pls-welcome-step__number">2</span>
+                            <span class="pls-welcome-step__text"><?php esc_html_e( 'Create Your First Product', 'pls-private-label-store' ); ?></span>
+                        </div>
+                        <div class="pls-welcome-step">
+                            <span class="pls-welcome-step__number">3</span>
+                            <span class="pls-welcome-step__text"><?php esc_html_e( 'Set Up Bundles', 'pls-private-label-store' ); ?></span>
+                        </div>
+                        <div class="pls-welcome-step">
+                            <span class="pls-welcome-step__number">4</span>
+                            <span class="pls-welcome-step__text"><?php esc_html_e( 'Review Categories', 'pls-private-label-store' ); ?></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="pls-welcome-banner__actions">
+                    <button type="button" class="button button-primary button-hero" id="pls-start-tutorial-banner">
+                        <?php esc_html_e( 'Start Tutorial', 'pls-private-label-store' ); ?>
+                    </button>
+                    <button type="button" class="button button-link" id="pls-skip-onboarding-banner">
+                        <?php esc_html_e( 'Skip for now', 'pls-private-label-store' ); ?>
+                    </button>
+                </div>
+            </div>
+        </div>
+    <?php endif; ?>
 
     <!-- Summary Cards -->
     <div class="pls-dashboard-summary">
@@ -131,6 +174,39 @@ $pending_commission = PLS_Repo_Commission::get_total(
         </div>
     </div>
 
+    <?php if ( $has_completed_onboarding ) : ?>
+        <!-- Feature Exploration Section -->
+        <div class="pls-feature-exploration" id="pls-feature-exploration">
+            <div class="pls-feature-exploration__header">
+                <h2><?php esc_html_e( 'Explore Features', 'pls-private-label-store' ); ?></h2>
+                <p class="description"><?php esc_html_e( 'Take guided tours to learn about advanced features and workflows.', 'pls-private-label-store' ); ?></p>
+            </div>
+            <div class="pls-exploration-cards">
+                <?php foreach ( $exploration_flows as $key => $flow ) : 
+                    $is_explored = in_array( $key, $explored_features, true );
+                ?>
+                    <div class="pls-exploration-card" data-exploration-key="<?php echo esc_attr( $key ); ?>">
+                        <div class="pls-exploration-card__icon">
+                            <span class="dashicons <?php echo esc_attr( $flow['icon'] ); ?>"></span>
+                        </div>
+                        <div class="pls-exploration-card__content">
+                            <h3><?php echo esc_html( $flow['title'] ); ?></h3>
+                            <p><?php echo esc_html( $flow['description'] ); ?></p>
+                            <?php if ( $is_explored ) : ?>
+                                <span class="pls-exploration-card__badge"><?php esc_html_e( 'Completed', 'pls-private-label-store' ); ?></span>
+                            <?php endif; ?>
+                        </div>
+                        <div class="pls-exploration-card__actions">
+                            <button type="button" class="button button-primary pls-exploration-start" data-exploration-key="<?php echo esc_attr( $key ); ?>">
+                                <?php esc_html_e( 'Take Tour', 'pls-private-label-store' ); ?>
+                            </button>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    <?php endif; ?>
+
     <!-- Quick Links -->
     <div class="pls-dashboard-links">
         <h2><?php esc_html_e( 'Quick Links', 'pls-private-label-store' ); ?></h2>
@@ -162,10 +238,6 @@ $pending_commission = PLS_Repo_Commission::get_total(
             <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-bundles' ) ); ?>" class="pls-dashboard-link">
                 <span class="dashicons dashicons-groups"></span>
                 <?php esc_html_e( 'Bundles', 'pls-private-label-store' ); ?>
-            </a>
-            <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-settings' ) ); ?>" class="pls-dashboard-link">
-                <span class="dashicons dashicons-admin-generic"></span>
-                <?php esc_html_e( 'Settings', 'pls-private-label-store' ); ?>
             </a>
         </div>
     </div>

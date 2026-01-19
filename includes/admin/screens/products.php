@@ -218,15 +218,31 @@ wp_localize_script(
 
         <div class="pls-stepper">
           <div class="pls-stepper__nav" id="pls-stepper-nav">
-            <button type="button" class="pls-stepper__item is-active" data-step="general"><?php esc_html_e( 'General', 'pls-private-label-store' ); ?></button>
-            <button type="button" class="pls-stepper__item" data-step="data"><?php esc_html_e( 'Data', 'pls-private-label-store' ); ?></button>
-            <button type="button" class="pls-stepper__item" data-step="ingredients"><?php esc_html_e( 'Ingredients', 'pls-private-label-store' ); ?></button>
+            <button type="button" class="pls-stepper__item is-active" data-step="general">
+              <span class="pls-stepper__item-number">1</span>
+              <?php esc_html_e( 'General', 'pls-private-label-store' ); ?>
+            </button>
+            <button type="button" class="pls-stepper__item" data-step="data">
+              <span class="pls-stepper__item-number">2</span>
+              <?php esc_html_e( 'Data', 'pls-private-label-store' ); ?>
+            </button>
+            <button type="button" class="pls-stepper__item" data-step="ingredients">
+              <span class="pls-stepper__item-number">3</span>
+              <?php esc_html_e( 'Ingredients', 'pls-private-label-store' ); ?>
+            </button>
             <button type="button" class="pls-stepper__item" data-step="packs">
+              <span class="pls-stepper__item-number">4</span>
               <span class="pls-primary-badge" style="background: #2271b1; color: #fff; padding: 2px 6px; border-radius: 2px; font-size: 9px; margin-right: 6px;">PRIMARY</span>
               <?php esc_html_e( 'Pack tiers', 'pls-private-label-store' ); ?>
             </button>
-            <button type="button" class="pls-stepper__item" data-step="attributes"><?php esc_html_e( 'Product options', 'pls-private-label-store' ); ?></button>
-            <button type="button" class="pls-stepper__item" data-step="label"><?php esc_html_e( 'Label application', 'pls-private-label-store' ); ?></button>
+            <button type="button" class="pls-stepper__item" data-step="attributes">
+              <span class="pls-stepper__item-number">5</span>
+              <?php esc_html_e( 'Product options', 'pls-private-label-store' ); ?>
+            </button>
+            <button type="button" class="pls-stepper__item" data-step="label">
+              <span class="pls-stepper__item-number">6</span>
+              <?php esc_html_e( 'Label application', 'pls-private-label-store' ); ?>
+            </button>
           </div>
 
           <div class="pls-stepper__panels">

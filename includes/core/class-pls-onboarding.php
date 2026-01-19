@@ -23,6 +23,7 @@ final class PLS_Onboarding {
         add_action( 'wp_ajax_pls_get_onboarding_steps', array( __CLASS__, 'get_steps' ) );
         add_action( 'wp_ajax_pls_delete_test_product', array( __CLASS__, 'delete_test_product' ) );
         add_action( 'wp_ajax_pls_get_helper_content', array( __CLASS__, 'get_helper_content_ajax' ) );
+        add_action( 'wp_ajax_pls_complete_exploration', array( __CLASS__, 'complete_exploration' ) );
     }
 
     /**
@@ -52,6 +53,9 @@ final class PLS_Onboarding {
         $progress = self::get_progress( $current_user->ID );
         $current_page = self::get_current_page_from_hook( $hook );
 
+        $current_user = wp_get_current_user();
+        $explored_features = self::get_explored_features( $current_user->ID );
+
         wp_localize_script(
             'pls-onboarding',
             'PLS_Onboarding',
@@ -63,6 +67,8 @@ final class PLS_Onboarding {
                 'current_page' => $current_page,
                 'steps' => self::get_steps_definition(),
                 'tutorial_flow' => self::get_tutorial_flow(),
+                'exploration_flows' => self::get_exploration_flows(),
+                'explored_features' => $explored_features,
                 'is_active' => $progress && ! $progress->completed_at,
             )
         );
@@ -169,20 +175,36 @@ final class PLS_Onboarding {
             ),
             'products' => array(
                 'step_number' => 2,
-                'title' => __( 'Step 2: Create Products', 'pls-private-label-store' ),
+                'title' => __( 'Step 2: Create Your First Product', 'pls-private-label-store' ),
                 'page' => 'products',
+                'description' => __( 'Follow these steps to create your first product. Each section builds on the previous one.', 'pls-private-label-store' ),
                 'steps' => array(
-                    __( 'Click "Add Product" button', 'pls-private-label-store' ),
-                    __( 'Fill in General info: product name, select category, upload images', 'pls-private-label-store' ),
-                    __( 'Configure Pack Tiers: enable/disable tiers, set units and prices', 'pls-private-label-store' ),
-                    __( 'Select Product Options: Package Type, Color, and Cap', 'pls-private-label-store' ),
-                    __( 'Add Fragrances (if using Tier 3 or higher)', 'pls-private-label-store' ),
-                    __( 'Add Ingredients (if using Tier 3 or higher)', 'pls-private-label-store' ),
-                    __( 'Configure Label Application settings', 'pls-private-label-store' ),
-                    __( 'Save product and sync to WooCommerce', 'pls-private-label-store' ),
-                    __( 'Understand sync states: Active, Inactive, Update Available, Not Synced', 'pls-private-label-store' ),
-                    __( 'Use Activate/Deactivate buttons to control product visibility', 'pls-private-label-store' ),
-                    __( 'Click [?] help buttons in modals for contextual guidance', 'pls-private-label-store' ),
+                    __( 'Click the "Add Product" button in the top right corner', 'pls-private-label-store' ),
+                    __( 'General Tab: Enter a descriptive product name (e.g., "Collagen Serum")', 'pls-private-label-store' ),
+                    __( 'General Tab: Select at least one category to organize your product', 'pls-private-label-store' ),
+                    __( 'General Tab: Upload a featured image (main product photo)', 'pls-private-label-store' ),
+                    __( 'General Tab: Add gallery images (multiple product photos)', 'pls-private-label-store' ),
+                    __( 'Data Tab: Write a short description (1-2 sentences for product cards)', 'pls-private-label-store' ),
+                    __( 'Data Tab: Write a long description (full product story and benefits)', 'pls-private-label-store' ),
+                    __( 'Data Tab: Add directions for use (how customers should use the product)', 'pls-private-label-store' ),
+                    __( 'Data Tab: Select applicable skin types (Normal, Oily, Dry, Combination, Sensitive)', 'pls-private-label-store' ),
+                    __( 'Data Tab: List benefits (one per line, e.g., "Hydrates instantly")', 'pls-private-label-store' ),
+                    __( 'Ingredients Tab: Search and select ingredients from the list', 'pls-private-label-store' ),
+                    __( 'Ingredients Tab: Choose up to 5 key ingredients to spotlight with icons', 'pls-private-label-store' ),
+                    __( 'Pack Tiers Tab: Review default tier pricing (50, 100, 250, 500, 1000 units)', 'pls-private-label-store' ),
+                    __( 'Pack Tiers Tab: Enable/disable tiers and adjust prices if needed', 'pls-private-label-store' ),
+                    __( 'Pack Tiers Tab: Use the price calculator to see total costs with options', 'pls-private-label-store' ),
+                    __( 'Product Options Tab: Select Package Type (30ml, 50ml, 120ml bottle or 50gr jar)', 'pls-private-label-store' ),
+                    __( 'Product Options Tab: Choose Package Color/Finish (Standard is included, others add cost)', 'pls-private-label-store' ),
+                    __( 'Product Options Tab: Select Package Cap/Applicator (compatible with your package type)', 'pls-private-label-store' ),
+                    __( 'Product Options Tab: Add Fragrances if using Tier 3+ (optional)', 'pls-private-label-store' ),
+                    __( 'Product Options Tab: Add other product options if needed (custom attributes)', 'pls-private-label-store' ),
+                    __( 'Label Tab: Enable label application if you offer custom labels', 'pls-private-label-store' ),
+                    __( 'Label Tab: Set price per unit for label application', 'pls-private-label-store' ),
+                    __( 'Click "Save Product" button to save and sync to WooCommerce', 'pls-private-label-store' ),
+                    __( 'After saving, use "Sync" button to create WooCommerce product', 'pls-private-label-store' ),
+                    __( 'Use "Activate" button to make product visible to customers', 'pls-private-label-store' ),
+                    __( 'Use "Preview" button to see how product appears on the frontend', 'pls-private-label-store' ),
                 ),
                 'next_page' => 'bundles',
                 'next_title' => __( 'Next: Create Bundles', 'pls-private-label-store' ),
@@ -229,6 +251,84 @@ final class PLS_Onboarding {
     }
 
     /**
+     * Get exploration flows definition (optional feature tours).
+     *
+     * @return array Exploration flows.
+     */
+    public static function get_exploration_flows() {
+        return array(
+            'custom-orders' => array(
+                'key' => 'custom-orders',
+                'title' => __( 'Custom Orders Pipeline', 'pls-private-label-store' ),
+                'description' => __( 'Learn how to manage custom order leads through the Kanban pipeline.', 'pls-private-label-store' ),
+                'icon' => 'dashicons-email-alt',
+                'page' => 'custom-orders',
+                'steps' => array(
+                    __( 'Understanding the Kanban board: Orders flow through stages from New Leads to Done', 'pls-private-label-store' ),
+                    __( 'New Leads: Initial customer inquiries and custom order requests', 'pls-private-label-store' ),
+                    __( 'Sampling: Orders in the sampling/testing phase', 'pls-private-label-store' ),
+                    __( 'Production: Orders currently being manufactured', 'pls-private-label-store' ),
+                    __( 'On-hold: Orders temporarily paused or waiting for information', 'pls-private-label-store' ),
+                    __( 'Done: Completed orders ready for delivery', 'pls-private-label-store' ),
+                    __( 'Drag and drop orders between stages to update their status', 'pls-private-label-store' ),
+                    __( 'Click on any order card to view details, financials, and commission information', 'pls-private-label-store' ),
+                    __( 'Custom orders have separate commission calculations from regular product orders', 'pls-private-label-store' ),
+                ),
+            ),
+            'revenue' => array(
+                'key' => 'revenue',
+                'title' => __( 'Revenue Reporting', 'pls-private-label-store' ),
+                'description' => __( 'Understand revenue breakdowns, filtering, and reporting capabilities.', 'pls-private-label-store' ),
+                'icon' => 'dashicons-money-alt',
+                'page' => 'revenue',
+                'steps' => array(
+                    __( 'Revenue shows total sales from WooCommerce orders containing PLS products', 'pls-private-label-store' ),
+                    __( 'Use date range filters to view revenue for specific periods', 'pls-private-label-store' ),
+                    __( 'Filter by product to see revenue breakdown by individual products', 'pls-private-label-store' ),
+                    __( 'Filter by pack tier to see revenue by quantity tiers (50, 100, 250, 500, 1000 units)', 'pls-private-label-store' ),
+                    __( 'Revenue is calculated from completed WooCommerce orders', 'pls-private-label-store' ),
+                    __( 'Revenue differs from commission: Revenue is total sales, commission is your share', 'pls-private-label-store' ),
+                    __( 'View detailed order breakdowns to understand revenue sources', 'pls-private-label-store' ),
+                ),
+            ),
+            'commission' => array(
+                'key' => 'commission',
+                'title' => __( 'Commission Tracking', 'pls-private-label-store' ),
+                'description' => __( 'Learn how commissions are calculated and tracked for invoicing.', 'pls-private-label-store' ),
+                'icon' => 'dashicons-clock',
+                'page' => 'commission',
+                'steps' => array(
+                    __( 'Commissions are automatically calculated from product orders based on pack tier pricing', 'pls-private-label-store' ),
+                    __( 'Product commissions: Calculated from regular WooCommerce orders with PLS products', 'pls-private-label-store' ),
+                    __( 'Custom order commissions: Separate calculation for custom order leads', 'pls-private-label-store' ),
+                    __( 'Commission status: Pending (not yet invoiced), Invoiced, Paid', 'pls-private-label-store' ),
+                    __( 'Use date filters to view commissions for specific time periods', 'pls-private-label-store' ),
+                    __( 'Filter by product or tier to see commission breakdowns', 'pls-private-label-store' ),
+                    __( 'Commissions can be marked as invoiced and paid for tracking purposes', 'pls-private-label-store' ),
+                    __( 'Monthly commission reports can be generated and emailed automatically', 'pls-private-label-store' ),
+                ),
+            ),
+            'bi-dashboard' => array(
+                'key' => 'bi-dashboard',
+                'title' => __( 'BI Dashboard & Analytics', 'pls-private-label-store' ),
+                'description' => __( 'Explore marketing costs, profit calculations, and visual analytics.', 'pls-private-label-store' ),
+                'icon' => 'dashicons-chart-line',
+                'page' => 'bi',
+                'steps' => array(
+                    __( 'BI Dashboard provides comprehensive analytics for your PLS operations', 'pls-private-label-store' ),
+                    __( 'Marketing Cost Tracking: Record marketing expenses by channel and date', 'pls-private-label-store' ),
+                    __( 'Revenue Metrics: View total revenue from product and custom orders', 'pls-private-label-store' ),
+                    __( 'Commission Metrics: Track total commissions earned', 'pls-private-label-store' ),
+                    __( 'Profit Calculation: Net profit = Revenue - Commission - Marketing Costs', 'pls-private-label-store' ),
+                    __( 'Chart Visualizations: Visual charts show trends over time', 'pls-private-label-store' ),
+                    __( 'Date Range Filtering: Analyze performance for specific time periods', 'pls-private-label-store' ),
+                    __( 'Export Capabilities: Export data for external analysis', 'pls-private-label-store' ),
+                ),
+            ),
+        );
+    }
+
+    /**
      * Get current page from hook.
      *
      * @param string $hook Admin hook.
@@ -247,6 +347,8 @@ final class PLS_Onboarding {
             return 'revenue';
         } elseif ( strpos( $hook, 'pls-commission' ) !== false ) {
             return 'commission';
+        } elseif ( strpos( $hook, 'pls-bi' ) !== false ) {
+            return 'bi';
         } elseif ( strpos( $hook, 'pls-categories' ) !== false ) {
             return 'categories';
         } elseif ( strpos( $hook, 'pls-attributes' ) !== false ) {
@@ -521,5 +623,94 @@ final class PLS_Onboarding {
             array( '%d' ),
             array( '%d' )
         );
+    }
+
+    /**
+     * Get explored features for a user.
+     *
+     * @param int $user_id User ID.
+     * @return array Array of explored feature keys.
+     */
+    public static function get_explored_features( $user_id ) {
+        $progress = self::get_progress( $user_id );
+        if ( ! $progress || ! $progress->explored_features ) {
+            return array();
+        }
+        $explored = json_decode( $progress->explored_features, true );
+        return is_array( $explored ) ? $explored : array();
+    }
+
+    /**
+     * Check if user has explored a specific feature.
+     *
+     * @param int $user_id User ID.
+     * @param string $exploration_key Exploration key (e.g., 'custom-orders', 'revenue', etc.).
+     * @return bool
+     */
+    public static function has_explored_feature( $user_id, $exploration_key ) {
+        $explored = self::get_explored_features( $user_id );
+        return in_array( $exploration_key, $explored, true );
+    }
+
+    /**
+     * Mark an exploration feature as complete.
+     *
+     * @param int $user_id User ID.
+     * @param string $exploration_key Exploration key.
+     */
+    public static function mark_exploration_complete( $user_id, $exploration_key ) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'pls_onboarding_progress';
+
+        $explored = self::get_explored_features( $user_id );
+        if ( ! in_array( $exploration_key, $explored, true ) ) {
+            $explored[] = $exploration_key;
+        }
+
+        // Ensure progress record exists
+        $progress = self::get_progress( $user_id );
+        if ( ! $progress ) {
+            $wpdb->insert(
+                $table,
+                array(
+                    'user_id' => $user_id,
+                    'explored_features' => wp_json_encode( $explored ),
+                ),
+                array( '%d', '%s' )
+            );
+        } else {
+            $wpdb->update(
+                $table,
+                array( 'explored_features' => wp_json_encode( $explored ) ),
+                array( 'user_id' => $user_id ),
+                array( '%s' ),
+                array( '%d' )
+            );
+        }
+    }
+
+    /**
+     * AJAX: Complete an exploration feature.
+     */
+    public static function complete_exploration() {
+        check_ajax_referer( 'pls_onboarding_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $exploration_key = isset( $_POST['exploration_key'] ) ? sanitize_text_field( wp_unslash( $_POST['exploration_key'] ) ) : '';
+        
+        if ( empty( $exploration_key ) ) {
+            wp_send_json_error( array( 'message' => __( 'Invalid exploration key.', 'pls-private-label-store' ) ), 400 );
+        }
+
+        $user_id = get_current_user_id();
+        self::mark_exploration_complete( $user_id, $exploration_key );
+
+        wp_send_json_success( array( 
+            'message' => __( 'Exploration completed.', 'pls-private-label-store' ),
+            'explored_features' => self::get_explored_features( $user_id ),
+        ) );
     }
 }

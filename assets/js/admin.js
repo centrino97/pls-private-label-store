@@ -1,4 +1,9 @@
 (function($){
+  // Ensure ajaxurl is defined (WordPress should provide this, but add fallback)
+  if (typeof window.ajaxurl === 'undefined') {
+    window.ajaxurl = '/wp-admin/admin-ajax.php';
+  }
+
   function switchTab(tab){
     $('.pls-tabs-nav .nav-tab').removeClass('nav-tab-active');
     $('.pls-tab-panel').removeClass('is-active');

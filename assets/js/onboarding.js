@@ -22,8 +22,8 @@
             currentPageSteps = onboardingData.steps[ currentPage ].steps || [];
         }
 
-        // Start tutorial button handler
-        $('#pls-start-tutorial').on('click', function() {
+        // Start tutorial button handler (both header and banner buttons)
+        $('#pls-start-tutorial, #pls-start-tutorial-banner').on('click', function() {
             $.ajax({
                 url: PLS_Onboarding.ajax_url,
                 type: 'POST',
@@ -39,6 +39,26 @@
                     }
                 }
             });
+        });
+
+        // Skip onboarding from banner
+        $('#pls-skip-onboarding-banner').on('click', function() {
+            if (confirm('Skip the tutorial? You can restart it anytime from the dashboard.')) {
+                $.ajax({
+                    url: PLS_Onboarding.ajax_url,
+                    type: 'POST',
+                    data: {
+                        action: 'pls_skip_onboarding',
+                        nonce: PLS_Onboarding.nonce
+                    },
+                    success: function() {
+                        $('#pls-welcome-banner').fadeOut(300, function() {
+                            $(this).remove();
+                        });
+                        location.reload();
+                    }
+                });
+            }
         });
 
         // Inject help buttons into modals
@@ -340,10 +360,10 @@
                 </div>
                 <div class="pls-tutorial-panel__body">
                     <p class="pls-tutorial-panel__description">
-                        ${currentStep.page === 'attributes' ? 'Review and configure your product options before creating products.' : ''}
-                        ${currentStep.page === 'products' ? 'Create your first product with all the options you configured.' : ''}
-                        ${currentStep.page === 'bundles' ? 'Create bundles to offer special pricing for multiple products.' : ''}
-                        ${currentStep.page === 'categories' ? 'Review and organize your product categories.' : ''}
+                        ${currentStep.description || (currentStep.page === 'attributes' ? 'Review and configure your product options before creating products.' : '')}
+                        ${!currentStep.description && currentStep.page === 'products' ? 'Create your first product with all the options you configured. Follow each step carefully.' : ''}
+                        ${!currentStep.description && currentStep.page === 'bundles' ? 'Create bundles to offer special pricing for multiple products.' : ''}
+                        ${!currentStep.description && currentStep.page === 'categories' ? 'Review and organize your product categories.' : ''}
                     </p>
                     <ul class="pls-tutorial-panel__steps">
                         ${stepsHtml}
@@ -739,4 +759,155 @@
             }
         });
     }
+    // Exploration system
+    function initExplorationSystem() {
+        if (!onboardingData || !onboardingData.exploration_flows) {
+            return;
+        }
+
+        // Handle "Take Tour" button clicks
+        $('.pls-exploration-start').on('click', function() {
+            const explorationKey = $(this).data('exploration-key');
+            if (!explorationKey) return;
+
+            const flow = onboardingData.exploration_flows[explorationKey];
+            if (!flow) return;
+
+            // Navigate to the exploration page
+            const pageMap = {
+                'custom-orders': 'admin.php?page=pls-custom-orders',
+                'revenue': 'admin.php?page=pls-revenue',
+                'commission': 'admin.php?page=pls-commission',
+                'bi-dashboard': 'admin.php?page=pls-bi'
+            };
+
+            // Store exploration key in sessionStorage to trigger panel on page load
+            sessionStorage.setItem('pls_active_exploration', explorationKey);
+
+            const adminBase = PLS_Onboarding.admin_url || (window.location.origin + '/wp-admin/');
+            const targetUrl = pageMap[explorationKey] ? adminBase + pageMap[explorationKey] : null;
+
+            if (targetUrl) {
+                window.location.href = targetUrl;
+            }
+        });
+
+        // Check if we should show exploration panel on current page
+        const activeExploration = sessionStorage.getItem('pls_active_exploration');
+        if (activeExploration && onboardingData.exploration_flows[activeExploration]) {
+            const flow = onboardingData.exploration_flows[activeExploration];
+            if (flow.page === onboardingData.current_page) {
+                setTimeout(function() {
+                    initExplorationPanel(activeExploration, flow);
+                    sessionStorage.removeItem('pls_active_exploration');
+                }, 500);
+            }
+        }
+    }
+
+    function initExplorationPanel(explorationKey, flow) {
+        // Remove any existing exploration panel
+        $('#pls-exploration-panel').remove();
+
+        const exploredFeatures = onboardingData.explored_features || [];
+        const isExplored = exploredFeatures.indexOf(explorationKey) !== -1;
+
+        // Build steps HTML
+        const stepsHtml = flow.steps.map((step, index) => {
+            return `
+                <li class="pls-exploration-panel__step-item" data-step-index="${index}">
+                    <input type="checkbox" class="pls-exploration-panel__step-checkbox" disabled />
+                    <span class="pls-exploration-panel__step-text">${step}</span>
+                </li>
+            `;
+        }).join('');
+
+        // Build panel HTML
+        const panelHtml = `
+            <div class="pls-exploration-panel" id="pls-exploration-panel">
+                <div class="pls-exploration-panel__header">
+                    <div class="pls-exploration-panel__header-left">
+                        <h3 class="pls-exploration-panel__title">${flow.title}</h3>
+                        ${isExplored ? '<span class="pls-exploration-card__badge">Completed</span>' : ''}
+                    </div>
+                    <button type="button" class="pls-exploration-panel__close" aria-label="Close" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--pls-gray-600); padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">×</button>
+                </div>
+                <div class="pls-exploration-panel__body">
+                    <p class="pls-exploration-panel__description">${flow.description}</p>
+                    <ul class="pls-exploration-panel__steps">
+                        ${stepsHtml}
+                    </ul>
+                </div>
+                <div class="pls-exploration-panel__footer">
+                    <button type="button" class="pls-exploration-panel__skip-btn" id="pls-exploration-skip">Skip Tour</button>
+                    <div class="pls-exploration-panel__nav-buttons">
+                        <button type="button" class="button button-primary pls-exploration-panel__complete-btn" id="pls-exploration-complete">
+                            ${isExplored ? 'Mark as Complete' : 'Complete Tour'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Insert at top of page content
+        const $pageHead = $('.pls-page-head');
+        if ($pageHead.length) {
+            $pageHead.after(panelHtml);
+        } else {
+            $('.pls-wrap').prepend(panelHtml);
+        }
+
+        // Attach event handlers
+        attachExplorationHandlers(explorationKey);
+    }
+
+    function attachExplorationHandlers(explorationKey) {
+        // Close button (use event delegation to handle dynamically added elements)
+        $(document).off('click', '.pls-exploration-panel__close, #pls-exploration-skip').on('click', '.pls-exploration-panel__close, #pls-exploration-skip', function() {
+            $('#pls-exploration-panel').fadeOut(300, function() {
+                $(this).remove();
+            });
+        });
+
+        // Complete button
+        $('#pls-exploration-complete').on('click', function() {
+            $.ajax({
+                url: PLS_Onboarding.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'pls_complete_exploration',
+                    nonce: PLS_Onboarding.nonce,
+                    exploration_key: explorationKey
+                },
+                success: function(resp) {
+                    if (resp && resp.success) {
+                        $('#pls-exploration-panel').fadeOut(300, function() {
+                            $(this).remove();
+                            // Update explored features in local data
+                            if (onboardingData) {
+                                onboardingData.explored_features = resp.data.explored_features || [];
+                            }
+                            // Reload to show updated badge
+                            location.reload();
+                        });
+                    }
+                },
+                error: function() {
+                    alert('Could not complete exploration. Please try again.');
+                }
+            });
+        });
+
+        // Step checkbox handlers (mark steps as read)
+        $('.pls-exploration-panel__step-item').on('click', function() {
+            $(this).toggleClass('is-completed');
+            $(this).find('input').prop('checked', $(this).hasClass('is-completed'));
+        });
+    }
+
+    // Initialize exploration system
+    if (onboardingData && onboardingData.exploration_flows) {
+        initExplorationSystem();
+    }
+
 })(jQuery);
