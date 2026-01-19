@@ -15,6 +15,19 @@ final class PLS_Admin_Menu {
         add_action( 'admin_menu', array( __CLASS__, 'register_menu' ) );
         add_action( 'admin_enqueue_scripts', array( __CLASS__, 'assets' ) );
         add_action( 'admin_post_pls_save_label_settings', array( __CLASS__, 'save_label_settings' ) );
+        add_action( 'admin_notices', array( __CLASS__, 'render_custom_header' ), 1 );
+    }
+
+    /**
+     * Render custom admin header on PLS pages.
+     */
+    public static function render_custom_header() {
+        $screen = get_current_screen();
+        if ( ! $screen || strpos( $screen->id, 'pls-' ) === false ) {
+            return;
+        }
+
+        require PLS_PLS_DIR . 'includes/admin/pls-admin-header.php';
     }
 
     public static function register_menu() {
@@ -84,6 +97,15 @@ final class PLS_Admin_Menu {
 
         add_submenu_page(
             'pls-dashboard',
+            __( 'PLS – BI Dashboard', 'pls-private-label-store' ),
+            __( 'Analytics', 'pls-private-label-store' ),
+            'manage_options',
+            'pls-bi',
+            array( __CLASS__, 'render_bi_dashboard' )
+        );
+
+        add_submenu_page(
+            'pls-dashboard',
             __( 'PLS – Categories', 'pls-private-label-store' ),
             __( 'Categories', 'pls-private-label-store' ),
             PLS_Capabilities::CAP_PRODUCTS,
@@ -143,6 +165,28 @@ final class PLS_Admin_Menu {
             array(),
             PLS_PLS_VERSION
         );
+
+        // Hide WordPress admin elements on PLS pages
+        wp_add_inline_style( 'pls-admin', '
+            #wpadminbar,
+            #adminmenuback,
+            #adminmenuwrap,
+            #wpfooter,
+            .update-nag,
+            .notice:not(.pls-notice) {
+                display: none !important;
+            }
+            #wpcontent {
+                margin-left: 0 !important;
+                padding-left: 20px !important;
+            }
+            #wpbody {
+                padding-top: 0 !important;
+            }
+            .pls-wrap {
+                padding-top: 0;
+            }
+        ' );
 
         wp_enqueue_script(
             'pls-admin',
@@ -225,6 +269,10 @@ final class PLS_Admin_Menu {
 
     public static function render_commission() {
         require PLS_PLS_DIR . 'includes/admin/screens/commission.php';
+    }
+
+    public static function render_bi_dashboard() {
+        require PLS_PLS_DIR . 'includes/admin/screens/bi-dashboard.php';
     }
 
     public static function render_settings() {

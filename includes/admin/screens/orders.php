@@ -3,6 +3,13 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+// Check if WooCommerce is active
+if ( ! class_exists( 'WooCommerce' ) || ! function_exists( 'wc_get_orders' ) ) {
+    $woocommerce_active = false;
+} else {
+    $woocommerce_active = true;
+}
+
 // Get PLS products to identify which WooCommerce orders contain them
 $pls_products = PLS_Repo_Base_Product::all();
 $pls_wc_ids   = array();
@@ -13,15 +20,18 @@ foreach ( $pls_products as $product ) {
 }
 
 // Get WooCommerce orders
-$orders_query = new WC_Order_Query(
-    array(
-        'limit'    => 50,
-        'orderby'  => 'date',
-        'order'    => 'DESC',
-        'status'   => array( 'wc-completed', 'wc-processing', 'wc-on-hold' ),
-    )
-);
-$orders = $orders_query->get_orders();
+$orders = array();
+if ( $woocommerce_active ) {
+    $orders_query = new WC_Order_Query(
+        array(
+            'limit'    => 50,
+            'orderby'  => 'date',
+            'order'    => 'DESC',
+            'status'   => array( 'wc-completed', 'wc-processing', 'wc-on-hold' ),
+        )
+    );
+    $orders = $orders_query->get_orders();
+}
 
 // Filter orders that contain PLS products
 $pls_orders = array();
@@ -50,9 +60,27 @@ $bundle_rates     = isset( $commission_rates['bundles'] ) ? $commission_rates['b
         </div>
     </div>
 
-    <?php if ( empty( $pls_orders ) ) : ?>
+    <?php if ( ! $woocommerce_active ) : ?>
         <div class="pls-card">
-            <p><?php esc_html_e( 'No orders found containing PLS products.', 'pls-private-label-store' ); ?></p>
+            <p><?php esc_html_e( 'WooCommerce is not active. Please activate WooCommerce to view orders.', 'pls-private-label-store' ); ?></p>
+        </div>
+    <?php elseif ( empty( $pls_wc_ids ) ) : ?>
+        <div class="pls-card">
+            <p><?php esc_html_e( 'No PLS products have been synced to WooCommerce yet. Sync your products first, then orders will appear here once customers make purchases.', 'pls-private-label-store' ); ?></p>
+            <p style="margin-top: 16px;">
+                <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-products' ) ); ?>" class="button button-primary">
+                    <?php esc_html_e( 'Go to Products', 'pls-private-label-store' ); ?>
+                </a>
+            </p>
+        </div>
+    <?php elseif ( empty( $pls_orders ) ) : ?>
+        <div class="pls-card">
+            <p><?php esc_html_e( 'No WooCommerce orders found containing PLS products. Orders will appear here once customers purchase PLS products.', 'pls-private-label-store' ); ?></p>
+            <p style="margin-top: 16px;">
+                <a href="<?php echo esc_url( admin_url( 'admin.php?page=wc-orders' ) ); ?>" class="button button-secondary">
+                    <?php esc_html_e( 'View All WooCommerce Orders', 'pls-private-label-store' ); ?>
+                </a>
+            </p>
         </div>
     <?php else : ?>
         <div class="pls-table-modern pls-table-modern--compact">
@@ -103,7 +131,7 @@ $bundle_rates     = isset( $commission_rates['bundles'] ) ? $commission_rates['b
                                 $tier_term = get_term_by( 'slug', $attributes['pa_pack-tier'], 'pa_pack-tier' );
                                 if ( $tier_term ) {
                                     // Map tier term to tier key (tier_1, tier_2, etc.)
-                                    $tier_key = self::get_tier_key_from_term( $tier_term->name );
+                                    $tier_key = pls_get_tier_key_from_term( $tier_term->name );
                                 }
                             }
 

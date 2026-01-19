@@ -47,6 +47,10 @@ final class PLS_Admin_Ajax {
         add_action( 'wp_ajax_pls_delete_bundle', array( __CLASS__, 'delete_bundle' ) );
         add_action( 'wp_ajax_pls_sync_bundle', array( __CLASS__, 'sync_bundle' ) );
         add_action( 'wp_ajax_pls_get_bundle', array( __CLASS__, 'get_bundle' ) );
+        add_action( 'wp_ajax_pls_get_bi_metrics', array( __CLASS__, 'get_bi_metrics' ) );
+        add_action( 'wp_ajax_pls_get_bi_chart_data', array( __CLASS__, 'get_bi_chart_data' ) );
+        add_action( 'wp_ajax_pls_save_marketing_cost', array( __CLASS__, 'save_marketing_cost' ) );
+        add_action( 'wp_ajax_pls_get_product_performance', array( __CLASS__, 'get_product_performance' ) );
     }
 
     /**
@@ -671,7 +675,9 @@ final class PLS_Admin_Ajax {
                 PLS_Onboarding::set_test_product( $user_id, $persisted['id'] );
             }
         }
-        if ( is_wp_error( $sync_result ) ) {
+        
+        // Handle sync result (only if sync was attempted)
+        if ( null !== $sync_result && is_wp_error( $sync_result ) ) {
             if ( $persisted['created'] ) {
                 self::delete_product_records( $persisted['id'] );
             } else {
@@ -693,14 +699,18 @@ final class PLS_Admin_Ajax {
             );
         }
 
-        self::record_sync_status( $persisted['id'], $sync_result, true );
+        // Record sync status if sync was attempted
+        if ( null !== $sync_result ) {
+            self::record_sync_status( $persisted['id'], $sync_result, true );
+        }
+        
         $product_payload = self::format_product_payload( PLS_Repo_Base_Product::get( $persisted['id'] ), 'https://bodocibiophysics.com/label-guide/' );
 
         wp_send_json_success(
             array(
                 'ok'            => true,
                 'product'       => $product_payload,
-                'sync_message'  => $sync_result,
+                'sync_message'  => $sync_result ? $sync_result : __( 'Product saved. Activate to sync to WooCommerce.', 'pls-private-label-store' ),
             )
         );
     }
@@ -2625,6 +2635,13 @@ final class PLS_Admin_Ajax {
             wp_send_json_error( array( 'message' => __( 'Failed to save bundle.', 'pls-private-label-store' ) ), 500 );
         }
 
+        // Auto-sync to WooCommerce
+        $sync_result = PLS_WC_Sync::sync_bundle_to_wc( $bundle_id );
+        if ( is_wp_error( $sync_result ) ) {
+            // Log error but don't fail the save
+            error_log( 'PLS Bundle sync error: ' . $sync_result->get_error_message() );
+        }
+
         wp_send_json_success(
             array(
                 'message' => $bundle_id ? __( 'Bundle updated.', 'pls-private-label-store' ) : __( 'Bundle created.', 'pls-private-label-store' ),
@@ -2729,5 +2746,226 @@ final class PLS_Admin_Ajax {
                 'bundle' => PLS_Repo_Bundle::get( $bundle_id ),
             )
         );
+    }
+
+    /**
+     * AJAX: Get BI metrics for date range.
+     */
+    public static function get_bi_metrics() {
+        check_ajax_referer( 'pls_admin_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $date_from = isset( $_POST['date_from'] ) ? sanitize_text_field( wp_unslash( $_POST['date_from'] ) ) : date( 'Y-m-d', strtotime( '-30 days' ) );
+        $date_to = isset( $_POST['date_to'] ) ? sanitize_text_field( wp_unslash( $_POST['date_to'] ) ) : date( 'Y-m-d' );
+
+        // Calculate revenue
+        $revenue = 0.00;
+        if ( class_exists( 'WooCommerce' ) ) {
+            $orders = wc_get_orders(
+                array(
+                    'date_created' => $date_from . '...' . $date_to,
+                    'status'       => array( 'wc-completed', 'wc-processing' ),
+                    'limit'        => -1,
+                )
+            );
+            foreach ( $orders as $order ) {
+                $revenue += floatval( $order->get_total() );
+            }
+        }
+
+        // Add custom orders
+        global $wpdb;
+        $custom_order_table = $wpdb->prefix . 'pls_custom_order';
+        $custom_revenue = $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT SUM(total_value) FROM {$custom_order_table} WHERE status = 'done' AND DATE(updated_at) >= %s AND DATE(updated_at) <= %s",
+                $date_from,
+                $date_to
+            )
+        );
+        $revenue += floatval( $custom_revenue );
+
+        // Calculate commission
+        $commission_table = $wpdb->prefix . 'pls_order_commission';
+        $commission = (float) $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT SUM(commission_amount) FROM {$commission_table} WHERE DATE(created_at) >= %s AND DATE(created_at) <= %s",
+                $date_from,
+                $date_to
+            )
+        );
+
+        // Get marketing costs
+        $marketing_cost = PLS_Repo_Marketing_Cost::get_total( $date_from, $date_to );
+
+        // Calculate profit
+        $profit = $revenue - $commission - $marketing_cost;
+
+        wp_send_json_success(
+            array(
+                'revenue'       => $revenue,
+                'commission'   => $commission,
+                'marketing_cost' => $marketing_cost,
+                'profit'       => $profit,
+            )
+        );
+    }
+
+    /**
+     * AJAX: Get BI chart data for date range.
+     */
+    public static function get_bi_chart_data() {
+        check_ajax_referer( 'pls_admin_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $date_from = isset( $_POST['date_from'] ) ? sanitize_text_field( wp_unslash( $_POST['date_from'] ) ) : date( 'Y-m-d', strtotime( '-30 days' ) );
+        $date_to = isset( $_POST['date_to'] ) ? sanitize_text_field( wp_unslash( $_POST['date_to'] ) ) : date( 'Y-m-d' );
+
+        // Generate revenue trend (daily)
+        $revenue_trend = array(
+            'labels' => array(),
+            'values' => array(),
+        );
+
+        $current = strtotime( $date_from );
+        $end = strtotime( $date_to );
+
+        while ( $current <= $end ) {
+            $date_str = date( 'Y-m-d', $current );
+            $revenue_trend['labels'][] = date( 'M j', $current );
+
+            // Calculate revenue for this day
+            $day_revenue = 0.00;
+            if ( class_exists( 'WooCommerce' ) ) {
+                $orders = wc_get_orders(
+                    array(
+                        'date_created' => $date_str,
+                        'status'       => array( 'wc-completed', 'wc-processing' ),
+                        'limit'        => -1,
+                    )
+                );
+                foreach ( $orders as $order ) {
+                    $day_revenue += floatval( $order->get_total() );
+                }
+            }
+
+            global $wpdb;
+            $custom_order_table = $wpdb->prefix . 'pls_custom_order';
+            $custom_revenue = $wpdb->get_var(
+                $wpdb->prepare(
+                    "SELECT SUM(total_value) FROM {$custom_order_table} WHERE status = 'done' AND DATE(updated_at) = %s",
+                    $date_str
+                )
+            );
+            $day_revenue += floatval( $custom_revenue );
+
+            $revenue_trend['values'][] = $day_revenue;
+            $current = strtotime( '+1 day', $current );
+        }
+
+        // Get marketing costs by channel
+        $marketing_by_channel = PLS_Repo_Marketing_Cost::get_total_by_channel( $date_from, $date_to );
+
+        wp_send_json_success(
+            array(
+                'revenue_trend'      => $revenue_trend,
+                'marketing_by_channel' => $marketing_by_channel,
+            )
+        );
+    }
+
+    /**
+     * AJAX: Save marketing cost entry.
+     */
+    public static function save_marketing_cost() {
+        check_ajax_referer( 'pls_admin_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $cost_date = isset( $_POST['cost_date'] ) ? sanitize_text_field( wp_unslash( $_POST['cost_date'] ) ) : '';
+        $channel = isset( $_POST['channel'] ) ? sanitize_text_field( wp_unslash( $_POST['channel'] ) ) : '';
+        $amount = isset( $_POST['amount'] ) ? floatval( $_POST['amount'] ) : 0;
+        $description = isset( $_POST['description'] ) ? sanitize_textarea_field( wp_unslash( $_POST['description'] ) ) : '';
+
+        if ( empty( $cost_date ) || empty( $channel ) || $amount <= 0 ) {
+            wp_send_json_error( array( 'message' => __( 'Please fill in all required fields.', 'pls-private-label-store' ) ), 400 );
+        }
+
+        $id = PLS_Repo_Marketing_Cost::create(
+            array(
+                'cost_date'   => $cost_date,
+                'channel'     => $channel,
+                'amount'      => $amount,
+                'description' => $description,
+            )
+        );
+
+        if ( ! $id ) {
+            wp_send_json_error( array( 'message' => __( 'Failed to save marketing cost.', 'pls-private-label-store' ) ), 500 );
+        }
+
+        wp_send_json_success(
+            array(
+                'message' => __( 'Marketing cost saved successfully.', 'pls-private-label-store' ),
+                'id'      => $id,
+            )
+        );
+    }
+
+    /**
+     * AJAX: Get product performance data.
+     */
+    public static function get_product_performance() {
+        check_ajax_referer( 'pls_admin_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $date_from = isset( $_POST['date_from'] ) ? sanitize_text_field( wp_unslash( $_POST['date_from'] ) ) : date( 'Y-m-d', strtotime( '-30 days' ) );
+        $date_to = isset( $_POST['date_to'] ) ? sanitize_text_field( wp_unslash( $_POST['date_to'] ) ) : date( 'Y-m-d' );
+
+        global $wpdb;
+        $commission_table = $wpdb->prefix . 'pls_order_commission';
+        $base_product_table = $wpdb->prefix . 'pls_base_product';
+
+        $results = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT 
+                    bp.id,
+                    bp.name,
+                    SUM(c.commission_amount) as revenue,
+                    SUM(c.units) as units
+                FROM {$commission_table} c
+                INNER JOIN {$base_product_table} bp ON c.product_id = bp.wc_product_id
+                WHERE DATE(c.created_at) >= %s AND DATE(c.created_at) <= %s
+                GROUP BY bp.id, bp.name
+                ORDER BY revenue DESC
+                LIMIT 20",
+                $date_from,
+                $date_to
+            ),
+            OBJECT
+        );
+
+        $performance = array();
+        foreach ( $results as $row ) {
+            $performance[] = array(
+                'id'      => $row->id,
+                'name'    => $row->name,
+                'revenue' => floatval( $row->revenue ),
+                'units'   => intval( $row->units ),
+            );
+        }
+
+        wp_send_json_success( $performance );
     }
 }

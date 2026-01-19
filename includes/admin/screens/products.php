@@ -90,7 +90,6 @@ wp_localize_script(
       <p class="description"><?php esc_html_e( 'Create and manage every SKU inside PLS. WooCommerce only receives the final variable product.', 'pls-private-label-store' ); ?></p>
     </div>
     <div>
-      <button class="button" id="pls-sync-all"><?php esc_html_e( 'Sync all to Woo', 'pls-private-label-store' ); ?></button>
       <button class="button button-primary button-hero" id="pls-open-product-modal"><?php esc_html_e( 'Add product', 'pls-private-label-store' ); ?></button>
     </div>
   </div>

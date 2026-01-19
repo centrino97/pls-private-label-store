@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.2.2
+Stable tag: 1.3.0
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,18 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 1.3.0 =
+* **FIXED:** JavaScript error breaking onboarding system (removed undefined function call).
+* **FIXED:** Orders page now displays WooCommerce orders correctly with better error handling and fallback messages.
+* **NEW:** Auto-sync to WooCommerce on product/bundle save (removed manual "Sync All" button).
+* **NEW:** BI Dashboard with marketing cost tracking, revenue/commission/profit metrics, and Chart.js visualizations.
+* **NEW:** Custom admin experience with Apple-inspired design - WordPress admin elements hidden on PLS pages.
+* **NEW:** Custom admin header with unified navigation menu - all users see all menu items (WordPress capabilities handle access control).
+* **NEW:** Shortcode alternatives for Elementor widgets - [pls_product], [pls_configurator], [pls_bundle].
+* **NEW:** Marketing cost tracking with channel breakdown (Meta, Google, Creative, Other).
+* **NEW:** Revenue snapshot system for historical profit tracking.
+* **IMPROVED:** Cleaner, more intuitive interface for non-technical users.
+
 = 1.2.2 =
 * **Enhanced Sample Data:** Products now include full product options (Package Type, Color, Cap, Fragrances) with all price impacts.
 * **Bundle-Qualified Orders:** Added orders that qualify for bundle pricing to test bundle detection and commission calculation.

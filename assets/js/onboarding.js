@@ -111,8 +111,6 @@
     });
 
     function injectModalHelpButtons() {
-        ensureModalHelpButtons();
-
         // Attach tooltip handlers (only once)
         if (!$(document).data('pls-help-handlers-attached')) {
             $(document).on('click', '.pls-help-btn', function(e) {
