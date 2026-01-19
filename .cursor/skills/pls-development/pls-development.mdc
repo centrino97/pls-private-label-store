@@ -10,17 +10,22 @@ alwaysApply: true
 **Use when:** Beginning new work or resuming development
 
 **Actions:**
-1. Get context from codebase
-2. Review current state and recent changes
-3. Understand requirements and scope
-4. Plan implementation approach
-5. Create todo list if needed
+1. **Check for handoff context** - If user provides a handoff message from previous session, read and understand it first
+2. Get context from codebase
+3. Review current state and recent changes (check git status, recent commits)
+4. Understand requirements and scope
+5. Plan implementation approach
+6. Create todo list if needed
 
 **Standard Process:**
+- **If handoff message exists:** Read it first to understand what was done and what's pending
 - Read relevant files and documentation
 - Understand current architecture
+- Check git status for uncommitted changes
+- Review recent commits to understand recent work
 - Identify dependencies
 - Plan step-by-step implementation
+- **If resuming:** Start with the pending tasks from handoff message
 
 ---
 
@@ -90,18 +95,63 @@ Release vX.Y.Z: Brief feature description
 ### STOP - Stop Working, Record Context
 **Use when:** Pausing work or completing a session
 
+**CRITICAL OUTPUT:** Generate a ready-to-paste handoff message for the next agent session.
+
 **Actions:**
 1. Document current state
 2. Record what was completed
 3. Note what remains to be done
 4. Save any important context or decisions
 5. Commit any uncommitted work (if appropriate)
+6. **Generate handoff message** (see format below)
 
 **Standard Process:**
 - Summarize completed work
 - List pending tasks
 - Note any blockers or decisions made
 - Update documentation if needed
+- **Generate formatted handoff message**
+
+**Handoff Message Format:**
+When user says "STOP" or "CLOSE", generate a formatted message like this:
+
+```
+## Session Handoff - PLS Development
+
+### ✅ Completed This Session
+- [List what was actually completed]
+- [Specific files changed]
+- [Features implemented]
+
+### 🔄 Current State
+- [What's working]
+- [What's partially done]
+- [Current version: X.Y.Z]
+
+### 📋 Pending Tasks / Next Steps
+- [What needs to be done next]
+- [Known issues to address]
+- [Planned features]
+
+### 🚨 Important Context / Decisions
+- [Any architectural decisions made]
+- [Important notes for next developer]
+- [Files to pay attention to]
+
+### 📁 Key Files Modified
+- `path/to/file1.php` - [what changed]
+- `path/to/file2.js` - [what changed]
+
+### 🎯 Ready to Continue
+When you start, use DEVELOP command to get full context, then continue with [specific next task].
+```
+
+**The handoff message should be:**
+- Complete enough for a new agent to understand the full context
+- Include specific file paths and what changed
+- List clear next steps
+- Note any important decisions or gotchas
+- Ready to copy/paste into a new Cursor chat
 
 ---
 
