@@ -766,31 +766,56 @@ final class PLS_Sample_Data {
             // Build attributes array for basics_json
             $basics_attrs = array();
             
-            // Add Package Type (select first available)
+            // Determine max enabled tier level for this product
+            $max_enabled_tier = 1;
+            foreach ( $product_data['pack_tiers'] as $tier ) {
+                if ( ! empty( $tier['enabled'] ) ) {
+                    $tier_num = (int) str_replace( 'tier_', '', $tier['tier_key'] );
+                    if ( $tier_num > $max_enabled_tier ) {
+                        $max_enabled_tier = $tier_num;
+                    }
+                }
+            }
+            $has_tier_3 = $max_enabled_tier >= 3;
+            $has_tier_4 = $max_enabled_tier >= 4;
+            
+            // Add Package Type (ALL types)
             if ( $package_type_attr && ! empty( $package_type_values ) ) {
-                $selected_package_type = $package_type_values[0];
-                $basics_attrs[] = array(
-                    'attribute_id' => $package_type_attr->id,
-                    'attribute_label' => $package_type_attr->label,
-                    'values' => array(
-                        array(
-                            'value_id' => $selected_package_type->id,
-                            'value_label' => $selected_package_type->label,
-                            'price' => 0,
-                        ),
-                    ),
-                );
+                $package_type_values_array = array();
+                foreach ( $package_type_values as $package_type ) {
+                    $package_type_values_array[] = array(
+                        'value_id' => $package_type->id,
+                        'value_label' => $package_type->label,
+                        'price' => 0, // Package types have no price impact
+                    );
+                }
+                if ( ! empty( $package_type_values_array ) ) {
+                    $basics_attrs[] = array(
+                        'attribute_id' => $package_type_attr->id,
+                        'attribute_label' => $package_type_attr->label,
+                        'values' => $package_type_values_array,
+                    );
+                }
             }
             
-            // Add Package Colors (select 2-3 colors)
+            // Add Package Colors (ALL colors)
             if ( $package_color_attr && ! empty( $package_color_values ) ) {
-                $selected_colors = array_slice( $package_color_values, 0, min( 3, count( $package_color_values ) ) );
                 $color_values = array();
-                foreach ( $selected_colors as $color ) {
+                foreach ( $package_color_values as $color ) {
+                    // Get default price from term meta or tier_price_overrides
+                    $default_price = 0;
+                    if ( $color->term_id ) {
+                        $default_price = get_term_meta( $color->term_id, '_pls_default_price_impact', true );
+                        if ( '' === $default_price && ! empty( $color->tier_price_overrides ) ) {
+                            $overrides = json_decode( $color->tier_price_overrides, true );
+                            // Use Tier 1 price as default if available
+                            $default_price = isset( $overrides[1] ) ? $overrides[1] : 0;
+                        }
+                    }
                     $color_values[] = array(
                         'value_id' => $color->id,
                         'value_label' => $color->label,
-                        'price' => 0,
+                        'price' => floatval( $default_price ),
                     );
                 }
                 if ( ! empty( $color_values ) ) {
@@ -802,15 +827,24 @@ final class PLS_Sample_Data {
                 }
             }
             
-            // Add Package Caps (select 2-3 caps)
+            // Add Package Caps (ALL caps)
             if ( $package_cap_attr && ! empty( $package_cap_values ) ) {
-                $selected_caps = array_slice( $package_cap_values, 0, min( 3, count( $package_cap_values ) ) );
                 $cap_values = array();
-                foreach ( $selected_caps as $cap ) {
+                foreach ( $package_cap_values as $cap ) {
+                    // Get default price from term meta or tier_price_overrides
+                    $default_price = 0;
+                    if ( $cap->term_id ) {
+                        $default_price = get_term_meta( $cap->term_id, '_pls_default_price_impact', true );
+                        if ( '' === $default_price && ! empty( $cap->tier_price_overrides ) ) {
+                            $overrides = json_decode( $cap->tier_price_overrides, true );
+                            // Use Tier 1 price as default if available
+                            $default_price = isset( $overrides[1] ) ? $overrides[1] : 0;
+                        }
+                    }
                     $cap_values[] = array(
                         'value_id' => $cap->id,
                         'value_label' => $cap->label,
-                        'price' => 0,
+                        'price' => floatval( $default_price ),
                     );
                 }
                 if ( ! empty( $cap_values ) ) {
@@ -862,16 +896,27 @@ final class PLS_Sample_Data {
                 }
             }
             
-            // Add Fragrances for Tier 3+ products (select 2-3 fragrances)
-            $product_tier = ! empty( $product_data['pack_tiers'] ) && isset( $product_data['pack_tiers'][2] ) ? 3 : 1;
-            if ( $fragrance_attr && ! empty( $fragrance_values ) && $product_tier >= 3 ) {
-                $selected_fragrances = array_slice( $fragrance_values, 0, min( 3, count( $fragrance_values ) ) );
+            // Add Fragrances for Tier 3+ products (ALL fragrances)
+            if ( $fragrance_attr && ! empty( $fragrance_values ) && $has_tier_3 ) {
                 $fragrance_values_array = array();
-                foreach ( $selected_fragrances as $fragrance ) {
+                foreach ( $fragrance_values as $fragrance ) {
+                    // Only include if min_tier_level allows it
+                    if ( ! empty( $fragrance->min_tier_level ) && $fragrance->min_tier_level > $max_enabled_tier ) {
+                        continue;
+                    }
+                    // Get default price
+                    $default_price = 0;
+                    if ( $fragrance->term_id ) {
+                        $default_price = get_term_meta( $fragrance->term_id, '_pls_default_price_impact', true );
+                        if ( '' === $default_price && ! empty( $fragrance->tier_price_overrides ) ) {
+                            $overrides = json_decode( $fragrance->tier_price_overrides, true );
+                            $default_price = isset( $overrides[3] ) ? $overrides[3] : ( isset( $overrides[1] ) ? $overrides[1] : 0 );
+                        }
+                    }
                     $fragrance_values_array[] = array(
                         'value_id' => $fragrance->id,
                         'value_label' => $fragrance->label,
-                        'price' => 0,
+                        'price' => floatval( $default_price ),
                     );
                 }
                 if ( ! empty( $fragrance_values_array ) ) {
@@ -884,13 +929,23 @@ final class PLS_Sample_Data {
             }
             
             // Add Custom Printed Bottles for Tier 4+ products
-            if ( $custom_bottle_attr && ! empty( $custom_bottle_values_list ) && $product_tier >= 4 ) {
+            if ( $custom_bottle_attr && ! empty( $custom_bottle_values_list ) && $has_tier_4 ) {
                 $custom_bottle_values_array = array();
                 foreach ( $custom_bottle_values_list as $custom_bottle ) {
+                    // Get default price from term meta or tier_price_overrides
+                    $default_price = 0;
+                    if ( $custom_bottle->term_id ) {
+                        $default_price = get_term_meta( $custom_bottle->term_id, '_pls_default_price_impact', true );
+                        if ( '' === $default_price && ! empty( $custom_bottle->tier_price_overrides ) ) {
+                            $overrides = json_decode( $custom_bottle->tier_price_overrides, true );
+                            // Use Tier 4 price as default if available, fallback to Tier 1
+                            $default_price = isset( $overrides[4] ) ? $overrides[4] : ( isset( $overrides[1] ) ? $overrides[1] : 0 );
+                        }
+                    }
                     $custom_bottle_values_array[] = array(
                         'value_id' => $custom_bottle->id,
                         'value_label' => $custom_bottle->label,
-                        'price' => 0,
+                        'price' => floatval( $default_price ),
                     );
                 }
                 if ( ! empty( $custom_bottle_values_array ) ) {
@@ -903,13 +958,23 @@ final class PLS_Sample_Data {
             }
             
             // Add External Box Packaging for Tier 4+ products
-            if ( $box_packaging_attr && ! empty( $box_packaging_values_list ) && $product_tier >= 4 ) {
+            if ( $box_packaging_attr && ! empty( $box_packaging_values_list ) && $has_tier_4 ) {
                 $box_packaging_values_array = array();
                 foreach ( $box_packaging_values_list as $box_packaging ) {
+                    // Get default price from term meta or tier_price_overrides
+                    $default_price = 0;
+                    if ( $box_packaging->term_id ) {
+                        $default_price = get_term_meta( $box_packaging->term_id, '_pls_default_price_impact', true );
+                        if ( '' === $default_price && ! empty( $box_packaging->tier_price_overrides ) ) {
+                            $overrides = json_decode( $box_packaging->tier_price_overrides, true );
+                            // Use Tier 4 price as default if available, fallback to Tier 1
+                            $default_price = isset( $overrides[4] ) ? $overrides[4] : ( isset( $overrides[1] ) ? $overrides[1] : 0 );
+                        }
+                    }
                     $box_packaging_values_array[] = array(
                         'value_id' => $box_packaging->id,
                         'value_label' => $box_packaging->label,
-                        'price' => 0,
+                        'price' => floatval( $default_price ),
                     );
                 }
                 if ( ! empty( $box_packaging_values_array ) ) {
