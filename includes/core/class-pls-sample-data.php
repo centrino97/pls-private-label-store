@@ -958,7 +958,7 @@ final class PLS_Sample_Data {
                 'bundle_qualified' => 'starter_line',
             ),
             array(
-                'date' => date( 'Y-m-d H:i:s', strtotime( '-3 days' ) ),
+                'date' => date( 'Y-m-d H:i:s', strtotime( '-2 days' ) ),
                 'status' => 'completed',
                 'customer' => array(
                     'first_name' => 'Michael',
@@ -979,9 +979,9 @@ final class PLS_Sample_Data {
                 'date' => date( 'Y-m-d H:i:s', strtotime( '-1 day' ) ),
                 'status' => 'processing',
                 'customer' => array(
-                    'first_name' => 'Emma',
+                    'first_name' => 'Lisa',
                     'last_name' => 'Williams',
-                    'email' => 'emma.williams@example.com',
+                    'email' => 'lisa.williams@example.com',
                     'address' => '789 George St',
                     'city' => 'Brisbane',
                     'state' => 'QLD',
@@ -997,13 +997,13 @@ final class PLS_Sample_Data {
                 'date' => date( 'Y-m-d H:i:s', strtotime( '-10 days' ) ),
                 'status' => 'completed',
                 'customer' => array(
-                    'first_name' => 'David',
-                    'last_name' => 'Brown',
-                    'email' => 'david.brown@example.com',
-                    'address' => '321 King St',
-                    'city' => 'Perth',
-                    'state' => 'WA',
-                    'postcode' => '6000',
+                    'first_name' => 'Thomas',
+                    'last_name' => 'Anderson',
+                    'email' => 'thomas.anderson@example.com',
+                    'address' => '555 Flinders St',
+                    'city' => 'Adelaide',
+                    'state' => 'SA',
+                    'postcode' => '5000',
                     'country' => 'AU',
                 ),
                 'items' => array(
