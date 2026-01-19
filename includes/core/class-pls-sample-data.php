@@ -38,6 +38,11 @@ final class PLS_Sample_Data {
         self::add_woocommerce_orders();
         self::add_custom_orders();
         self::add_commissions();
+        
+        // Ensure commission email settings are configured
+        if ( ! get_option( 'pls_commission_email_recipients' ) ) {
+            update_option( 'pls_commission_email_recipients', array( 'n.nikolic97@gmail.com' ) );
+        }
     }
 
     /**
@@ -574,7 +579,7 @@ final class PLS_Sample_Data {
             $product_id = PLS_Repo_Base_Product::insert( array(
                 'name' => $product_data['name'],
                 'slug' => sanitize_title( $product_data['name'] ),
-                'status' => 'draft',
+                'status' => 'live', // Set to live so they sync properly
                 'category_path' => (string) $category_term->term_id,
             ) );
 
@@ -594,11 +599,172 @@ final class PLS_Sample_Data {
                 );
             }
 
-            // Add product profile
+            // Get product options for basics_json
+            global $wpdb;
+            $attributes_table = $wpdb->prefix . 'pls_attribute';
+            $values_table = $wpdb->prefix . 'pls_attribute_value';
+            
+            // Get Package Type attribute and values
+            $package_type_attr = $wpdb->get_row( "SELECT * FROM {$attributes_table} WHERE label = 'Package Type' LIMIT 1" );
+            $package_type_values = array();
+            if ( $package_type_attr ) {
+                $package_type_values = PLS_Repo_Attributes::values_for_attr( $package_type_attr->id );
+            }
+            
+            // Get Package Color attribute and values
+            $package_color_attr = $wpdb->get_row( "SELECT * FROM {$attributes_table} WHERE attr_key = 'package-color' LIMIT 1" );
+            $package_color_values = array();
+            if ( $package_color_attr ) {
+                $package_color_values = PLS_Repo_Attributes::values_for_attr( $package_color_attr->id );
+            }
+            
+            // Get Package Cap attribute and values
+            $package_cap_attr = $wpdb->get_row( "SELECT * FROM {$attributes_table} WHERE attr_key = 'package-cap' LIMIT 1" );
+            $package_cap_values = array();
+            if ( $package_cap_attr ) {
+                $package_cap_values = PLS_Repo_Attributes::values_for_attr( $package_cap_attr->id );
+            }
+            
+            // Get Fragrance attribute and values
+            $fragrance_attr = $wpdb->get_row( "SELECT * FROM {$attributes_table} WHERE attr_key = 'fragrance' LIMIT 1" );
+            $fragrance_values = array();
+            if ( $fragrance_attr ) {
+                $fragrance_values = PLS_Repo_Attributes::values_for_attr( $fragrance_attr->id );
+            }
+            
+            // Build attributes array for basics_json
+            $basics_attrs = array();
+            
+            // Add Package Type (select first available)
+            if ( $package_type_attr && ! empty( $package_type_values ) ) {
+                $selected_package_type = $package_type_values[0];
+                $basics_attrs[] = array(
+                    'attribute_id' => $package_type_attr->id,
+                    'attribute_label' => $package_type_attr->label,
+                    'values' => array(
+                        array(
+                            'value_id' => $selected_package_type->id,
+                            'value_label' => $selected_package_type->label,
+                            'price' => 0,
+                        ),
+                    ),
+                );
+            }
+            
+            // Add Package Colors (select 2-3 colors)
+            if ( $package_color_attr && ! empty( $package_color_values ) ) {
+                $selected_colors = array_slice( $package_color_values, 0, min( 3, count( $package_color_values ) ) );
+                $color_values = array();
+                foreach ( $selected_colors as $color ) {
+                    $color_values[] = array(
+                        'value_id' => $color->id,
+                        'value_label' => $color->label,
+                        'price' => 0,
+                    );
+                }
+                if ( ! empty( $color_values ) ) {
+                    $basics_attrs[] = array(
+                        'attribute_id' => $package_color_attr->id,
+                        'attribute_label' => $package_color_attr->label,
+                        'values' => $color_values,
+                    );
+                }
+            }
+            
+            // Add Package Caps (select 2-3 caps)
+            if ( $package_cap_attr && ! empty( $package_cap_values ) ) {
+                $selected_caps = array_slice( $package_cap_values, 0, min( 3, count( $package_cap_values ) ) );
+                $cap_values = array();
+                foreach ( $selected_caps as $cap ) {
+                    $cap_values[] = array(
+                        'value_id' => $cap->id,
+                        'value_label' => $cap->label,
+                        'price' => 0,
+                    );
+                }
+                if ( ! empty( $cap_values ) ) {
+                    $basics_attrs[] = array(
+                        'attribute_id' => $package_cap_attr->id,
+                        'attribute_label' => $package_cap_attr->label,
+                        'values' => $cap_values,
+                    );
+                }
+            }
+            
+            // Add Fragrances for Tier 3+ products (select 2-3 fragrances)
+            $product_tier = ! empty( $product_data['pack_tiers'] ) && isset( $product_data['pack_tiers'][2] ) ? 3 : 1;
+            if ( $fragrance_attr && ! empty( $fragrance_values ) && $product_tier >= 3 ) {
+                $selected_fragrances = array_slice( $fragrance_values, 0, min( 3, count( $fragrance_values ) ) );
+                $fragrance_values_array = array();
+                foreach ( $selected_fragrances as $fragrance ) {
+                    $fragrance_values_array[] = array(
+                        'value_id' => $fragrance->id,
+                        'value_label' => $fragrance->label,
+                        'price' => 0,
+                    );
+                }
+                if ( ! empty( $fragrance_values_array ) ) {
+                    $basics_attrs[] = array(
+                        'attribute_id' => $fragrance_attr->id,
+                        'attribute_label' => $fragrance_attr->label,
+                        'values' => $fragrance_values_array,
+                    );
+                }
+            }
+            
+            // Parse skin types
+            $skin_types_array = array_map( function( $type ) {
+                return array( 'label' => trim( $type ), 'icon' => '' );
+            }, explode( '/', $product_data['skin_types'] ) );
+            
+            // Build benefits
+            $benefits_array = array(
+                array( 'label' => 'Natural & Vegan', 'icon' => '' ),
+                array( 'label' => 'Australian Made', 'icon' => '' ),
+                array( 'label' => 'Cruelty Free', 'icon' => '' ),
+            );
+            
+            // Build key ingredients JSON
+            $key_ingredients_array = array();
+            if ( ! empty( $product_data['key_ingredients'] ) ) {
+                foreach ( $product_data['key_ingredients'] as $ing_name ) {
+                    $ing_term = get_term_by( 'name', $ing_name, 'pls_ingredient' );
+                    if ( $ing_term ) {
+                        $key_ingredients_array[] = array(
+                            'label' => $ing_name,
+                            'icon' => '',
+                            'term_id' => $ing_term->term_id,
+                            'short_description' => get_term_meta( $ing_term->term_id, 'description', true ) ?: '',
+                        );
+                    }
+                }
+            }
+            
+            // Add product profile with full options
+            $ingredient_ids = array();
+            if ( ! empty( $product_data['key_ingredients'] ) ) {
+                foreach ( $product_data['key_ingredients'] as $ing_name ) {
+                    $ing_term = get_term_by( 'name', $ing_name, 'pls_ingredient' );
+                    if ( $ing_term ) {
+                        $ingredient_ids[] = $ing_term->term_id;
+                    }
+                }
+            }
+            
             PLS_Repo_Product_Profile::upsert( $product_id, array(
-                'description' => $product_data['description'],
-                'directions' => $product_data['directions'],
-                'skin_types' => $product_data['skin_types'],
+                'short_description' => $product_data['description'],
+                'long_description' => $product_data['description'] . ' ' . $product_data['directions'],
+                'directions_text' => $product_data['directions'],
+                'skin_types_json' => $skin_types_array,
+                'benefits_json' => $benefits_array,
+                'key_ingredients_json' => $key_ingredients_array,
+                'ingredients_list' => implode( ',', $ingredient_ids ),
+                'basics_json' => $basics_attrs,
+                'label_enabled' => 1,
+                'label_price_per_unit' => 0.50,
+                'label_requires_file' => 1,
+                'label_helper_text' => 'Upload your label design',
+                'label_guide_url' => 'https://bodocibiophysics.com/label-guide/',
             ) );
 
             // Add key ingredients
@@ -731,6 +897,7 @@ final class PLS_Sample_Data {
 
         // Get pack tier variations for products
         $orders_data = array(
+            // Regular order with single product
             array(
                 'date' => date( 'Y-m-d H:i:s', strtotime( '-5 days' ) ),
                 'status' => 'completed',
@@ -748,6 +915,47 @@ final class PLS_Sample_Data {
                     array( 'product_index' => 0, 'tier' => 'tier_2', 'quantity' => 2 ),
                     array( 'product_index' => 1, 'tier' => 'tier_3', 'quantity' => 1 ),
                 ),
+            ),
+            // Bundle-qualified order (Mini Line: 2 SKUs × 250 units)
+            array(
+                'date' => date( 'Y-m-d H:i:s', strtotime( '-4 days' ) ),
+                'status' => 'completed',
+                'customer' => array(
+                    'first_name' => 'Emma',
+                    'last_name' => 'Wilson',
+                    'email' => 'emma.wilson@example.com',
+                    'address' => '789 Queen St',
+                    'city' => 'Brisbane',
+                    'state' => 'QLD',
+                    'postcode' => '4000',
+                    'country' => 'AU',
+                ),
+                'items' => array(
+                    array( 'product_index' => 0, 'tier' => 'tier_3', 'quantity' => 1 ), // 250 units
+                    array( 'product_index' => 1, 'tier' => 'tier_3', 'quantity' => 1 ), // 250 units
+                ),
+                'bundle_qualified' => 'mini_line',
+            ),
+            // Bundle-qualified order (Starter Line: 3 SKUs × 300 units)
+            array(
+                'date' => date( 'Y-m-d H:i:s', strtotime( '-3 days' ) ),
+                'status' => 'completed',
+                'customer' => array(
+                    'first_name' => 'David',
+                    'last_name' => 'Brown',
+                    'email' => 'david.brown@example.com',
+                    'address' => '321 King St',
+                    'city' => 'Perth',
+                    'state' => 'WA',
+                    'postcode' => '6000',
+                    'country' => 'AU',
+                ),
+                'items' => array(
+                    array( 'product_index' => 2, 'tier' => 'tier_3', 'quantity' => 1 ), // 250 units (close enough)
+                    array( 'product_index' => 3, 'tier' => 'tier_3', 'quantity' => 1 ), // 250 units
+                    array( 'product_index' => 4, 'tier' => 'tier_3', 'quantity' => 1 ), // 250 units
+                ),
+                'bundle_qualified' => 'starter_line',
             ),
             array(
                 'date' => date( 'Y-m-d H:i:s', strtotime( '-3 days' ) ),
@@ -896,7 +1104,17 @@ final class PLS_Sample_Data {
 
                 if ( $variation_id ) {
                     $variation = wc_get_product( $variation_id );
-                    $order->add_product( $variation, $item_data['quantity'] );
+                    $item = $order->add_product( $variation, $item_data['quantity'] );
+                    
+                    // Add bundle meta if this order qualifies for bundle pricing
+                    if ( isset( $order_data['bundle_qualified'] ) && $item ) {
+                        $bundle_type = $order_data['bundle_qualified'];
+                        $bundle_key = $bundle_type . '_' . count( $order_data['items'] ) . 'x' . 250; // Approximate
+                        $item->update_meta_data( 'pls_bundle_key', $bundle_key );
+                        $item->update_meta_data( 'pls_bundle_type', $bundle_type );
+                        $item->update_meta_data( 'pls_bundle_price', 10.90 ); // Sample bundle price
+                        $item->save();
+                    }
                 }
             }
 
