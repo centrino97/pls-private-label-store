@@ -397,6 +397,80 @@
     }
 
     function showSpotlightStep(stepIndex) {
+        // Validate step index
+        if (stepIndex < 0 || stepIndex >= spotlightTutorial.steps.length) {
+            // Tutorial complete
+            destroySpotlightTutorial();
+            return;
+        }
+
+        const step = spotlightTutorial.steps[stepIndex];
+        if (!step) {
+            destroySpotlightTutorial();
+            return;
+        }
+
+        // Wait for element to exist with retry logic
+        waitForElement(step.selector, function($element) {
+            if (!$element || $element.length === 0) {
+                console.warn('Tutorial step element not found:', step.selector);
+                // Skip to next step if element doesn't exist
+                setTimeout(function() {
+                    showSpotlightStep(stepIndex + 1);
+                }, 1000);
+                return;
+            }
+
+            // Ensure element is visible
+            if (!$element.is(':visible')) {
+                // Try scrolling to element or waiting
+                $element[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setTimeout(function() {
+                    if ($element.is(':visible')) {
+                        highlightElement($element, step, stepIndex);
+                    } else {
+                        // Element still not visible, skip step
+                        console.warn('Tutorial step element not visible:', step.selector);
+                        setTimeout(function() {
+                            showSpotlightStep(stepIndex + 1);
+                        }, 1000);
+                    }
+                }, 500);
+                return;
+            }
+
+            highlightElement($element, step, stepIndex);
+        });
+    }
+
+    /**
+     * Wait for element to exist with retry logic (up to 5 seconds).
+     */
+    function waitForElement(selector, callback, retries) {
+        retries = retries || 0;
+        const maxRetries = 10; // 10 retries * 500ms = 5 seconds max wait
+        
+        const $element = $(selector);
+        if ($element.length > 0 && $element.is(':visible')) {
+            callback($element);
+            return;
+        }
+
+        if (retries >= maxRetries) {
+            // Element not found after max retries
+            callback(null);
+            return;
+        }
+
+        setTimeout(function() {
+            waitForElement(selector, callback, retries + 1);
+        }, 500);
+    }
+
+    /**
+     * Highlight element and show tooltip with improved error handling.
+     */
+    function highlightElement($element, step, stepIndex) {
         if (stepIndex >= spotlightTutorial.steps.length) {
             // Tutorial complete for this page
             completeSpotlightTutorial();
@@ -404,50 +478,137 @@
         }
 
         const step = spotlightTutorial.steps[stepIndex];
-        const $target = $(step.selector).first();
-
-        if ($target.length === 0) {
-            // Element not found, try next step
+        if (!step || !step.selector) {
+            console.warn('Tutorial step missing selector:', step);
             setTimeout(() => showSpotlightStep(stepIndex + 1), 500);
             return;
         }
 
-        // Scroll to element
-        $('html, body').animate({
-            scrollTop: $target.offset().top - 100
-        }, 500);
+        // Wait for element with retry logic (up to 5 seconds)
+        waitForElementWithRetry(step.selector, function($target) {
+            if (!$target || $target.length === 0) {
+                console.warn('Tutorial step element not found after retries:', step.selector);
+                // Skip to next step if element doesn't exist
+                setTimeout(() => showSpotlightStep(stepIndex + 1), 500);
+                return;
+            }
 
-        // Wait for scroll, then show spotlight
+            // Ensure element is visible
+            if (!$target.is(':visible')) {
+                // Try scrolling to element
+                try {
+                    $target[0].scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+                } catch (e) {
+                    // Fallback scroll
+                    $('html, body').animate({
+                        scrollTop: $target.offset().top - 100
+                    }, 500);
+                }
+                
+                // Wait and check visibility again
+                setTimeout(() => {
+                    if ($target.is(':visible')) {
+                        highlightElement($target, step);
+                    } else {
+                        console.warn('Tutorial step element not visible after scroll:', step.selector);
+                        // Skip step if still not visible
+                        setTimeout(() => showSpotlightStep(stepIndex + 1), 500);
+                    }
+                }, 600);
+                return;
+            }
+
+            // Element found and visible, highlight it
+            try {
+                // Scroll to element smoothly
+                $target[0].scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+                setTimeout(() => {
+                    highlightElement($target, step);
+                }, 600);
+            } catch (e) {
+                // Fallback scroll
+                $('html, body').animate({
+                    scrollTop: $target.offset().top - 100
+                }, 500);
+                setTimeout(() => {
+                    highlightElement($target, step);
+                }, 600);
+            }
+        });
+    }
+
+    /**
+     * Wait for element to exist with retry logic (up to 5 seconds).
+     */
+    function waitForElementWithRetry(selector, callback, retries) {
+        retries = retries || 0;
+        const maxRetries = 10; // 10 retries * 500ms = 5 seconds max wait
+        
+        try {
+            const $element = $(selector).first();
+            if ($element.length > 0 && $element.is(':visible')) {
+                callback($element);
+                return;
+            }
+        } catch (e) {
+            console.warn('Error checking element:', selector, e);
+        }
+
+        if (retries >= maxRetries) {
+            // Element not found after max retries
+            callback(null);
+            return;
+        }
+
         setTimeout(() => {
-            highlightElement($target, step);
-        }, 600);
+            waitForElementWithRetry(selector, callback, retries + 1);
+        }, 500);
     }
 
     function highlightElement($element, step) {
+        // Validate element exists and is visible
+        if (!$element || $element.length === 0 || !$element.is(':visible')) {
+            console.warn('Cannot highlight element - not found or not visible');
+            return;
+        }
+
         // Remove existing spotlight
         $('.pls-tutorial-spotlight').remove();
         $('.pls-tutorial-tooltip').remove();
 
-        // Get element position
-        const offset = $element.offset();
-        const width = $element.outerWidth();
-        const height = $element.outerHeight();
+        try {
+            // Get element position with error handling
+            const offset = $element.offset();
+            if (!offset) {
+                console.warn('Cannot get element offset');
+                return;
+            }
 
-        // Create spotlight
-        spotlightTutorial.spotlight = $('<div class="pls-tutorial-spotlight"></div>');
-        spotlightTutorial.spotlight.css({
-            top: offset.top + 'px',
-            left: offset.left + 'px',
-            width: width + 'px',
-            height: height + 'px'
-        });
-        $('body').append(spotlightTutorial.spotlight);
+            const width = Math.max($element.outerWidth() || 0, 10);
+            const height = Math.max($element.outerHeight() || 0, 10);
 
-        // Add highlight class to element
-        $element.addClass('pls-tutorial-highlighted');
+            // Create spotlight
+            spotlightTutorial.spotlight = $('<div class="pls-tutorial-spotlight"></div>');
+            spotlightTutorial.spotlight.css({
+                top: offset.top + 'px',
+                left: offset.left + 'px',
+                width: width + 'px',
+                height: height + 'px'
+            });
+            $('body').append(spotlightTutorial.spotlight);
 
-        // Create tooltip
-        createTooltip($element, step);
+            // Add highlight class to element
+            $element.addClass('pls-tutorial-highlighted');
+
+            // Create tooltip
+            createTooltip($element, step);
+        } catch (e) {
+            console.error('Error highlighting element:', e);
+            // Continue to next step on error
+            setTimeout(() => {
+                nextSpotlightStep();
+            }, 500);
+        }
     }
 
     function createTooltip($element, step) {

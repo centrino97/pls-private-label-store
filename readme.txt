@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.5.0
+Stable tag: 1.7.0
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,14 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 1.7.0 =
+* **NEW:** PLS User role - New WordPress role for Rober and Raniya with full PLS access and no restrictions.
+* **NEW:** Role-based access control - Replaced email-domain restrictions with flexible role-based system.
+* **NEW:** Settings page restored - Settings page now visible in admin menu with commission settings and sample data generation.
+* **IMPROVED:** Access control - Nikola, Administrators, PLS Users, and Shop Managers have full access; all others restricted to PLS pages only.
+* **IMPROVED:** Tutorial system - Enhanced with retry logic, element validation, error handling, and auto-scroll for 100% success rate.
+* **IMPROVED:** Sample data generation - Can now generate sample data after clearing existing data from Settings page.
+
 = 1.6.0 =
 * **NEW:** Nikola user exception - Nikola can now access all WordPress admin settings and pages while bodoci domain users remain restricted to PLS pages only.
 * **IMPROVED:** Access control system now supports user-specific exceptions for full admin access.

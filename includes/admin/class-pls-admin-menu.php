@@ -52,12 +52,12 @@ final class PLS_Admin_Menu {
     }
 
     /**
-     * Check if current user is a Bodoci user (restricted access).
-     * Note: Nikola is excluded from restrictions and has full access.
+     * Check if current user should have restricted access (only PLS pages).
+     * Note: Nikola, administrators, and PLS users have full access.
      *
      * @return bool
      */
-    public static function is_bodoci_user() {
+    public static function is_restricted_user() {
         $current_user = wp_get_current_user();
         if ( ! $current_user || ! $current_user->ID ) {
             return false;
@@ -68,22 +68,33 @@ final class PLS_Admin_Menu {
             return false;
         }
 
-        $email = strtolower( $current_user->user_email );
-        
-        // Check by email domain
-        $bodoci_domains = array( 'bodocibiophysics.com', 'bodoci.com' );
-        foreach ( $bodoci_domains as $domain ) {
-            if ( strpos( $email, '@' . $domain ) !== false ) {
-                return true;
-            }
+        // Administrators have full access
+        if ( current_user_can( 'manage_options' ) ) {
+            return false;
         }
 
-        // Check by role (if you want to use a specific role)
-        // if ( in_array( 'bodoci_user', $current_user->roles, true ) ) {
-        //     return true;
-        // }
+        // PLS users have full access to PLS pages (no restrictions)
+        if ( in_array( PLS_Capabilities::ROLE_PLS_USER, $current_user->roles, true ) ) {
+            return false;
+        }
 
-        return false;
+        // Shop managers have full access
+        if ( current_user_can( 'manage_woocommerce' ) ) {
+            return false;
+        }
+
+        // All other users are restricted to PLS pages only
+        return true;
+    }
+
+    /**
+     * Check if current user is a Bodoci user (restricted access).
+     * DEPRECATED: Use is_restricted_user() instead. Kept for backward compatibility.
+     *
+     * @return bool
+     */
+    public static function is_bodoci_user() {
+        return self::is_restricted_user();
     }
 
     /**
@@ -107,6 +118,7 @@ final class PLS_Admin_Menu {
             'pls-commission',
             'pls-revenue',
             'pls-product-preview',
+            'pls-settings', // Include settings page
         );
 
         $current_page = isset( $_GET['page'] ) ? sanitize_text_field( wp_unslash( $_GET['page'] ) ) : '';
@@ -132,8 +144,8 @@ final class PLS_Admin_Menu {
     }
 
     /**
-     * Redirect Bodoci users to PLS dashboard on login.
-     * Note: Nikola is excluded from redirects and can access all pages.
+     * Redirect restricted users to PLS dashboard on login.
+     * Note: Nikola, administrators, and PLS users are excluded from redirects.
      *
      * @param string $user_login User login name.
      * @param WP_User $user User object.
@@ -148,15 +160,24 @@ final class PLS_Admin_Menu {
             return;
         }
 
-        $email = strtolower( $user->user_email );
-        $bodoci_domains = array( 'bodocibiophysics.com', 'bodoci.com' );
-        
-        foreach ( $bodoci_domains as $domain ) {
-            if ( strpos( $email, '@' . $domain ) !== false ) {
-                wp_safe_redirect( admin_url( 'admin.php?page=pls-dashboard' ) );
-                exit;
-            }
+        // Administrators have full access
+        if ( user_can( $user, 'manage_options' ) ) {
+            return;
         }
+
+        // PLS users have full access to PLS pages
+        if ( in_array( PLS_Capabilities::ROLE_PLS_USER, $user->roles, true ) ) {
+            return;
+        }
+
+        // Shop managers have full access
+        if ( user_can( $user, 'manage_woocommerce' ) ) {
+            return;
+        }
+
+        // All other users redirect to PLS dashboard
+        wp_safe_redirect( admin_url( 'admin.php?page=pls-dashboard' ) );
+        exit;
     }
 
     /**
@@ -295,15 +316,15 @@ final class PLS_Admin_Menu {
             array( __CLASS__, 'render_bundles' )
         );
 
-        // Settings page hidden from UI - functionality remains in codebase for future use
-        // add_submenu_page(
-        //     'pls-dashboard',
-        //     __( 'PLS – Settings', 'pls-private-label-store' ),
-        //     __( 'Settings', 'pls-private-label-store' ),
-        //     'manage_woocommerce',
-        //     'pls-settings',
-        //     array( __CLASS__, 'render_settings' )
-        // );
+        // Settings page with commission settings and sample data
+        add_submenu_page(
+            'pls-dashboard',
+            __( 'PLS – Settings', 'pls-private-label-store' ),
+            __( 'Settings', 'pls-private-label-store' ),
+            'manage_woocommerce',
+            'pls-settings',
+            array( __CLASS__, 'render_settings' )
+        );
 
         // Hidden preview page (accessed via direct link)
         add_submenu_page(
@@ -353,8 +374,8 @@ final class PLS_Admin_Menu {
             }
         ';
 
-        // Hide WP admin menu for Bodoci users everywhere
-        if ( self::is_bodoci_user() ) {
+        // Hide WP admin menu for restricted users everywhere
+        if ( self::is_restricted_user() ) {
             $hide_admin_css .= '
                 #adminmenuback,
                 #adminmenuwrap {
