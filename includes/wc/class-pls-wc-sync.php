@@ -730,4 +730,104 @@ final class PLS_WC_Sync {
 
         return sprintf( __( 'Synced %d bundles successfully.', 'pls-private-label-store' ), $synced );
     }
+
+    /**
+     * Validate product sync - compare PLS data with WooCommerce data.
+     *
+     * @param int $base_product_id PLS base product ID.
+     * @param int $wc_product_id WooCommerce product ID.
+     * @return array Validation result with errors/warnings.
+     */
+    private static function validate_product_sync( $base_product_id, $wc_product_id ) {
+        $result = array(
+            'valid' => true,
+            'errors' => array(),
+            'warnings' => array(),
+        );
+
+        $base = PLS_Repo_Base_Product::get( $base_product_id );
+        $wc_product = wc_get_product( $wc_product_id );
+
+        if ( ! $base || ! $wc_product ) {
+            $result['valid'] = false;
+            $result['errors'][] = 'Base product or WooCommerce product not found';
+            return $result;
+        }
+
+        // Validate status
+        $expected_status = ( 'live' === $base->status ) ? 'publish' : 'draft';
+        if ( $wc_product->get_status() !== $expected_status ) {
+            $result['warnings'][] = sprintf(
+                'Status mismatch: PLS=%s, WC=%s (expected %s)',
+                $base->status,
+                $wc_product->get_status(),
+                $expected_status
+            );
+        }
+
+        // Validate product type
+        if ( ! $wc_product->is_type( 'variable' ) ) {
+            $result['errors'][] = 'WooCommerce product is not a variable product';
+            $result['valid'] = false;
+        }
+
+        // Validate pack tiers/variations
+        $tiers = PLS_Repo_Pack_Tier::for_base( $base_product_id );
+        $enabled_tiers = array_filter( $tiers, function( $tier ) {
+            return (int) $tier->is_enabled === 1;
+        } );
+
+        $wc_variations = $wc_product->get_children();
+        $variation_count = count( $wc_variations );
+        $tier_count = count( $enabled_tiers );
+
+        if ( $variation_count !== $tier_count ) {
+            $result['warnings'][] = sprintf(
+                'Variation count mismatch: PLS tiers=%d, WC variations=%d',
+                $tier_count,
+                $variation_count
+            );
+        }
+
+        // Validate variation prices
+        foreach ( $enabled_tiers as $tier ) {
+            if ( ! $tier->wc_variation_id ) {
+                $result['warnings'][] = sprintf( 'Tier %s has no WooCommerce variation ID', $tier->tier_key );
+                continue;
+            }
+
+            $variation = wc_get_product( $tier->wc_variation_id );
+            if ( ! $variation ) {
+                $result['errors'][] = sprintf( 'Variation %d not found for tier %s', $tier->wc_variation_id, $tier->tier_key );
+                $result['valid'] = false;
+                continue;
+            }
+
+            $wc_price = (float) $variation->get_regular_price();
+            $pls_price = (float) $tier->price;
+
+            // Allow small rounding differences (0.01)
+            if ( abs( $wc_price - $pls_price ) > 0.01 ) {
+                $result['warnings'][] = sprintf(
+                    'Price mismatch for tier %s: PLS=%.2f, WC=%.2f',
+                    $tier->tier_key,
+                    $pls_price,
+                    $wc_price
+                );
+            }
+
+            // Validate units meta
+            $wc_units = get_post_meta( $tier->wc_variation_id, '_pls_units', true );
+            if ( (string) $wc_units !== (string) $tier->units ) {
+                $result['warnings'][] = sprintf(
+                    'Units mismatch for tier %s: PLS=%s, WC=%s',
+                    $tier->tier_key,
+                    $tier->units,
+                    $wc_units
+                );
+            }
+        }
+
+        return $result;
+    }
 }

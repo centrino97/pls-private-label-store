@@ -57,11 +57,18 @@ if ( isset( $_POST['pls_save_settings'] ) && check_admin_referer( 'pls_save_sett
     // Save debug settings
     $debug_enabled = isset( $_POST['pls_debug_enabled'] ) ? 1 : 0;
     $debug_log_level = isset( $_POST['pls_debug_log_level'] ) ? sanitize_text_field( wp_unslash( $_POST['pls_debug_log_level'] ) ) : 'debug';
+    // Ensure log_level is a valid string, not null
+    if ( empty( $debug_log_level ) || ! is_string( $debug_log_level ) ) {
+        $debug_log_level = 'debug';
+    }
     update_option( 'pls_debug_enabled', $debug_enabled );
     update_option( 'pls_debug_log_level', $debug_log_level );
 
     // Save custom order thank you page URL
-    $thank_you_url = isset( $_POST['pls_custom_order_thank_you_url'] ) ? esc_url_raw( wp_unslash( $_POST['pls_custom_order_thank_you_url'] ) ) : '';
+    $thank_you_url = '';
+    if ( isset( $_POST['pls_custom_order_thank_you_url'] ) && ! empty( $_POST['pls_custom_order_thank_you_url'] ) ) {
+        $thank_you_url = esc_url_raw( wp_unslash( $_POST['pls_custom_order_thank_you_url'] ) );
+    }
     update_option( 'pls_custom_order_thank_you_url', $thank_you_url );
 
     // Clear debug logs if requested

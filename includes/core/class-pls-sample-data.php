@@ -164,18 +164,30 @@ final class PLS_Sample_Data {
         }
 
         // Delete sample WooCommerce orders (only those created by sample data)
+        // Use WP_Query instead of deprecated meta_query in WC_Order_Query
+        $order_ids = get_posts( array(
+            'post_type' => 'shop_order',
+            'posts_per_page' => -1,
+            'post_status' => 'any',
+            'meta_key' => '_pls_sample_order',
+            'meta_value' => '1',
+            'fields' => 'ids',
+        ) );
+        
+        foreach ( $order_ids as $order_id ) {
+            wp_delete_post( $order_id, true );
+        }
+        
+        // Also try wc_get_orders with simple query for compatibility
         $sample_orders = wc_get_orders( array(
             'limit' => -1,
-            'meta_query' => array(
-                array(
-                    'key' => '_pls_sample_order',
-                    'value' => '1',
-                    'compare' => '='
-                )
-            )
+            'status' => 'any',
         ) );
+        // Filter orders by meta in PHP instead of query
         foreach ( $sample_orders as $order ) {
-            wp_delete_post( $order->get_id(), true );
+            if ( $order && get_post_meta( $order->get_id(), '_pls_sample_order', true ) === '1' ) {
+                wp_delete_post( $order->get_id(), true );
+            }
         }
 
         // Delete all PLS products
