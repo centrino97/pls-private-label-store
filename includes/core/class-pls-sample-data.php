@@ -648,7 +648,12 @@ final class PLS_Sample_Data {
             $all_attributes = PLS_Repo_Attributes::attrs_all();
             foreach ( $all_attributes as $attr ) {
                 $values = PLS_Repo_Attributes::values_for_attr( $attr->id );
-                $taxonomy = wc_attribute_taxonomy_name( sanitize_title( $attr->attr_key ) );
+                // Ensure attr_key is a string
+                $attr_key = isset( $attr->attr_key ) && is_string( $attr->attr_key ) ? $attr->attr_key : '';
+                if ( empty( $attr_key ) ) {
+                    continue;
+                }
+                $taxonomy = wc_attribute_taxonomy_name( sanitize_title( $attr_key ) );
                 
                 foreach ( $values as $value ) {
                     if ( ! $value->term_id ) {
@@ -1311,7 +1316,12 @@ final class PLS_Sample_Data {
         );
 
         foreach ( $bundles as $bundle_data ) {
-            $slug = sanitize_title( $bundle_data['name'] );
+            // Ensure bundle name is a string
+            $bundle_name = isset( $bundle_data['name'] ) && is_string( $bundle_data['name'] ) ? $bundle_data['name'] : '';
+            if ( empty( $bundle_name ) ) {
+                continue; // Skip if no valid name
+            }
+            $slug = sanitize_title( $bundle_name );
             $bundle_key = $bundle_data['bundle_type'] . '_' . $bundle_data['sku_count'] . 'x' . $bundle_data['units_per_sku'];
             
             // Calculate totals
@@ -1332,7 +1342,7 @@ final class PLS_Sample_Data {
             $data = array(
                 'bundle_key' => $bundle_key,
                 'slug' => $slug,
-                'name' => $bundle_data['name'],
+                'name' => $bundle_name,
                 'base_price' => $total_price,
                 'pricing_mode' => 'fixed',
                 'status' => $bundle_data['status'],
