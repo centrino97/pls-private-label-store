@@ -71,64 +71,13 @@ $pending_commission = PLS_Repo_Commission::get_total(
 );
 ?>
 <div class="wrap pls-wrap pls-page-dashboard">
-    <?php
-    $current_user_id = get_current_user_id();
-    $onboarding_progress = PLS_Onboarding::get_progress( $current_user_id );
-    $has_completed_onboarding = $onboarding_progress && $onboarding_progress->completed_at;
-    $explored_features = $has_completed_onboarding ? PLS_Onboarding::get_explored_features( $current_user_id ) : array();
-    $exploration_flows = PLS_Onboarding::get_exploration_flows();
-    ?>
     <div class="pls-page-head">
         <div>
             <p class="pls-label"><?php esc_html_e( 'Dashboard', 'pls-private-label-store' ); ?></p>
             <h1><?php esc_html_e( 'PLS Overview', 'pls-private-label-store' ); ?></h1>
-            <p class="description"><?php esc_html_e( 'Quick overview of your PLS operations.', 'pls-private-label-store' ); ?></p>
+            <p class="description"><?php esc_html_e( 'Quick overview of your PLS operations. Click the help button (?) for detailed guides on any page.', 'pls-private-label-store' ); ?></p>
         </div>
     </div>
-
-    <?php if ( ! $has_completed_onboarding ) : 
-        $user_name = PLS_Onboarding::get_user_name();
-        $greeting = $user_name ? sprintf( __( 'Hi %s,', 'pls-private-label-store' ), $user_name ) : __( 'Hi there,', 'pls-private-label-store' );
-    ?>
-        <!-- Welcome Banner for New Users -->
-        <div class="pls-welcome-banner" id="pls-welcome-banner">
-            <div class="pls-welcome-banner__content">
-                <div class="pls-welcome-banner__icon">
-                    <span class="dashicons dashicons-welcome-learn-more"></span>
-                </div>
-                <div class="pls-welcome-banner__text">
-                    <h2><?php echo esc_html( $greeting ); ?></h2>
-                    <p><?php echo esc_html( __( 'Let\'s get you set up quickly. Follow the tutorial to configure options, create your first product, and set up bundles.', 'pls-private-label-store' ) ); ?></p>
-                    <div class="pls-welcome-banner__steps">
-                        <div class="pls-welcome-step">
-                            <span class="pls-welcome-step__number">1</span>
-                            <span class="pls-welcome-step__text"><?php esc_html_e( 'Configure Product Options', 'pls-private-label-store' ); ?></span>
-                        </div>
-                        <div class="pls-welcome-step">
-                            <span class="pls-welcome-step__number">2</span>
-                            <span class="pls-welcome-step__text"><?php esc_html_e( 'Create Your First Product', 'pls-private-label-store' ); ?></span>
-                        </div>
-                        <div class="pls-welcome-step">
-                            <span class="pls-welcome-step__number">3</span>
-                            <span class="pls-welcome-step__text"><?php esc_html_e( 'Set Up Bundles', 'pls-private-label-store' ); ?></span>
-                        </div>
-                        <div class="pls-welcome-step">
-                            <span class="pls-welcome-step__number">4</span>
-                            <span class="pls-welcome-step__text"><?php esc_html_e( 'Review Categories', 'pls-private-label-store' ); ?></span>
-                        </div>
-                    </div>
-                </div>
-                <div class="pls-welcome-banner__actions">
-                    <button type="button" class="button button-primary button-hero" id="pls-start-tutorial-banner">
-                        <?php esc_html_e( 'Start Tutorial', 'pls-private-label-store' ); ?>
-                    </button>
-                    <button type="button" class="button button-link" id="pls-skip-onboarding-banner">
-                        <?php esc_html_e( 'Skip for now', 'pls-private-label-store' ); ?>
-                    </button>
-                </div>
-            </div>
-        </div>
-    <?php endif; ?>
 
     <!-- Summary Cards -->
     <div class="pls-dashboard-summary">
@@ -201,38 +150,6 @@ $pending_commission = PLS_Repo_Commission::get_total(
         </div>
     </div>
 
-    <?php if ( $has_completed_onboarding ) : ?>
-        <!-- Feature Exploration Section -->
-        <div class="pls-feature-exploration" id="pls-feature-exploration">
-            <div class="pls-feature-exploration__header">
-                <h2><?php esc_html_e( 'Explore Features', 'pls-private-label-store' ); ?></h2>
-                <p class="description"><?php esc_html_e( 'Take guided tours to learn about advanced features and workflows.', 'pls-private-label-store' ); ?></p>
-            </div>
-            <div class="pls-exploration-cards">
-                <?php foreach ( $exploration_flows as $key => $flow ) : 
-                    $is_explored = in_array( $key, $explored_features, true );
-                ?>
-                    <div class="pls-exploration-card" data-exploration-key="<?php echo esc_attr( $key ); ?>">
-                        <div class="pls-exploration-card__icon">
-                            <span class="dashicons <?php echo esc_attr( $flow['icon'] ); ?>"></span>
-                        </div>
-                        <div class="pls-exploration-card__content">
-                            <h3><?php echo esc_html( $flow['title'] ); ?></h3>
-                            <p><?php echo esc_html( $flow['description'] ); ?></p>
-                            <?php if ( $is_explored ) : ?>
-                                <span class="pls-exploration-card__badge"><?php esc_html_e( 'Completed', 'pls-private-label-store' ); ?></span>
-                            <?php endif; ?>
-                        </div>
-                        <div class="pls-exploration-card__actions">
-                            <button type="button" class="button button-primary pls-exploration-start" data-exploration-key="<?php echo esc_attr( $key ); ?>">
-                                <?php esc_html_e( 'Take Tour', 'pls-private-label-store' ); ?>
-                            </button>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-        </div>
-    <?php endif; ?>
 
     <!-- Quick Links -->
     <div class="pls-dashboard-links">

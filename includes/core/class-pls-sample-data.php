@@ -530,6 +530,48 @@ final class PLS_Sample_Data {
 
         // Ingredients are automatically synced via PLS_Ingredient_Sync when created
         // They appear as product options with tier restrictions
+        
+        // Sync all attributes to WooCommerce and set default price impacts
+        if ( class_exists( 'WooCommerce' ) ) {
+            require_once PLS_PLS_DIR . 'includes/wc/class-pls-wc-sync.php';
+            PLS_WC_Sync::sync_attributes_from_pls();
+            
+            // Set default price impacts on term meta for all attribute values
+            $all_attributes = PLS_Repo_Attributes::attrs_all();
+            foreach ( $all_attributes as $attr ) {
+                $values = PLS_Repo_Attributes::values_for_attr( $attr->id );
+                $taxonomy = wc_attribute_taxonomy_name( sanitize_title( $attr->attr_key ) );
+                
+                foreach ( $values as $value ) {
+                    if ( ! $value->term_id ) {
+                        continue;
+                    }
+                    
+                    // Get default price from tier_price_overrides (use tier 1 or lowest tier)
+                    $default_price = 0;
+                    if ( ! empty( $value->tier_price_overrides ) ) {
+                        $overrides = json_decode( $value->tier_price_overrides, true );
+                        if ( is_array( $overrides ) && ! empty( $overrides ) ) {
+                            // Use tier 1 price, or first available tier price
+                            if ( isset( $overrides[1] ) ) {
+                                $default_price = floatval( $overrides[1] );
+                            } else {
+                                $tiers = array_keys( $overrides );
+                                sort( $tiers );
+                                if ( ! empty( $tiers ) ) {
+                                    $default_price = floatval( $overrides[ $tiers[0] ] );
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Set default price impact on term meta
+                    if ( $default_price > 0 || get_term_meta( $value->term_id, '_pls_default_price_impact', true ) === '' ) {
+                        update_term_meta( $value->term_id, '_pls_default_price_impact', $default_price );
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -1169,22 +1211,97 @@ final class PLS_Sample_Data {
             return;
         }
 
-        // Get pack tier variations for products
-        $orders_data = array(
-            // Completed orders (2-3)
+        // Generate orders spread across the past year (12 months)
+        // Create ~30-40 orders distributed across different months
+        $orders_data = array();
+        
+        // Customer data pool
+        $customers = array(
+            array( 'first_name' => 'Sarah', 'last_name' => 'Johnson', 'email' => 'sarah.johnson@example.com', 'address' => '123 Main St', 'city' => 'Sydney', 'state' => 'NSW', 'postcode' => '2000' ),
+            array( 'first_name' => 'Emma', 'last_name' => 'Wilson', 'email' => 'emma.wilson@example.com', 'address' => '789 Queen St', 'city' => 'Brisbane', 'state' => 'QLD', 'postcode' => '4000' ),
+            array( 'first_name' => 'Thomas', 'last_name' => 'Anderson', 'email' => 'thomas.anderson@example.com', 'address' => '555 Flinders St', 'city' => 'Adelaide', 'state' => 'SA', 'postcode' => '5000' ),
+            array( 'first_name' => 'Lisa', 'last_name' => 'Williams', 'email' => 'lisa.williams@example.com', 'address' => '789 George St', 'city' => 'Brisbane', 'state' => 'QLD', 'postcode' => '4000' ),
+            array( 'first_name' => 'Michael', 'last_name' => 'Chen', 'email' => 'michael.chen@example.com', 'address' => '456 Collins St', 'city' => 'Melbourne', 'state' => 'VIC', 'postcode' => '3000' ),
+            array( 'first_name' => 'David', 'last_name' => 'Brown', 'email' => 'david.brown@example.com', 'address' => '321 King St', 'city' => 'Perth', 'state' => 'WA', 'postcode' => '6000' ),
+            array( 'first_name' => 'Jessica', 'last_name' => 'Martinez', 'email' => 'jessica.martinez@example.com', 'address' => '888 Bourke St', 'city' => 'Melbourne', 'state' => 'VIC', 'postcode' => '3000' ),
+            array( 'first_name' => 'Olivia', 'last_name' => 'Taylor', 'email' => 'olivia.taylor@example.com', 'address' => '111 Swanston St', 'city' => 'Melbourne', 'state' => 'VIC', 'postcode' => '3000' ),
+            array( 'first_name' => 'James', 'last_name' => 'Smith', 'email' => 'james.smith@example.com', 'address' => '222 Elizabeth St', 'city' => 'Sydney', 'state' => 'NSW', 'postcode' => '2000' ),
+            array( 'first_name' => 'Sophia', 'last_name' => 'Davis', 'email' => 'sophia.davis@example.com', 'address' => '333 King St', 'city' => 'Sydney', 'state' => 'NSW', 'postcode' => '2000' ),
+        );
+        
+        $statuses = array( 'completed', 'completed', 'completed', 'completed', 'completed', 'processing', 'processing', 'on-hold', 'pending' );
+        $tiers = array( 'tier_1', 'tier_2', 'tier_3', 'tier_4', 'tier_5' );
+        
+        // Generate orders for each month (past 12 months)
+        for ( $month_offset = 11; $month_offset >= 0; $month_offset-- ) {
+            $base_date = strtotime( "-{$month_offset} months" );
+            
+            // 2-4 orders per month
+            $orders_per_month = rand( 2, 4 );
+            
+            for ( $i = 0; $i < $orders_per_month; $i++ ) {
+                // Random day within the month
+                $days_in_month = date( 't', $base_date );
+                $random_day = rand( 1, $days_in_month );
+                $order_date = date( 'Y-m-d H:i:s', mktime( rand( 9, 17 ), rand( 0, 59 ), rand( 0, 59 ), date( 'n', $base_date ), $random_day, date( 'Y', $base_date ) ) );
+                
+                // Don't create future dates
+                if ( strtotime( $order_date ) > time() ) {
+                    continue;
+                }
+                
+                $customer = $customers[ array_rand( $customers ) ];
+                $status = $statuses[ array_rand( $statuses ) ];
+                
+                // More recent orders are more likely to be pending/processing
+                if ( $month_offset <= 1 ) {
+                    $recent_statuses = array( 'completed', 'processing', 'processing', 'on-hold', 'pending' );
+                    $status = $recent_statuses[ array_rand( $recent_statuses ) ];
+                }
+                
+                // Random product selection
+                $num_items = rand( 1, 3 );
+                $items = array();
+                $used_products = array();
+                
+                for ( $j = 0; $j < $num_items; $j++ ) {
+                    $product_index = rand( 0, min( 9, count( $products ) - 1 ) );
+                    // Avoid duplicate products in same order
+                    if ( in_array( $product_index, $used_products, true ) ) {
+                        continue;
+                    }
+                    $used_products[] = $product_index;
+                    $tier = $tiers[ array_rand( $tiers ) ];
+                    $items[] = array( 'product_index' => $product_index, 'tier' => $tier, 'quantity' => rand( 1, 3 ) );
+                }
+                
+                if ( empty( $items ) ) {
+                    continue;
+                }
+                
+                $order_data = array(
+                    'date' => $order_date,
+                    'status' => $status,
+                    'customer' => array_merge( $customer, array( 'country' => 'AU' ) ),
+                    'items' => $items,
+                );
+                
+                // Occasionally add bundle qualification
+                if ( count( $items ) >= 2 && rand( 1, 3 ) === 1 ) {
+                    $bundle_types = array( 'mini_line', 'starter_line', 'growth_line' );
+                    $order_data['bundle_qualified'] = $bundle_types[ array_rand( $bundle_types ) ];
+                }
+                
+                $orders_data[] = $order_data;
+            }
+        }
+        
+        // Add some very recent orders (last few days)
+        $recent_orders = array(
             array(
                 'date' => date( 'Y-m-d H:i:s', strtotime( '-5 days' ) ),
                 'status' => 'completed',
-                'customer' => array(
-                    'first_name' => 'Sarah',
-                    'last_name' => 'Johnson',
-                    'email' => 'sarah.johnson@example.com',
-                    'address' => '123 Main St',
-                    'city' => 'Sydney',
-                    'state' => 'NSW',
-                    'postcode' => '2000',
-                    'country' => 'AU',
-                ),
+                'customer' => $customers[0],
                 'items' => array(
                     array( 'product_index' => 0, 'tier' => 'tier_2', 'quantity' => 2 ),
                     array( 'product_index' => 1, 'tier' => 'tier_3', 'quantity' => 1 ),
@@ -1193,16 +1310,7 @@ final class PLS_Sample_Data {
             array(
                 'date' => date( 'Y-m-d H:i:s', strtotime( '-4 days' ) ),
                 'status' => 'completed',
-                'customer' => array(
-                    'first_name' => 'Emma',
-                    'last_name' => 'Wilson',
-                    'email' => 'emma.wilson@example.com',
-                    'address' => '789 Queen St',
-                    'city' => 'Brisbane',
-                    'state' => 'QLD',
-                    'postcode' => '4000',
-                    'country' => 'AU',
-                ),
+                'customer' => $customers[1],
                 'items' => array(
                     array( 'product_index' => 0, 'tier' => 'tier_3', 'quantity' => 1 ),
                     array( 'product_index' => 1, 'tier' => 'tier_3', 'quantity' => 1 ),
@@ -1210,36 +1318,9 @@ final class PLS_Sample_Data {
                 'bundle_qualified' => 'mini_line',
             ),
             array(
-                'date' => date( 'Y-m-d H:i:s', strtotime( '-10 days' ) ),
-                'status' => 'completed',
-                'customer' => array(
-                    'first_name' => 'Thomas',
-                    'last_name' => 'Anderson',
-                    'email' => 'thomas.anderson@example.com',
-                    'address' => '555 Flinders St',
-                    'city' => 'Adelaide',
-                    'state' => 'SA',
-                    'postcode' => '5000',
-                    'country' => 'AU',
-                ),
-                'items' => array(
-                    array( 'product_index' => 2, 'tier' => 'tier_5', 'quantity' => 5 ),
-                ),
-            ),
-            // Processing orders (2)
-            array(
                 'date' => date( 'Y-m-d H:i:s', strtotime( '-1 day' ) ),
                 'status' => 'processing',
-                'customer' => array(
-                    'first_name' => 'Lisa',
-                    'last_name' => 'Williams',
-                    'email' => 'lisa.williams@example.com',
-                    'address' => '789 George St',
-                    'city' => 'Brisbane',
-                    'state' => 'QLD',
-                    'postcode' => '4000',
-                    'country' => 'AU',
-                ),
+                'customer' => $customers[3],
                 'items' => array(
                     array( 'product_index' => 4, 'tier' => 'tier_3', 'quantity' => 2 ),
                     array( 'product_index' => 5, 'tier' => 'tier_2', 'quantity' => 1 ),
@@ -1248,59 +1329,36 @@ final class PLS_Sample_Data {
             array(
                 'date' => date( 'Y-m-d H:i:s', strtotime( '-2 days' ) ),
                 'status' => 'processing',
-                'customer' => array(
-                    'first_name' => 'Michael',
-                    'last_name' => 'Chen',
-                    'email' => 'michael.chen@example.com',
-                    'address' => '456 Collins St',
-                    'city' => 'Melbourne',
-                    'state' => 'VIC',
-                    'postcode' => '3000',
-                    'country' => 'AU',
-                ),
+                'customer' => $customers[4],
                 'items' => array(
                     array( 'product_index' => 6, 'tier' => 'tier_1', 'quantity' => 3 ),
                     array( 'product_index' => 7, 'tier' => 'tier_4', 'quantity' => 1 ),
                 ),
             ),
-            // On-hold order (1)
             array(
                 'date' => date( 'Y-m-d H:i:s', strtotime( '-3 days' ) ),
                 'status' => 'on-hold',
-                'customer' => array(
-                    'first_name' => 'David',
-                    'last_name' => 'Brown',
-                    'email' => 'david.brown@example.com',
-                    'address' => '321 King St',
-                    'city' => 'Perth',
-                    'state' => 'WA',
-                    'postcode' => '6000',
-                    'country' => 'AU',
-                ),
+                'customer' => $customers[5],
                 'items' => array(
                     array( 'product_index' => 8, 'tier' => 'tier_3', 'quantity' => 1 ),
                     array( 'product_index' => 9, 'tier' => 'tier_2', 'quantity' => 2 ),
                 ),
             ),
-            // Pending payment order (1)
             array(
                 'date' => date( 'Y-m-d H:i:s', strtotime( '-6 hours' ) ),
                 'status' => 'pending',
-                'customer' => array(
-                    'first_name' => 'Jessica',
-                    'last_name' => 'Martinez',
-                    'email' => 'jessica.martinez@example.com',
-                    'address' => '888 Bourke St',
-                    'city' => 'Melbourne',
-                    'state' => 'VIC',
-                    'postcode' => '3000',
-                    'country' => 'AU',
-                ),
+                'customer' => $customers[6],
                 'items' => array(
                     array( 'product_index' => 3, 'tier' => 'tier_2', 'quantity' => 1 ),
                 ),
             ),
         );
+        
+        // Merge recent orders (they'll override any duplicates)
+        foreach ( $recent_orders as $recent_order ) {
+            $recent_order['customer']['country'] = 'AU';
+            $orders_data[] = $recent_order;
+        }
 
         foreach ( $orders_data as $order_data ) {
             $order = wc_create_order( array( 'status' => $order_data['status'] ) );
@@ -1378,13 +1436,111 @@ final class PLS_Sample_Data {
                     $variation = wc_get_product( $variation_id );
                     $item = $order->add_product( $variation, $item_data['quantity'] );
                     
-                    // Add bundle meta if this order qualifies for bundle pricing
-                    if ( isset( $order_data['bundle_qualified'] ) && $item ) {
-                        $bundle_type = $order_data['bundle_qualified'];
-                        $bundle_key = $bundle_type . '_' . count( $order_data['items'] ) . 'x' . 250; // Approximate
-                        $item->update_meta_data( 'pls_bundle_key', $bundle_key );
-                        $item->update_meta_data( 'pls_bundle_type', $bundle_type );
-                        $item->update_meta_data( 'pls_bundle_price', 10.90 ); // Sample bundle price
+                    if ( $item ) {
+                        // Get product profile to access product options
+                        $product_profile = PLS_Repo_Product_Profile::get_for_base( $base_product->id );
+                        
+                        // Add product option values as order item meta
+                        if ( $product_profile && ! empty( $product_profile->basics_json ) ) {
+                            $basics_attrs = json_decode( $product_profile->basics_json, true );
+                            
+                            if ( is_array( $basics_attrs ) ) {
+                                foreach ( $basics_attrs as $attr ) {
+                                    if ( ! isset( $attr['attribute_label'] ) || ! isset( $attr['values'] ) || empty( $attr['values'] ) ) {
+                                        continue;
+                                    }
+                                    
+                                    $attr_label = $attr['attribute_label'];
+                                    $values = $attr['values'];
+                                    
+                                    // Skip if no values available
+                                    if ( empty( $values ) || ! is_array( $values ) ) {
+                                        continue;
+                                    }
+                                    
+                                    // Randomly select a value (or multiple for some attributes)
+                                    $selected_values = array();
+                                    
+                                    // For Package Type, Color, Cap - select one
+                                    if ( in_array( $attr_label, array( 'Package Type', 'Package Color', 'Package Cap' ), true ) ) {
+                                        $random_value = $values[ array_rand( $values ) ];
+                                        $selected_values[] = $random_value['value_label'];
+                                        
+                                        // Store as order item meta
+                                        $meta_key = '_pls_' . strtolower( str_replace( ' ', '_', $attr_label ) );
+                                        $item->update_meta_data( $meta_key, $random_value['value_label'] );
+                                    }
+                                    
+                                    // For Fragrances (Tier 3+) - randomly add if tier allows
+                                    if ( $attr_label === 'Fragrance' && $tier_key !== 'tier_1' && $tier_key !== 'tier_2' ) {
+                                        // 70% chance to add fragrance
+                                        if ( rand( 1, 10 ) <= 7 ) {
+                                            // Filter out "Unscented" sometimes
+                                            $fragrance_options = array_filter( $values, function( $v ) {
+                                                return stripos( $v['value_label'], 'unscented' ) === false;
+                                            } );
+                                            if ( empty( $fragrance_options ) ) {
+                                                $fragrance_options = $values;
+                                            }
+                                            $random_fragrance = $fragrance_options[ array_rand( $fragrance_options ) ];
+                                            $item->update_meta_data( '_pls_fragrance', $random_fragrance['value_label'] );
+                                        }
+                                    }
+                                    
+                                    // For Label Application - add if enabled
+                                    if ( $attr_label === 'Label Application' ) {
+                                        // 60% chance to add label application
+                                        if ( rand( 1, 10 ) <= 6 ) {
+                                            $label_options = array_filter( $values, function( $v ) {
+                                                return stripos( $v['value_label'], 'Professional' ) !== false;
+                                            } );
+                                            if ( ! empty( $label_options ) ) {
+                                                $random_label = $label_options[ array_rand( $label_options ) ];
+                                                $item->update_meta_data( '_pls_label_application', $random_label['value_label'] );
+                                            }
+                                        }
+                                    }
+                                    
+                                    // For Custom Printed Bottles (Tier 4+)
+                                    if ( $attr_label === 'Custom Printed Bottles' && ( $tier_key === 'tier_4' || $tier_key === 'tier_5' ) ) {
+                                        // 50% chance for custom bottles
+                                        if ( rand( 1, 10 ) <= 5 ) {
+                                            $custom_bottle_options = array_filter( $values, function( $v ) {
+                                                return stripos( $v['value_label'], 'Custom Printed' ) !== false;
+                                            } );
+                                            if ( ! empty( $custom_bottle_options ) ) {
+                                                $random_bottle = $custom_bottle_options[ array_rand( $custom_bottle_options ) ];
+                                                $item->update_meta_data( '_pls_custom_printed_bottles', $random_bottle['value_label'] );
+                                            }
+                                        }
+                                    }
+                                    
+                                    // For External Box Packaging (Tier 4+)
+                                    if ( $attr_label === 'External Box Packaging' && ( $tier_key === 'tier_4' || $tier_key === 'tier_5' ) ) {
+                                        // 40% chance for box packaging
+                                        if ( rand( 1, 10 ) <= 4 ) {
+                                            $box_options = array_filter( $values, function( $v ) {
+                                                return stripos( $v['value_label'], 'No Box' ) === false;
+                                            } );
+                                            if ( ! empty( $box_options ) ) {
+                                                $random_box = $box_options[ array_rand( $box_options ) ];
+                                                $item->update_meta_data( '_pls_box_packaging', $random_box['value_label'] );
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Add bundle meta if this order qualifies for bundle pricing
+                        if ( isset( $order_data['bundle_qualified'] ) ) {
+                            $bundle_type = $order_data['bundle_qualified'];
+                            $bundle_key = $bundle_type . '_' . count( $order_data['items'] ) . 'x' . 250; // Approximate
+                            $item->update_meta_data( 'pls_bundle_key', $bundle_key );
+                            $item->update_meta_data( 'pls_bundle_type', $bundle_type );
+                            $item->update_meta_data( 'pls_bundle_price', 10.90 ); // Sample bundle price
+                        }
+                        
                         $item->save();
                     }
                 }
@@ -1413,8 +1569,93 @@ final class PLS_Sample_Data {
 
         $category_id = ! empty( $categories ) ? $categories[0]->term_id : null;
 
-        $custom_orders = array(
-            // New Leads (2)
+        // Generate custom orders spread across the past year
+        $custom_orders = array();
+        
+        // Custom order templates
+        $order_templates = array(
+            array( 'contact_name' => 'Jennifer Martinez', 'contact_email' => 'jennifer.martinez@example.com', 'contact_phone' => '+61 400 123 456', 'company_name' => 'Beauty Boutique Co.', 'quantity' => 500, 'budget' => 15000.00, 'timeline' => '4-6 weeks', 'message' => 'Looking for a custom face cleanser line for our boutique. Need professional label application.' ),
+            array( 'contact_name' => 'Alexandra Green', 'contact_email' => 'alexandra.green@example.com', 'contact_phone' => '+61 400 111 222', 'company_name' => 'Eco Beauty Essentials', 'quantity' => 750, 'budget' => 18000.00, 'timeline' => '5-7 weeks', 'message' => 'Interested in organic skincare products with eco-friendly packaging.' ),
+            array( 'contact_name' => 'Robert Thompson', 'contact_email' => 'robert.thompson@example.com', 'contact_phone' => '+61 400 234 567', 'company_name' => 'Wellness Solutions Ltd', 'quantity' => 1000, 'budget' => 25000.00, 'timeline' => '6-8 weeks', 'message' => 'Interested in a complete skincare line. Would like samples first.' ),
+            array( 'contact_name' => 'Rachel Kim', 'contact_email' => 'rachel.kim@example.com', 'contact_phone' => '+61 400 333 444', 'company_name' => 'Glow Skincare Studio', 'quantity' => 600, 'budget' => 16000.00, 'timeline' => '4-6 weeks', 'message' => 'Need samples for our new product line launch. Testing formulations.' ),
+            array( 'contact_name' => 'Amanda Lee', 'contact_email' => 'amanda.lee@example.com', 'contact_phone' => '+61 400 345 678', 'company_name' => 'Natural Skincare Co.', 'quantity' => 2000, 'budget' => 45000.00, 'timeline' => '8-10 weeks', 'message' => 'Large order for our new product launch. Need premium packaging options.' ),
+            array( 'contact_name' => 'James Wilson', 'contact_email' => 'james.wilson@example.com', 'contact_phone' => '+61 400 456 789', 'company_name' => 'Retail Partners Inc', 'quantity' => 5000, 'budget' => 120000.00, 'timeline' => '10-12 weeks', 'message' => 'Bulk order for retail distribution. Need custom printed bottles.' ),
+            array( 'contact_name' => 'Sophie Taylor', 'contact_email' => 'sophie.taylor@example.com', 'contact_phone' => '+61 400 567 890', 'company_name' => 'Luxury Beauty Brands', 'quantity' => 3000, 'budget' => 85000.00, 'timeline' => '6-8 weeks', 'message' => 'Premium skincare line with custom fragrances and premium packaging.' ),
+            array( 'contact_name' => 'Mark Davis', 'contact_email' => 'mark.davis@example.com', 'contact_phone' => '+61 400 678 901', 'company_name' => 'Eco Beauty Solutions', 'quantity' => 1500, 'budget' => 35000.00, 'timeline' => '4-6 weeks', 'message' => 'Eco-friendly packaging required. Need samples before finalizing.' ),
+            array( 'contact_name' => 'Patricia White', 'contact_email' => 'patricia.white@example.com', 'contact_phone' => '+61 400 789 012', 'company_name' => 'Organic Skincare Co.', 'quantity' => 1200, 'budget' => 28000.00, 'timeline' => '5-7 weeks', 'message' => 'Looking for organic certified products with sustainable packaging.' ),
+            array( 'contact_name' => 'Daniel Moore', 'contact_email' => 'daniel.moore@example.com', 'contact_phone' => '+61 400 890 123', 'company_name' => 'Beauty Supply Chain', 'quantity' => 4000, 'budget' => 95000.00, 'timeline' => '8-10 weeks', 'message' => 'Large wholesale order for distribution network.' ),
+        );
+        
+        $statuses = array( 'new_lead', 'sampling', 'production', 'on_hold', 'done' );
+        
+        // Generate custom orders across past year
+        for ( $month_offset = 11; $month_offset >= 0; $month_offset-- ) {
+            $base_date = strtotime( "-{$month_offset} months" );
+            
+            // 1-2 custom orders per month
+            $orders_per_month = rand( 1, 2 );
+            
+            for ( $i = 0; $i < $orders_per_month; $i++ ) {
+                $days_in_month = date( 't', $base_date );
+                $random_day = rand( 1, $days_in_month );
+                $created_at = date( 'Y-m-d H:i:s', mktime( rand( 9, 17 ), rand( 0, 59 ), rand( 0, 59 ), date( 'n', $base_date ), $random_day, date( 'Y', $base_date ) ) );
+                
+                // Don't create future dates
+                if ( strtotime( $created_at ) > time() ) {
+                    continue;
+                }
+                
+                $template = $order_templates[ array_rand( $order_templates ) ];
+                $status = $statuses[ array_rand( $statuses ) ];
+                
+                // More recent orders are more likely to be new_lead/sampling
+                if ( $month_offset <= 2 ) {
+                    $recent_statuses = array( 'new_lead', 'new_lead', 'sampling', 'sampling', 'production', 'on_hold' );
+                    $status = $recent_statuses[ array_rand( $recent_statuses ) ];
+                }
+                
+                $order_data = array(
+                    'contact_name' => $template['contact_name'],
+                    'contact_email' => $template['contact_email'],
+                    'contact_phone' => $template['contact_phone'],
+                    'company_name' => $template['company_name'],
+                    'category_id' => $category_id,
+                    'quantity' => $template['quantity'],
+                    'budget' => $template['budget'],
+                    'timeline' => $template['timeline'],
+                    'message' => $template['message'],
+                    'status' => $status,
+                    'created_at' => $created_at,
+                );
+                
+                // Add financials for production/done orders
+                if ( $status === 'production' || $status === 'done' ) {
+                    $order_data['production_cost'] = $template['budget'] * 0.65;
+                    $order_data['total_value'] = $template['budget'];
+                }
+                
+                // Add commission for done orders
+                if ( $status === 'done' ) {
+                    $threshold = get_option( 'pls_custom_order_threshold', 100000 );
+                    $rate = $template['budget'] >= $threshold ? 5.00 : 3.00;
+                    $order_data['nikola_commission_rate'] = $rate;
+                    $order_data['nikola_commission_amount'] = $template['budget'] * ( $rate / 100 );
+                    $order_data['commission_confirmed'] = 1;
+                    
+                    // Set invoiced/paid dates (done orders are older)
+                    $days_ago = ( time() - strtotime( $created_at ) ) / DAY_IN_SECONDS;
+                    if ( $days_ago > 20 ) {
+                        $order_data['invoiced_at'] = date( 'Y-m-d H:i:s', strtotime( $created_at . ' +' . rand( 5, 10 ) . ' days' ) );
+                        $order_data['paid_at'] = date( 'Y-m-d H:i:s', strtotime( $order_data['invoiced_at'] . ' +' . rand( 5, 10 ) . ' days' ) );
+                    }
+                }
+                
+                $custom_orders[] = $order_data;
+            }
+        }
+        
+        // Add some specific recent orders for better demo
+        $recent_custom_orders = array(
             array(
                 'contact_name' => 'Jennifer Martinez',
                 'contact_email' => 'jennifer.martinez@example.com',
@@ -1441,7 +1682,6 @@ final class PLS_Sample_Data {
                 'status' => 'new_lead',
                 'created_at' => date( 'Y-m-d H:i:s', strtotime( '-1 day' ) ),
             ),
-            // Sampling (2)
             array(
                 'contact_name' => 'Robert Thompson',
                 'contact_email' => 'robert.thompson@example.com',
@@ -1484,46 +1724,6 @@ final class PLS_Sample_Data {
                 'total_value' => 45000.00,
             ),
             array(
-                'contact_name' => 'James Wilson',
-                'contact_email' => 'james.wilson@example.com',
-                'contact_phone' => '+61 400 456 789',
-                'company_name' => 'Retail Partners Inc',
-                'category_id' => $category_id,
-                'quantity' => 5000,
-                'budget' => 120000.00,
-                'timeline' => '10-12 weeks',
-                'message' => 'Bulk order for retail distribution. Need custom printed bottles.',
-                'status' => 'done',
-                'created_at' => date( 'Y-m-d H:i:s', strtotime( '-20 days' ) ),
-                'production_cost' => 75000.00,
-                'total_value' => 120000.00,
-                'nikola_commission_rate' => 5.00,
-                'nikola_commission_amount' => 6000.00,
-                'commission_confirmed' => 1,
-                'invoiced_at' => date( 'Y-m-d H:i:s', strtotime( '-15 days' ) ),
-                'paid_at' => date( 'Y-m-d H:i:s', strtotime( '-10 days' ) ),
-            ),
-            array(
-                'contact_name' => 'Sophie Taylor',
-                'contact_email' => 'sophie.taylor@example.com',
-                'contact_phone' => '+61 400 567 890',
-                'company_name' => 'Luxury Beauty Brands',
-                'category_id' => $category_id,
-                'quantity' => 3000,
-                'budget' => 85000.00,
-                'timeline' => '6-8 weeks',
-                'message' => 'Premium skincare line with custom fragrances and premium packaging.',
-                'status' => 'done',
-                'created_at' => date( 'Y-m-d H:i:s', strtotime( '-30 days' ) ),
-                'production_cost' => 55000.00,
-                'total_value' => 85000.00,
-                'nikola_commission_rate' => 3.00,
-                'nikola_commission_amount' => 2550.00,
-                'commission_confirmed' => 1,
-                'invoiced_at' => date( 'Y-m-d H:i:s', strtotime( '-25 days' ) ),
-                'paid_at' => date( 'Y-m-d H:i:s', strtotime( '-20 days' ) ),
-            ),
-            array(
                 'contact_name' => 'Mark Davis',
                 'contact_email' => 'mark.davis@example.com',
                 'contact_phone' => '+61 400 678 901',
@@ -1537,6 +1737,9 @@ final class PLS_Sample_Data {
                 'created_at' => date( 'Y-m-d H:i:s', strtotime( '-8 days' ) ),
             ),
         );
+        
+        // Merge recent orders
+        $custom_orders = array_merge( $custom_orders, $recent_custom_orders );
 
         foreach ( $custom_orders as $order_data ) {
             $wpdb->insert(

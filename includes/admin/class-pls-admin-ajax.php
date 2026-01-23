@@ -668,15 +668,6 @@ final class PLS_Admin_Ajax {
 
         $sync_result = self::sync_single_product( $persisted['id'] );
 
-        // Track test product if created during onboarding
-        $product_name = isset( $payload['name'] ) ? $payload['name'] : '';
-        if ( strpos( strtolower( $product_name ), '[test]' ) !== false || strpos( strtolower( $product_name ), 'test' ) !== false ) {
-            $user_id = get_current_user_id();
-            $progress = PLS_Onboarding::get_progress( $user_id );
-            if ( $progress && ! $progress->completed_at ) {
-                PLS_Onboarding::set_test_product( $user_id, $persisted['id'] );
-            }
-        }
         
         // Handle sync result (only if sync was attempted)
         if ( null !== $sync_result && is_wp_error( $sync_result ) ) {

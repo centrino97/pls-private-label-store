@@ -54,21 +54,7 @@ if ( isset( $_POST['pls_save_settings'] ) && check_admin_referer( 'pls_save_sett
         update_option( 'pls_commission_email_recipients', $emails );
     }
 
-    // Handle onboarding reset
-    if ( isset( $_POST['reset_onboarding'] ) ) {
-        $user_id = get_current_user_id();
-        global $wpdb;
-        $table = $wpdb->prefix . 'pls_onboarding_progress';
-        $wpdb->delete( $table, array( 'user_id' => $user_id ), array( '%d' ) );
-        $message = 'onboarding-reset';
-    } elseif ( isset( $_POST['reset_onboarding_all'] ) && current_user_can( 'manage_options' ) ) {
-        global $wpdb;
-        $table = $wpdb->prefix . 'pls_onboarding_progress';
-        $wpdb->query( "TRUNCATE TABLE {$table}" );
-        $message = 'onboarding-reset-all';
-    } else {
-        $message = 'settings-saved';
-    }
+    $message = 'settings-saved';
 
     wp_safe_redirect( add_query_arg( 'message', $message, admin_url( 'admin.php?page=pls-settings' ) ) );
     exit;
@@ -307,28 +293,6 @@ if ( isset( $_GET['message'] ) && 'settings-saved' === $_GET['message'] ) {
                 </div>
             <?php endif; ?>
 
-            <!-- Onboarding Settings -->
-            <div class="pls-accordion__item is-collapsed">
-                <button type="button" class="pls-accordion__header">
-                    <?php esc_html_e( 'Onboarding', 'pls-private-label-store' ); ?>
-                </button>
-                <div class="pls-accordion__content">
-                    <p class="description" style="margin-top: 0;"><?php esc_html_e( 'Reset onboarding progress to restart the tutorial.', 'pls-private-label-store' ); ?></p>
-                    
-                    <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px;">
-                        <button type="submit" name="reset_onboarding" value="1" class="button" 
-                                onclick="return confirm('<?php esc_attr_e( 'Reset onboarding for your account?', 'pls-private-label-store' ); ?>');">
-                            <?php esc_html_e( 'Reset for Current User', 'pls-private-label-store' ); ?>
-                        </button>
-                        <?php if ( current_user_can( 'manage_options' ) ) : ?>
-                            <button type="submit" name="reset_onboarding_all" value="1" class="button" 
-                                    onclick="return confirm('<?php esc_attr_e( 'Reset onboarding for ALL users? This cannot be undone.', 'pls-private-label-store' ); ?>');">
-                                <?php esc_html_e( 'Reset for All Users', 'pls-private-label-store' ); ?>
-                            </button>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            </div>
         </div>
 
         <div style="position: sticky; bottom: 0; background: #fff; padding: 16px 0; margin-top: 24px; border-top: 1px solid var(--pls-gray-200);">

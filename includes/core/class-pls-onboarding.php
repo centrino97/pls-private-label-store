@@ -1,6 +1,7 @@
 <?php
 /**
- * Onboarding system for PLS plugin.
+ * Simplified Help System for PLS plugin.
+ * Provides detailed page-specific guides accessible from a consistent location.
  *
  * @package PLS_Private_Label_Store
  */
@@ -12,61 +13,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class PLS_Onboarding {
 
     /**
-     * Get user's first name for personalization.
-     *
-     * @param int $user_id User ID.
-     * @return string User's first name or empty string.
-     */
-    public static function get_user_name( $user_id = null ) {
-        if ( ! $user_id ) {
-            $user_id = get_current_user_id();
-        }
-        
-        $user = get_userdata( $user_id );
-        if ( ! $user ) {
-            return '';
-        }
-        
-        $email = strtolower( $user->user_email );
-        
-        // Identify users by email
-        if ( strpos( $email, 'robert' ) !== false || strpos( $email, 'robertbodoci' ) !== false ) {
-            return 'Robert';
-        } elseif ( strpos( $email, 'raniya' ) !== false ) {
-            return 'Raniya';
-        }
-        
-        // Fallback to display name or first name
-        $first_name = get_user_meta( $user_id, 'first_name', true );
-        if ( $first_name ) {
-            return $first_name;
-        }
-        
-        $display_name = $user->display_name;
-        if ( $display_name ) {
-            return explode( ' ', $display_name )[0];
-        }
-        
-        return '';
-    }
-
-    /**
-     * Initialize onboarding system.
+     * Initialize help system.
      */
     public static function init() {
         add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
-        add_action( 'wp_ajax_pls_start_onboarding', array( __CLASS__, 'start_onboarding' ) );
-        add_action( 'wp_ajax_pls_update_onboarding_step', array( __CLASS__, 'update_step' ) );
-        add_action( 'wp_ajax_pls_complete_onboarding', array( __CLASS__, 'complete_onboarding' ) );
-        add_action( 'wp_ajax_pls_skip_onboarding', array( __CLASS__, 'skip_onboarding' ) );
-        add_action( 'wp_ajax_pls_get_onboarding_steps', array( __CLASS__, 'get_steps' ) );
-        add_action( 'wp_ajax_pls_delete_test_product', array( __CLASS__, 'delete_test_product' ) );
         add_action( 'wp_ajax_pls_get_helper_content', array( __CLASS__, 'get_helper_content_ajax' ) );
-        add_action( 'wp_ajax_pls_complete_exploration', array( __CLASS__, 'complete_exploration' ) );
     }
 
     /**
-     * Enqueue onboarding assets.
+     * Enqueue help system assets.
      */
     public static function enqueue_assets( $hook ) {
         if ( false === strpos( (string) $hook, 'pls-' ) && false === strpos( (string) $hook, 'woocommerce_page_pls' ) ) {
@@ -88,12 +43,7 @@ final class PLS_Onboarding {
             true
         );
 
-        $current_user = wp_get_current_user();
-        $progress = self::get_progress( $current_user->ID );
         $current_page = self::get_current_page_from_hook( $hook );
-
-        $current_user = wp_get_current_user();
-        $explored_features = self::get_explored_features( $current_user->ID );
 
         wp_localize_script(
             'pls-onboarding',
@@ -101,369 +51,589 @@ final class PLS_Onboarding {
             array(
                 'nonce' => wp_create_nonce( 'pls_onboarding_nonce' ),
                 'ajax_url' => admin_url( 'admin-ajax.php' ),
-                'admin_url' => admin_url(),
-                'progress' => $progress,
                 'current_page' => $current_page,
-                'steps' => self::get_steps_definition(),
-                'tutorial_flow' => self::get_tutorial_flow(),
-                'exploration_flows' => self::get_exploration_flows(),
-                'explored_features' => $explored_features,
-                'is_active' => $progress && ! $progress->completed_at,
             )
         );
     }
 
     /**
-     * Get helper content for a specific page/section.
+     * Get detailed helper content for a specific page.
      *
      * @param string $page Page identifier.
-     * @param string $section Optional section identifier.
-     * @return array Helper content array.
+     * @return array Detailed guide content.
      */
-    public static function get_helper_content( $page, $section = '' ) {
+    public static function get_helper_content( $page ) {
         $content = array();
 
-        // Dashboard helper content
+        // Dashboard guide
         if ( 'dashboard' === $page ) {
             $content = array(
-                'overview' => array(
-                    'title' => __( 'Dashboard Overview', 'pls-private-label-store' ),
-                    'tips' => array(
-                        __( 'Dashboard shows key metrics: total products, active orders, pending custom orders, monthly revenue, and pending commission.', 'pls-private-label-store' ),
-                        __( 'Click on any summary card to navigate to the detailed page.', 'pls-private-label-store' ),
-                        __( 'Use the "Start Tutorial" button to begin the guided onboarding process.', 'pls-private-label-store' ),
-                        __( 'After onboarding, explore features using the "Take Tour" buttons on exploration cards.', 'pls-private-label-store' ),
+                'title' => __( 'Dashboard Guide', 'pls-private-label-store' ),
+                'sections' => array(
+                    array(
+                        'title' => __( 'Overview', 'pls-private-label-store' ),
+                        'content' => __( 'The dashboard provides a quick overview of your store\'s key metrics and recent activity.', 'pls-private-label-store' ),
+                    ),
+                    array(
+                        'title' => __( 'Summary Cards', 'pls-private-label-store' ),
+                        'content' => __( 'Click on any summary card (Products, Orders, Revenue, Commission) to navigate to the detailed page for that section.', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Total Products: Shows count of all products in your catalog', 'pls-private-label-store' ),
+                            __( 'Active Orders: Displays orders from the last 30 days containing PLS products', 'pls-private-label-store' ),
+                            __( 'Pending Custom Orders: Shows custom order leads in the pipeline', 'pls-private-label-store' ),
+                            __( 'Monthly Revenue: Total sales from completed orders this month', 'pls-private-label-store' ),
+                            __( 'Pending Commission: Total commission awaiting payment', 'pls-private-label-store' ),
+                        ),
+                    ),
+                    array(
+                        'title' => __( 'Quick Actions', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Use the navigation menu at the top to access all PLS features', 'pls-private-label-store' ),
+                            __( 'Click "Help" button (?) in the top right corner for detailed guides on any page', 'pls-private-label-store' ),
+                        ),
                     ),
                 ),
             );
         }
 
-        // Product Options (Attributes) helper content
+        // Product Options (Attributes) guide
         if ( 'attributes' === $page ) {
             $content = array(
-                'overview' => array(
-                    'title' => __( 'Product Options Management', 'pls-private-label-store' ),
-                    'tips' => array(
-                        __( 'Product Options define all configurable aspects of your products: Package Type, Color, Cap, Fragrances, Ingredients, etc.', 'pls-private-label-store' ),
-                        __( 'Pack Tier is the PRIMARY option - it determines pricing and available features.', 'pls-private-label-store' ),
-                        __( 'Package Type: Choose container sizes (30ml, 50ml, 120ml bottle or 50gr jar).', 'pls-private-label-store' ),
-                        __( 'Package Color: Standard White, Standard Frosted, or Amber Bottle (Amber has additional cost).', 'pls-private-label-store' ),
-                        __( 'Package Cap: White or Silver pump/lid options (Silver has tier-based pricing).', 'pls-private-label-store' ),
-                        __( 'Fragrances: Available from Tier 3+ with tier-based pricing.', 'pls-private-label-store' ),
-                        __( 'Label Application: Configure pricing for Tier 1-2 (Tier 3-5 are automatically FREE).', 'pls-private-label-store' ),
-                        __( 'Custom Printed Bottles & External Box Packaging: Available from Tier 4+.', 'pls-private-label-store' ),
+                'title' => __( 'Product Options Guide', 'pls-private-label-store' ),
+                'sections' => array(
+                    array(
+                        'title' => __( 'What are Product Options?', 'pls-private-label-store' ),
+                        'content' => __( 'Product Options define all configurable aspects of your products that customers can choose from. These include Package Type, Color, Cap, Fragrances, Ingredients, and more.', 'pls-private-label-store' ),
+                    ),
+                    array(
+                        'title' => __( 'Pack Tier (PRIMARY Option)', 'pls-private-label-store' ),
+                        'content' => __( 'Pack Tier is the PRIMARY option that determines pricing and available features. It must be configured first.', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Click "Manage Pack Tier Defaults" to configure default units and prices for each tier', 'pls-private-label-store' ),
+                            __( 'Tier 1: 50 units - Default price: $15.90 per unit', 'pls-private-label-store' ),
+                            __( 'Tier 2: 100 units - Default price: $14.50 per unit', 'pls-private-label-store' ),
+                            __( 'Tier 3: 250 units - Default price: $12.50 per unit', 'pls-private-label-store' ),
+                            __( 'Tier 4: 500 units - Default price: $9.50 per unit', 'pls-private-label-store' ),
+                            __( 'Tier 5: 1000 units - Default price: $7.90 per unit', 'pls-private-label-store' ),
+                            __( 'These defaults are used when creating products but can be customized per product', 'pls-private-label-store' ),
+                        ),
+                    ),
+                    array(
+                        'title' => __( 'Package Type', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( '30ml Bottle: Small size container', 'pls-private-label-store' ),
+                            __( '50ml Bottle: Medium size container', 'pls-private-label-store' ),
+                            __( '120ml Bottle: Large size container', 'pls-private-label-store' ),
+                            __( '50gr Jar: Alternative container type (uses lids instead of pumps)', 'pls-private-label-store' ),
+                            __( 'To add/edit: Click on Package Type row, then use "Add Value" or edit existing values', 'pls-private-label-store' ),
+                        ),
+                    ),
+                    array(
+                        'title' => __( 'Package Color', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Standard White: Default option, no additional cost', 'pls-private-label-store' ),
+                            __( 'Standard Frosted: Frosted finish option', 'pls-private-label-store' ),
+                            __( 'Amber: Amber-colored bottle (has additional cost)', 'pls-private-label-store' ),
+                            __( 'Each color can have tier-based pricing rules', 'pls-private-label-store' ),
+                        ),
+                    ),
+                    array(
+                        'title' => __( 'Package Cap', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'White Pump: Standard white pump applicator', 'pls-private-label-store' ),
+                            __( 'Silver Pump: Premium silver pump (has tier-based pricing)', 'pls-private-label-store' ),
+                            __( 'Lid: For jar containers only', 'pls-private-label-store' ),
+                            __( 'Compatibility: Jars only support lids, bottles support pumps', 'pls-private-label-store' ),
+                        ),
+                    ),
+                    array(
+                        'title' => __( 'Fragrances', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Available only for Tier 3+ orders (250+ units)', 'pls-private-label-store' ),
+                            __( 'Can have tier-based pricing (different prices for Tier 3, 4, 5)', 'pls-private-label-store' ),
+                            __( 'Add fragrance options by clicking "Add Value" in the Fragrances row', 'pls-private-label-store' ),
+                        ),
+                    ),
+                    array(
+                        'title' => __( 'Label Application Pricing', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Configure pricing for Tier 1 and Tier 2 orders only', 'pls-private-label-store' ),
+                            __( 'Tier 3, 4, and 5 automatically get FREE label application', 'pls-private-label-store' ),
+                            __( 'Price is per unit - multiply by pack tier units for total cost', 'pls-private-label-store' ),
+                            __( 'Set the price in the "Label Application Pricing" section', 'pls-private-label-store' ),
+                        ),
+                    ),
+                    array(
+                        'title' => __( 'Tier 4+ Options', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Custom Printed Bottles: Available from Tier 4+ (500+ units)', 'pls-private-label-store' ),
+                            __( 'External Box Packaging: Available from Tier 4+ (500+ units)', 'pls-private-label-store' ),
+                            __( 'These premium options require minimum order quantities', 'pls-private-label-store' ),
+                        ),
+                    ),
+                    array(
+                        'title' => __( 'Managing Options', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'To add a new option: Click "Add Option" button, enter name and slug', 'pls-private-label-store' ),
+                            __( 'To add values: Click on an option row, then click "Add Value"', 'pls-private-label-store' ),
+                            __( 'To edit: Click on option or value row to open edit modal', 'pls-private-label-store' ),
+                            __( 'To delete: Click delete button (trash icon) - be careful, this affects products using this option', 'pls-private-label-store' ),
+                            __( 'Set tier restrictions: Use "Min Tier Level" to restrict options to certain tiers', 'pls-private-label-store' ),
+                            __( 'Set tier pricing: Configure different prices for each tier level', 'pls-private-label-store' ),
+                        ),
                     ),
                 ),
             );
         }
 
-        // Bundles helper content
-        if ( 'bundles' === $page ) {
-            $content = array(
-                'overview' => array(
-                    'title' => __( 'Bundle Management', 'pls-private-label-store' ),
-                    'tips' => array(
-                        __( 'Bundles offer special pricing when customers purchase multiple products.', 'pls-private-label-store' ),
-                        __( 'Bundle rules: Set minimum SKU count (number of different products) and units per SKU.', 'pls-private-label-store' ),
-                        __( 'When cart qualifies for a bundle, pricing is automatically applied.', 'pls-private-label-store' ),
-                        __( 'Bundles sync to WooCommerce as Grouped Products.', 'pls-private-label-store' ),
-                        __( 'Customers see bundle offers on product pages and in cart notices.', 'pls-private-label-store' ),
-                    ),
-                ),
-            );
-        }
-
-        // Categories helper content
-        if ( 'categories' === $page ) {
-            $content = array(
-                'overview' => array(
-                    'title' => __( 'Category Management', 'pls-private-label-store' ),
-                    'tips' => array(
-                        __( 'Categories help organize products in your store.', 'pls-private-label-store' ),
-                        __( 'Categories sync to WooCommerce product categories.', 'pls-private-label-store' ),
-                        __( 'Assign categories when creating products.', 'pls-private-label-store' ),
-                    ),
-                ),
-            );
-        }
-
-        // Orders helper content
-        if ( 'orders' === $page ) {
-            $content = array(
-                'overview' => array(
-                    'title' => __( 'Order Management', 'pls-private-label-store' ),
-                    'tips' => array(
-                        __( 'View all WooCommerce orders containing PLS products.', 'pls-private-label-store' ),
-                        __( 'Commissions are automatically calculated based on pack tier pricing.', 'pls-private-label-store' ),
-                        __( 'Filter orders by status, date range, or product.', 'pls-private-label-store' ),
-                    ),
-                ),
-            );
-        }
-
-        // Product creation modal sections
+        // Products guide
         if ( 'products' === $page ) {
             $content = array(
-                'general' => array(
-                    'title' => __( 'General Information', 'pls-private-label-store' ),
-                    'tips' => array(
-                        __( 'Product name will be used as the WooCommerce product title.', 'pls-private-label-store' ),
-                        __( 'Select categories to organize products in your store.', 'pls-private-label-store' ),
-                        __( 'Upload featured image and gallery images for product display.', 'pls-private-label-store' ),
+                'title' => __( 'Products Guide', 'pls-private-label-store' ),
+                'sections' => array(
+                    array(
+                        'title' => __( 'Creating a Product', 'pls-private-label-store' ),
+                        'content' => __( 'Click the "Add Product" button in the top right corner to create a new product. Follow the 6-step wizard.', 'pls-private-label-store' ),
                     ),
-                    'validation' => array(
-                        __( 'Product name is required.', 'pls-private-label-store' ),
-                        __( 'At least one category must be selected.', 'pls-private-label-store' ),
+                    array(
+                        'title' => __( 'Step 1: General Information', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Product Name: Enter a descriptive name (e.g., "Collagen Serum") - this becomes the WooCommerce product title', 'pls-private-label-store' ),
+                            __( 'Categories: Select at least one category to organize your product (required)', 'pls-private-label-store' ),
+                            __( 'Featured Image: Upload the main product photo (appears on product cards and product page)', 'pls-private-label-store' ),
+                            __( 'Gallery Images: Add multiple product photos (customers can view these on the product page)', 'pls-private-label-store' ),
+                        ),
                     ),
-                ),
-                'packs' => array(
-                    'title' => __( 'Pack Tiers', 'pls-private-label-store' ),
-                    'tips' => array(
-                        __( 'Pack tiers define different quantities and pricing options.', 'pls-private-label-store' ),
-                        __( 'Each tier will become a WooCommerce product variation.', 'pls-private-label-store' ),
-                        __( 'Enable tiers that should be available for purchase.', 'pls-private-label-store' ),
+                    array(
+                        'title' => __( 'Step 2: Product Data', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Short Description: 1-2 sentences for product cards and listings (keep it concise)', 'pls-private-label-store' ),
+                            __( 'Long Description: Full product story, benefits, and detailed information', 'pls-private-label-store' ),
+                            __( 'Directions: How customers should use the product (step-by-step instructions)', 'pls-private-label-store' ),
+                            __( 'Skin Types: Select applicable types (Normal, Oily, Dry, Combination, Sensitive)', 'pls-private-label-store' ),
+                            __( 'Benefits: List key benefits, one per line (e.g., "Hydrates instantly", "Reduces fine lines")', 'pls-private-label-store' ),
+                        ),
                     ),
-                    'validation' => array(
-                        __( 'At least one pack tier must be enabled.', 'pls-private-label-store' ),
-                        __( 'Units and price must be greater than 0.', 'pls-private-label-store' ),
+                    array(
+                        'title' => __( 'Step 3: Ingredients', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Search and select ingredients from your ingredient list', 'pls-private-label-store' ),
+                            __( 'Create new ingredients on the fly if needed', 'pls-private-label-store' ),
+                            __( 'Key Ingredients: Choose up to 5 ingredients to spotlight with icons on the product page', 'pls-private-label-store' ),
+                            __( 'Key ingredients appear prominently on the frontend', 'pls-private-label-store' ),
+                        ),
                     ),
-                ),
-                'attributes' => array(
-                    'title' => __( 'Product Options', 'pls-private-label-store' ),
-                    'tips' => array(
-                        __( 'Product options allow customers to customize their order.', 'pls-private-label-store' ),
-                        __( 'Set tier-based pricing rules for each option value.', 'pls-private-label-store' ),
-                        __( 'Options will sync to WooCommerce as product attributes.', 'pls-private-label-store' ),
+                    array(
+                        'title' => __( 'Step 4: Pack Tiers (PRIMARY)', 'pls-private-label-store' ),
+                        'content' => __( 'Pack Tiers are the PRIMARY option - they determine pricing and must be configured before Product Options.', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Review default tier pricing (loaded from Product Options settings)', 'pls-private-label-store' ),
+                            __( 'Enable/Disable tiers: Check boxes to make tiers available for this product', 'pls-private-label-store' ),
+                            __( 'Adjust prices: Override default prices if needed for this specific product', 'pls-private-label-store' ),
+                            __( 'At least one pack tier must be enabled (required)', 'pls-private-label-store' ),
+                            __( 'Each enabled tier becomes a WooCommerce product variation', 'pls-private-label-store' ),
+                            __( 'Use the price calculator to see total costs with selected options', 'pls-private-label-store' ),
+                        ),
+                    ),
+                    array(
+                        'title' => __( 'Step 5: Product Options', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Package Type: Select container size (30ml, 50ml, 120ml bottle or 50gr jar)', 'pls-private-label-store' ),
+                            __( 'Package Color: Choose Standard White (included), Frosted, or Amber (adds cost)', 'pls-private-label-store' ),
+                            __( 'Package Cap: Select White or Silver pump (or lid for jars)', 'pls-private-label-store' ),
+                            __( 'Fragrances: Add if using Tier 3+ (optional, available from 250+ units)', 'pls-private-label-store' ),
+                            __( 'Other Options: Add any custom product options you\'ve created', 'pls-private-label-store' ),
+                            __( 'Tier-based pricing: Each option value can have different prices per tier', 'pls-private-label-store' ),
+                        ),
+                    ),
+                    array(
+                        'title' => __( 'Step 6: Label Application', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Enable label application if you offer custom labels', 'pls-private-label-store' ),
+                            __( 'Set price per unit for label application (Tier 1-2 only)', 'pls-private-label-store' ),
+                            __( 'Tier 3-5 automatically get FREE label application', 'pls-private-label-store' ),
+                            __( 'Label guide URL is automatically included for reference', 'pls-private-label-store' ),
+                        ),
+                    ),
+                    array(
+                        'title' => __( 'After Creating a Product', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Save Product: Click "Save Product" to save your product', 'pls-private-label-store' ),
+                            __( 'Sync: Click "Sync" button to create/update the WooCommerce product', 'pls-private-label-store' ),
+                            __( 'Activate: Click "Activate" to make the product visible to customers', 'pls-private-label-store' ),
+                            __( 'Deactivate: Click "Deactivate" to hide the product from customers', 'pls-private-label-store' ),
+                            __( 'Update Available: Badge appears when product changes need syncing', 'pls-private-label-store' ),
+                            __( 'Preview: Click "Preview Frontend" to see how the product appears to customers', 'pls-private-label-store' ),
+                        ),
+                    ),
+                    array(
+                        'title' => __( 'Editing Products', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Click on any product row to edit', 'pls-private-label-store' ),
+                            __( 'Make changes and click "Save Product"', 'pls-private-label-store' ),
+                            __( 'Click "Sync" to update WooCommerce with your changes', 'pls-private-label-store' ),
+                            __( 'Products sync automatically on save, but manual sync ensures immediate updates', 'pls-private-label-store' ),
+                        ),
                     ),
                 ),
             );
         }
 
-        // Bundle creation (already handled above, but keep for modal sections)
-        if ( 'bundles' === $page && empty( $content ) ) {
+        // Bundles guide
+        if ( 'bundles' === $page ) {
             $content = array(
-                'create' => array(
-                    'title' => __( 'Create Bundle', 'pls-private-label-store' ),
-                    'tips' => array(
-                        __( 'Bundles combine multiple products with special pricing.', 'pls-private-label-store' ),
-                        __( 'SKU count is the number of different products in the bundle.', 'pls-private-label-store' ),
-                        __( 'Units per SKU is the quantity for each product.', 'pls-private-label-store' ),
-                        __( 'Cart will automatically detect when customers qualify for bundle pricing.', 'pls-private-label-store' ),
+                'title' => __( 'Bundles Guide', 'pls-private-label-store' ),
+                'sections' => array(
+                    array(
+                        'title' => __( 'What are Bundles?', 'pls-private-label-store' ),
+                        'content' => __( 'Bundles offer special pricing when customers purchase multiple products together. The cart automatically detects when customers qualify for bundle pricing.', 'pls-private-label-store' ),
                     ),
-                    'validation' => array(
-                        __( 'Bundle name is required.', 'pls-private-label-store' ),
-                        __( 'SKU count must be at least 2.', 'pls-private-label-store' ),
-                        __( 'Units per SKU and price per unit must be greater than 0.', 'pls-private-label-store' ),
+                    array(
+                        'title' => __( 'Creating a Bundle', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Click "Create Bundle" button', 'pls-private-label-store' ),
+                            __( 'Select Bundle Type: Mini Line, Starter Line, Growth Line, or Premium Line', 'pls-private-label-store' ),
+                            __( 'SKU Count: Number of different products required in the bundle (e.g., 2 = customer must buy 2 different products)', 'pls-private-label-store' ),
+                            __( 'Units per SKU: Quantity required for each product (e.g., 50 = customer must buy 50 units of each product)', 'pls-private-label-store' ),
+                            __( 'Price per Unit: Special bundle price per unit (lower than regular tier pricing)', 'pls-private-label-store' ),
+                            __( 'Commission per Unit: Your commission rate for bundle sales', 'pls-private-label-store' ),
+                            __( 'Save and Sync: Click "Save Bundle" then "Sync" to create WooCommerce Grouped Product', 'pls-private-label-store' ),
+                        ),
+                    ),
+                    array(
+                        'title' => __( 'How Bundle Detection Works', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Cart automatically checks if customer qualifies for any bundle', 'pls-private-label-store' ),
+                            __( 'Qualification: Customer must have the required number of different products (SKU count) with the required quantity (units per SKU)', 'pls-private-label-store' ),
+                            __( 'When qualified: Bundle pricing is automatically applied to cart items', 'pls-private-label-store' ),
+                            __( 'Cart notices: Customers see messages when they qualify or are close to qualifying', 'pls-private-label-store' ),
+                            __( 'Product pages: "Frequently Bought Together" banner shows applicable bundles', 'pls-private-label-store' ),
+                        ),
+                    ),
+                    array(
+                        'title' => __( 'Bundle Examples', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Mini Line: 2 products × 50 units each = Bundle pricing', 'pls-private-label-store' ),
+                            __( 'Starter Line: 3 products × 100 units each = Bundle pricing', 'pls-private-label-store' ),
+                            __( 'Growth Line: 4 products × 250 units each = Bundle pricing', 'pls-private-label-store' ),
+                            __( 'Premium Line: 5 products × 500 units each = Bundle pricing', 'pls-private-label-store' ),
+                        ),
+                    ),
+                    array(
+                        'title' => __( 'Managing Bundles', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Edit: Click on bundle row to modify settings', 'pls-private-label-store' ),
+                            __( 'Delete: Click delete button to remove bundle (also removes from WooCommerce)', 'pls-private-label-store' ),
+                            __( 'Sync Status: Shows if bundle is synced to WooCommerce', 'pls-private-label-store' ),
+                        ),
                     ),
                 ),
             );
         }
 
-        // Settings helper content
+        // Categories guide
+        if ( 'categories' === $page ) {
+            $content = array(
+                'title' => __( 'Categories Guide', 'pls-private-label-store' ),
+                'sections' => array(
+                    array(
+                        'title' => __( 'What are Categories?', 'pls-private-label-store' ),
+                        'content' => __( 'Categories help organize your products in the store. They sync to WooCommerce product categories and help customers find products.', 'pls-private-label-store' ),
+                    ),
+                    array(
+                        'title' => __( 'Creating Categories', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Click "Add Category" button', 'pls-private-label-store' ),
+                            __( 'Enter category name (e.g., "Skincare", "Hair Care", "Body Care")', 'pls-private-label-store' ),
+                            __( 'Enter slug (URL-friendly version, auto-generated from name)', 'pls-private-label-store' ),
+                            __( 'Select parent category if creating a subcategory', 'pls-private-label-store' ),
+                            __( 'Save category', 'pls-private-label-store' ),
+                        ),
+                    ),
+                    array(
+                        'title' => __( 'Assigning Categories', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Categories are assigned when creating or editing products', 'pls-private-label-store' ),
+                            __( 'Select at least one category per product (required)', 'pls-private-label-store' ),
+                            __( 'Products can belong to multiple categories', 'pls-private-label-store' ),
+                        ),
+                    ),
+                    array(
+                        'title' => __( 'Managing Categories', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Edit: Click on category row to modify name or slug', 'pls-private-label-store' ),
+                            __( 'Delete: Click delete button (be careful - products using this category will need reassignment)', 'pls-private-label-store' ),
+                        ),
+                    ),
+                ),
+            );
+        }
+
+        // Orders guide
+        if ( 'orders' === $page ) {
+            $content = array(
+                'title' => __( 'Orders Guide', 'pls-private-label-store' ),
+                'sections' => array(
+                    array(
+                        'title' => __( 'Overview', 'pls-private-label-store' ),
+                        'content' => __( 'This page shows all WooCommerce orders that contain PLS products. Commissions are automatically calculated based on pack tier pricing.', 'pls-private-label-store' ),
+                    ),
+                    array(
+                        'title' => __( 'Viewing Orders', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Orders are displayed in a table with key information', 'pls-private-label-store' ),
+                            __( 'Order Number: Click to view full order details in WooCommerce', 'pls-private-label-store' ),
+                            __( 'Customer: Customer name and email', 'pls-private-label-store' ),
+                            __( 'Products: List of PLS products in the order', 'pls-private-label-store' ),
+                            __( 'Total: Order total amount', 'pls-private-label-store' ),
+                            __( 'Status: Order status (Completed, Processing, On Hold, etc.)', 'pls-private-label-store' ),
+                            __( 'Date: Order date', 'pls-private-label-store' ),
+                        ),
+                    ),
+                    array(
+                        'title' => __( 'Filtering Orders', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Status Filter: Filter by order status (Completed, Processing, etc.)', 'pls-private-label-store' ),
+                            __( 'Date Range: Select date range to view orders from specific periods', 'pls-private-label-store' ),
+                            __( 'Product Filter: Filter orders containing a specific product', 'pls-private-label-store' ),
+                        ),
+                    ),
+                    array(
+                        'title' => __( 'Commission Calculation', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Commissions are automatically calculated when order status changes to Processing or Completed', 'pls-private-label-store' ),
+                            __( 'Calculation is based on pack tier pricing rules', 'pls-private-label-store' ),
+                            __( 'Bundle orders use bundle commission rates', 'pls-private-label-store' ),
+                            __( 'View commission details on the Commission page', 'pls-private-label-store' ),
+                        ),
+                    ),
+                ),
+            );
+        }
+
+        // Custom Orders guide
+        if ( 'custom-orders' === $page ) {
+            $content = array(
+                'title' => __( 'Custom Orders Guide', 'pls-private-label-store' ),
+                'sections' => array(
+                    array(
+                        'title' => __( 'What are Custom Orders?', 'pls-private-label-store' ),
+                        'content' => __( 'Custom orders are special order requests from customers that don\'t fit standard product catalog. They flow through a Kanban pipeline from initial inquiry to completion.', 'pls-private-label-store' ),
+                    ),
+                    array(
+                        'title' => __( 'Kanban Board Stages', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'New Leads: Initial customer inquiries and custom order requests', 'pls-private-label-store' ),
+                            __( 'Sampling: Orders in the sampling/testing phase', 'pls-private-label-store' ),
+                            __( 'Production: Orders currently being manufactured', 'pls-private-label-store' ),
+                            __( 'On-hold: Orders temporarily paused or waiting for information', 'pls-private-label-store' ),
+                            __( 'Done: Completed orders ready for delivery', 'pls-private-label-store' ),
+                        ),
+                    ),
+                    array(
+                        'title' => __( 'Managing Custom Orders', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Drag and Drop: Move orders between stages by dragging cards', 'pls-private-label-store' ),
+                            __( 'View Details: Click on any order card to view full information', 'pls-private-label-store' ),
+                            __( 'Edit: Update order information, production cost, total value', 'pls-private-label-store' ),
+                            __( 'Delete: Remove orders that are no longer needed', 'pls-private-label-store' ),
+                        ),
+                    ),
+                    array(
+                        'title' => __( 'Order Information', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Customer Details: Name, email, phone, company', 'pls-private-label-store' ),
+                            __( 'Order Details: Category, quantity, budget, timeline, message', 'pls-private-label-store' ),
+                            __( 'Financials: Production cost, total value, commission (calculated when status is "Done")', 'pls-private-label-store' ),
+                        ),
+                    ),
+                    array(
+                        'title' => __( 'Commission for Custom Orders', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Commission is calculated when order status changes to "Done"', 'pls-private-label-store' ),
+                            __( 'Commission rates: 3% below threshold, 5% above threshold (configured in Settings)', 'pls-private-label-store' ),
+                            __( 'Commission is based on final order value (total value)', 'pls-private-label-store' ),
+                        ),
+                    ),
+                ),
+            );
+        }
+
+        // Revenue guide
+        if ( 'revenue' === $page ) {
+            $content = array(
+                'title' => __( 'Revenue Guide', 'pls-private-label-store' ),
+                'sections' => array(
+                    array(
+                        'title' => __( 'Overview', 'pls-private-label-store' ),
+                        'content' => __( 'Revenue shows total sales from WooCommerce orders containing PLS products. This is different from commission - revenue is total sales, commission is your share.', 'pls-private-label-store' ),
+                    ),
+                    array(
+                        'title' => __( 'Revenue Metrics', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Total Revenue: Sum of all order totals', 'pls-private-label-store' ),
+                            __( 'Monthly Trends: Chart showing revenue over time', 'pls-private-label-store' ),
+                            __( 'Top Products: Products generating the most revenue', 'pls-private-label-store' ),
+                            __( 'Revenue by Tier: Breakdown by pack tier (50, 100, 250, 500, 1000 units)', 'pls-private-label-store' ),
+                        ),
+                    ),
+                    array(
+                        'title' => __( 'Filtering Revenue', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Date Range: View revenue for specific time periods', 'pls-private-label-store' ),
+                            __( 'Product Filter: See revenue breakdown by individual products', 'pls-private-label-store' ),
+                            __( 'Status Filter: Filter by order status (Completed, Processing, etc.)', 'pls-private-label-store' ),
+                        ),
+                    ),
+                    array(
+                        'title' => __( 'Understanding Revenue vs Commission', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Revenue: Total amount customers paid (gross sales)', 'pls-private-label-store' ),
+                            __( 'Commission: Your share of revenue (calculated based on tier/bundle rates)', 'pls-private-label-store' ),
+                            __( 'Profit: Revenue minus commission minus marketing costs (view on BI Dashboard)', 'pls-private-label-store' ),
+                        ),
+                    ),
+                ),
+            );
+        }
+
+        // Commission guide
+        if ( 'commission' === $page ) {
+            $content = array(
+                'title' => __( 'Commission Guide', 'pls-private-label-store' ),
+                'sections' => array(
+                    array(
+                        'title' => __( 'Overview', 'pls-private-label-store' ),
+                        'content' => __( 'Commission tracking shows your earnings from product orders and custom orders. Commissions are automatically calculated and can be tracked through invoicing and payment.', 'pls-private-label-store' ),
+                    ),
+                    array(
+                        'title' => __( 'Commission Types', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Product Commissions: From regular WooCommerce orders with PLS products', 'pls-private-label-store' ),
+                            __( 'Custom Order Commissions: From custom order leads (separate calculation)', 'pls-private-label-store' ),
+                        ),
+                    ),
+                    array(
+                        'title' => __( 'Commission Calculation', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Product Orders: Based on pack tier pricing rules (configured in Settings)', 'pls-private-label-store' ),
+                            __( 'Bundle Orders: Uses bundle commission rates', 'pls-private-label-store' ),
+                            __( 'Custom Orders: Percentage-based (3% below threshold, 5% above threshold)', 'pls-private-label-store' ),
+                            __( 'Auto-calculation: Commissions calculated when orders are completed', 'pls-private-label-store' ),
+                        ),
+                    ),
+                    array(
+                        'title' => __( 'Commission Status Flow', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Pending: Commission calculated but not yet invoiced', 'pls-private-label-store' ),
+                            __( 'Invoiced: Commission has been invoiced', 'pls-private-label-store' ),
+                            __( 'Paid: Commission payment received', 'pls-private-label-store' ),
+                        ),
+                    ),
+                    array(
+                        'title' => __( 'Managing Commissions', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'View Details: Click on commission row to see full breakdown', 'pls-private-label-store' ),
+                            __( 'Bulk Actions: Mark multiple commissions as invoiced or paid', 'pls-private-label-store' ),
+                            __( 'Date Filters: View commissions for specific time periods', 'pls-private-label-store' ),
+                            __( 'Product/Tier Filters: See commission breakdown by product or tier', 'pls-private-label-store' ),
+                        ),
+                    ),
+                    array(
+                        'title' => __( 'Monthly Commission Reports', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Automated emails sent on 2nd of each month', 'pls-private-label-store' ),
+                            __( 'Recipients configured in Settings', 'pls-private-label-store' ),
+                            __( 'Manual send: Use "Send Report" button to generate and send immediately', 'pls-private-label-store' ),
+                        ),
+                    ),
+                ),
+            );
+        }
+
+        // BI Dashboard guide
+        if ( 'bi' === $page ) {
+            $content = array(
+                'title' => __( 'BI Dashboard Guide', 'pls-private-label-store' ),
+                'sections' => array(
+                    array(
+                        'title' => __( 'Overview', 'pls-private-label-store' ),
+                        'content' => __( 'The BI Dashboard provides comprehensive analytics for your PLS operations, including marketing costs, revenue, commission, and profit calculations.', 'pls-private-label-store' ),
+                    ),
+                    array(
+                        'title' => __( 'Marketing Cost Tracking', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Record marketing expenses by channel (Meta, Google, Creative, Other)', 'pls-private-label-store' ),
+                            __( 'Add costs with date and description', 'pls-private-label-store' ),
+                            __( 'Track spending over time to understand ROI', 'pls-private-label-store' ),
+                        ),
+                    ),
+                    array(
+                        'title' => __( 'Key Metrics', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Revenue: Total sales from product and custom orders', 'pls-private-label-store' ),
+                            __( 'Commission: Total commissions earned', 'pls-private-label-store' ),
+                            __( 'Marketing Costs: Total marketing expenses', 'pls-private-label-store' ),
+                            __( 'Net Profit: Revenue - Commission - Marketing Costs', 'pls-private-label-store' ),
+                        ),
+                    ),
+                    array(
+                        'title' => __( 'Charts and Visualizations', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Visual charts show trends over time', 'pls-private-label-store' ),
+                            __( 'Revenue trends: See how revenue changes month-to-month', 'pls-private-label-store' ),
+                            __( 'Commission trends: Track commission earnings over time', 'pls-private-label-store' ),
+                            __( 'Profit analysis: Understand profitability trends', 'pls-private-label-store' ),
+                        ),
+                    ),
+                    array(
+                        'title' => __( 'Date Range Filtering', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Select date range to analyze performance for specific periods', 'pls-private-label-store' ),
+                            __( 'Compare different time periods', 'pls-private-label-store' ),
+                            __( 'Export data for external analysis', 'pls-private-label-store' ),
+                        ),
+                    ),
+                ),
+            );
+        }
+
+        // Settings guide
         if ( 'settings' === $page ) {
             $content = array(
-                'overview' => array(
-                    'title' => __( 'Settings Overview', 'pls-private-label-store' ),
-                    'tips' => array(
-                        __( 'Configure commission rates for pack tiers, bundles, and custom orders.', 'pls-private-label-store' ),
-                        __( 'Set commission email recipients for automated monthly reports.', 'pls-private-label-store' ),
-                        __( 'Generate sample data to populate your store with realistic products and orders.', 'pls-private-label-store' ),
-                        __( 'Reset onboarding progress if you want to restart the tutorial.', 'pls-private-label-store' ),
+                'title' => __( 'Settings Guide', 'pls-private-label-store' ),
+                'sections' => array(
+                    array(
+                        'title' => __( 'Commission Rates', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Pack Tier Rates: Set commission per unit for each tier (Tier 1-5)', 'pls-private-label-store' ),
+                            __( 'Bundle Rates: Set commission per unit for each bundle type (Mini Line, Starter Line, Growth Line, Premium Line)', 'pls-private-label-store' ),
+                            __( 'Custom Order Threshold: Set the amount threshold for custom order commission rates', 'pls-private-label-store' ),
+                            __( 'Custom Order Rates: Set percentage rates (below threshold and above threshold)', 'pls-private-label-store' ),
+                        ),
+                    ),
+                    array(
+                        'title' => __( 'Commission Email Settings', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Configure email recipients for automated monthly commission reports', 'pls-private-label-store' ),
+                            __( 'Reports are sent automatically on the 2nd of each month', 'pls-private-label-store' ),
+                            __( 'Add multiple email addresses separated by commas', 'pls-private-label-store' ),
+                        ),
+                    ),
+                    array(
+                        'title' => __( 'Sample Data', 'pls-private-label-store' ),
+                        'items' => array(
+                            __( 'Generate sample data to populate your store with realistic products and orders', 'pls-private-label-store' ),
+                            __( 'Includes: 10 sample products, product options, bundles, orders, custom orders', 'pls-private-label-store' ),
+                            __( 'Useful for testing and understanding the system', 'pls-private-label-store' ),
+                            __( 'Can clear existing data before generating new sample data', 'pls-private-label-store' ),
+                        ),
                     ),
                 ),
             );
         }
 
         return $content;
-    }
-
-    /**
-     * Get steps definition.
-     *
-     * @return array
-     */
-    /**
-     * Get tutorial flow definition (sequential steps for guided tutorial).
-     *
-     * @return array Sequential tutorial steps.
-     */
-    public static function get_tutorial_flow() {
-        $user_name = self::get_user_name();
-        $greeting = $user_name ? sprintf( __( 'Hi %s,', 'pls-private-label-store' ), $user_name ) : '';
-        
-        return array(
-            'attributes' => array(
-                'step_number' => 1,
-                'title' => __( 'Step 1: Product Options', 'pls-private-label-store' ),
-                'page' => 'attributes',
-                'description' => $user_name ? sprintf( __( '%s Let\'s review your product options.', 'pls-private-label-store' ), $greeting ) : __( 'Let\'s review your product options.', 'pls-private-label-store' ),
-                'steps' => array(
-                    __( 'Review Pack Tier settings (units and prices)', 'pls-private-label-store' ),
-                    __( 'Modify pricing if needed, or confirm defaults are OK', 'pls-private-label-store' ),
-                    __( 'Review Package Type options (30ml, 50ml, 120ml, 50gr jar)', 'pls-private-label-store' ),
-                    __( 'Review Package Color options (Standard, Frosted, Amber)', 'pls-private-label-store' ),
-                    __( 'Review Package Cap options (Pump, Lid, Dropper)', 'pls-private-label-store' ),
-                    __( 'Review Fragrances (available for Tier 3+)', 'pls-private-label-store' ),
-                    __( 'Review Ingredients as product options', 'pls-private-label-store' ),
-                ),
-                'next_page' => 'products',
-                'next_title' => __( 'Next: Create Your First Product', 'pls-private-label-store' ),
-            ),
-            'products' => array(
-                'step_number' => 2,
-                'title' => __( 'Step 2: Create Your First Product', 'pls-private-label-store' ),
-                'page' => 'products',
-                'description' => $user_name ? sprintf( __( '%s Create your first product. Follow each step carefully.', 'pls-private-label-store' ), $greeting ) : __( 'Create your first product. Follow each step carefully.', 'pls-private-label-store' ),
-                'steps' => array(
-                    __( 'Click the "Add Product" button in the top right corner', 'pls-private-label-store' ),
-                    __( 'General Tab: Enter a descriptive product name (e.g., "Collagen Serum")', 'pls-private-label-store' ),
-                    __( 'General Tab: Select at least one category to organize your product', 'pls-private-label-store' ),
-                    __( 'General Tab: Upload a featured image (main product photo)', 'pls-private-label-store' ),
-                    __( 'General Tab: Add gallery images (multiple product photos)', 'pls-private-label-store' ),
-                    __( 'Data Tab: Write a short description (1-2 sentences for product cards)', 'pls-private-label-store' ),
-                    __( 'Data Tab: Write a long description (full product story and benefits)', 'pls-private-label-store' ),
-                    __( 'Data Tab: Add directions for use (how customers should use the product)', 'pls-private-label-store' ),
-                    __( 'Data Tab: Select applicable skin types (Normal, Oily, Dry, Combination, Sensitive)', 'pls-private-label-store' ),
-                    __( 'Data Tab: List benefits (one per line, e.g., "Hydrates instantly")', 'pls-private-label-store' ),
-                    __( 'Ingredients Tab: Search and select ingredients from the list', 'pls-private-label-store' ),
-                    __( 'Ingredients Tab: Choose up to 5 key ingredients to spotlight with icons', 'pls-private-label-store' ),
-                    __( 'Pack Tiers Tab: Review default tier pricing (50, 100, 250, 500, 1000 units)', 'pls-private-label-store' ),
-                    __( 'Pack Tiers Tab: Enable/disable tiers and adjust prices if needed', 'pls-private-label-store' ),
-                    __( 'Pack Tiers Tab: Use the price calculator to see total costs with options', 'pls-private-label-store' ),
-                    __( 'Product Options Tab: Select Package Type (30ml, 50ml, 120ml bottle or 50gr jar)', 'pls-private-label-store' ),
-                    __( 'Product Options Tab: Choose Package Color/Finish (Standard is included, others add cost)', 'pls-private-label-store' ),
-                    __( 'Product Options Tab: Select Package Cap/Applicator (compatible with your package type)', 'pls-private-label-store' ),
-                    __( 'Product Options Tab: Add Fragrances if using Tier 3+ (optional)', 'pls-private-label-store' ),
-                    __( 'Product Options Tab: Add other product options if needed (custom attributes)', 'pls-private-label-store' ),
-                    __( 'Label Tab: Enable label application if you offer custom labels', 'pls-private-label-store' ),
-                    __( 'Label Tab: Set price per unit for label application', 'pls-private-label-store' ),
-                    __( 'Click "Save Product" button to save and sync to WooCommerce', 'pls-private-label-store' ),
-                    __( 'After saving, use "Sync" button to create WooCommerce product', 'pls-private-label-store' ),
-                    __( 'Use "Activate" button to make product visible to customers', 'pls-private-label-store' ),
-                    __( 'Use "Preview" button to see how product appears on the frontend', 'pls-private-label-store' ),
-                ),
-                'next_page' => 'bundles',
-                'next_title' => __( 'Next: Create Bundles', 'pls-private-label-store' ),
-            ),
-            'bundles' => array(
-                'step_number' => 3,
-                'title' => __( 'Step 3: Create Bundles', 'pls-private-label-store' ),
-                'page' => 'bundles',
-                'description' => $user_name ? sprintf( __( '%s Set up bundles for special pricing.', 'pls-private-label-store' ), $greeting ) : __( 'Set up bundles for special pricing.', 'pls-private-label-store' ),
-                'steps' => array(
-                    __( 'Click "Create Bundle" button', 'pls-private-label-store' ),
-                    __( 'Select bundle type (Mini Line, Starter Line, Growth Line, Premium Line)', 'pls-private-label-store' ),
-                    __( 'Set SKU count (number of different products)', 'pls-private-label-store' ),
-                    __( 'Set units per SKU (quantity for each product)', 'pls-private-label-store' ),
-                    __( 'Configure price per unit', 'pls-private-label-store' ),
-                    __( 'Set commission per unit', 'pls-private-label-store' ),
-                    __( 'Save bundle and sync to WooCommerce', 'pls-private-label-store' ),
-                    __( 'Understand that cart automatically detects bundle qualification', 'pls-private-label-store' ),
-                ),
-                'next_page' => 'categories',
-                'next_title' => __( 'Next: Review Categories', 'pls-private-label-store' ),
-            ),
-            'categories' => array(
-                'step_number' => 4,
-                'title' => __( 'Step 4: Review Categories', 'pls-private-label-store' ),
-                'page' => 'categories',
-                'description' => $user_name ? sprintf( __( '%s Final step: review categories.', 'pls-private-label-store' ), $greeting ) : __( 'Final step: review categories.', 'pls-private-label-store' ),
-                'steps' => array(
-                    __( 'Review existing product categories', 'pls-private-label-store' ),
-                    __( 'Create a new category if needed for your products', 'pls-private-label-store' ),
-                ),
-                'next_page' => null,
-                'next_title' => $user_name ? sprintf( __( 'All set, %s!', 'pls-private-label-store' ), $user_name ) : __( 'Tutorial Complete!', 'pls-private-label-store' ),
-            ),
-        );
-    }
-
-    /**
-     * Get steps definition (legacy - for backward compatibility).
-     *
-     * @return array
-     */
-    public static function get_steps_definition() {
-        // Return tutorial flow for active tutorial, otherwise return empty
-        return self::get_tutorial_flow();
-    }
-
-    /**
-     * Get exploration flows definition (optional feature tours).
-     *
-     * @return array Exploration flows.
-     */
-    public static function get_exploration_flows() {
-        return array(
-            'custom-orders' => array(
-                'key' => 'custom-orders',
-                'title' => __( 'Custom Orders Pipeline', 'pls-private-label-store' ),
-                'description' => __( 'Learn how to manage custom order leads through the Kanban pipeline.', 'pls-private-label-store' ),
-                'icon' => 'dashicons-email-alt',
-                'page' => 'custom-orders',
-                'steps' => array(
-                    __( 'Understanding the Kanban board: Orders flow through stages from New Leads to Done', 'pls-private-label-store' ),
-                    __( 'New Leads: Initial customer inquiries and custom order requests', 'pls-private-label-store' ),
-                    __( 'Sampling: Orders in the sampling/testing phase', 'pls-private-label-store' ),
-                    __( 'Production: Orders currently being manufactured', 'pls-private-label-store' ),
-                    __( 'On-hold: Orders temporarily paused or waiting for information', 'pls-private-label-store' ),
-                    __( 'Done: Completed orders ready for delivery', 'pls-private-label-store' ),
-                    __( 'Drag and drop orders between stages to update their status', 'pls-private-label-store' ),
-                    __( 'Click on any order card to view details, financials, and commission information', 'pls-private-label-store' ),
-                    __( 'Custom orders have separate commission calculations from regular product orders', 'pls-private-label-store' ),
-                ),
-            ),
-            'revenue' => array(
-                'key' => 'revenue',
-                'title' => __( 'Revenue Reporting', 'pls-private-label-store' ),
-                'description' => __( 'Understand revenue breakdowns, filtering, and reporting capabilities.', 'pls-private-label-store' ),
-                'icon' => 'dashicons-money-alt',
-                'page' => 'revenue',
-                'steps' => array(
-                    __( 'Revenue shows total sales from WooCommerce orders containing PLS products', 'pls-private-label-store' ),
-                    __( 'Use date range filters to view revenue for specific periods', 'pls-private-label-store' ),
-                    __( 'Filter by product to see revenue breakdown by individual products', 'pls-private-label-store' ),
-                    __( 'Filter by pack tier to see revenue by quantity tiers (50, 100, 250, 500, 1000 units)', 'pls-private-label-store' ),
-                    __( 'Revenue is calculated from completed WooCommerce orders', 'pls-private-label-store' ),
-                    __( 'Revenue differs from commission: Revenue is total sales, commission is your share', 'pls-private-label-store' ),
-                    __( 'View detailed order breakdowns to understand revenue sources', 'pls-private-label-store' ),
-                ),
-            ),
-            'commission' => array(
-                'key' => 'commission',
-                'title' => __( 'Commission Tracking', 'pls-private-label-store' ),
-                'description' => __( 'Learn how commissions are calculated and tracked for invoicing.', 'pls-private-label-store' ),
-                'icon' => 'dashicons-clock',
-                'page' => 'commission',
-                'steps' => array(
-                    __( 'Commissions are automatically calculated from product orders based on pack tier pricing', 'pls-private-label-store' ),
-                    __( 'Product commissions: Calculated from regular WooCommerce orders with PLS products', 'pls-private-label-store' ),
-                    __( 'Custom order commissions: Separate calculation for custom order leads', 'pls-private-label-store' ),
-                    __( 'Commission status: Pending (not yet invoiced), Invoiced, Paid', 'pls-private-label-store' ),
-                    __( 'Use date filters to view commissions for specific time periods', 'pls-private-label-store' ),
-                    __( 'Filter by product or tier to see commission breakdowns', 'pls-private-label-store' ),
-                    __( 'Commissions can be marked as invoiced and paid for tracking purposes', 'pls-private-label-store' ),
-                    __( 'Monthly commission reports can be generated and emailed automatically', 'pls-private-label-store' ),
-                ),
-            ),
-            'bi-dashboard' => array(
-                'key' => 'bi-dashboard',
-                'title' => __( 'BI Dashboard & Analytics', 'pls-private-label-store' ),
-                'description' => __( 'Explore marketing costs, profit calculations, and visual analytics.', 'pls-private-label-store' ),
-                'icon' => 'dashicons-chart-line',
-                'page' => 'bi',
-                'steps' => array(
-                    __( 'BI Dashboard provides comprehensive analytics for your PLS operations', 'pls-private-label-store' ),
-                    __( 'Marketing Cost Tracking: Record marketing expenses by channel and date', 'pls-private-label-store' ),
-                    __( 'Revenue Metrics: View total revenue from product and custom orders', 'pls-private-label-store' ),
-                    __( 'Commission Metrics: Track total commissions earned', 'pls-private-label-store' ),
-                    __( 'Profit Calculation: Net profit = Revenue - Commission - Marketing Costs', 'pls-private-label-store' ),
-                    __( 'Chart Visualizations: Visual charts show trends over time', 'pls-private-label-store' ),
-                    __( 'Date Range Filtering: Analyze performance for specific time periods', 'pls-private-label-store' ),
-                    __( 'Export Capabilities: Export data for external analysis', 'pls-private-label-store' ),
-                ),
-            ),
-        );
     }
 
     /**
@@ -495,364 +665,28 @@ final class PLS_Onboarding {
             return 'bundles';
         } elseif ( strpos( $hook, 'pls-settings' ) !== false ) {
             return 'settings';
-        } elseif ( strpos( $hook, 'pls-revenue' ) !== false ) {
-            return 'revenue';
-        } elseif ( strpos( $hook, 'pls-settings' ) !== false ) {
-            return 'settings';
         }
         return '';
     }
 
     /**
-     * Get onboarding progress for user.
-     *
-     * @param int $user_id User ID.
-     * @return object|null
-     */
-    public static function get_progress( $user_id ) {
-        global $wpdb;
-        $table = $wpdb->prefix . 'pls_onboarding_progress';
-
-        return $wpdb->get_row(
-            $wpdb->prepare( "SELECT * FROM {$table} WHERE user_id = %d", $user_id ),
-            OBJECT
-        );
-    }
-
-    /**
-     * Start onboarding.
-     */
-    public static function start_onboarding() {
-        check_ajax_referer( 'pls_onboarding_nonce', 'nonce' );
-
-        if ( ! current_user_can( 'manage_woocommerce' ) ) {
-            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
-        }
-
-        $user_id = get_current_user_id();
-        global $wpdb;
-        $table = $wpdb->prefix . 'pls_onboarding_progress';
-
-        // Check if already exists
-        $existing = self::get_progress( $user_id );
-        if ( $existing ) {
-            // Reset progress
-            $wpdb->update(
-                $table,
-                array(
-                    'current_step' => null,
-                    'completed_steps' => '[]',
-                    'test_product_id' => null,
-                    'completed_at' => null,
-                    'started_at' => current_time( 'mysql' ),
-                ),
-                array( 'user_id' => $user_id ),
-                array( '%s', '%s', '%d', '%s', '%s' ),
-                array( '%d' )
-            );
-        } else {
-            // Create new
-            $wpdb->insert(
-                $table,
-                array(
-                    'user_id' => $user_id,
-                    'started_at' => current_time( 'mysql' ),
-                ),
-                array( '%d', '%s' )
-            );
-        }
-
-        // Redirect to first tutorial page (attributes)
-        wp_send_json_success( array( 
-            'message' => __( 'Tutorial started.', 'pls-private-label-store' ),
-            'redirect' => admin_url( 'admin.php?page=pls-attributes' )
-        ) );
-    }
-
-    /**
-     * Update onboarding step.
-     */
-    public static function update_step() {
-        check_ajax_referer( 'pls_onboarding_nonce', 'nonce' );
-
-        if ( ! current_user_can( 'manage_woocommerce' ) ) {
-            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
-        }
-
-        $user_id = get_current_user_id();
-        $page = isset( $_POST['page'] ) ? sanitize_text_field( wp_unslash( $_POST['page'] ) ) : '';
-        $step_index = isset( $_POST['step_index'] ) ? absint( $_POST['step_index'] ) : 0;
-        $mark_completed = isset( $_POST['mark_completed'] ) ? (bool) $_POST['mark_completed'] : true;
-
-        if ( ! $page ) {
-            wp_send_json_error( array( 'message' => __( 'Invalid page.', 'pls-private-label-store' ) ) );
-        }
-
-        global $wpdb;
-        $table = $wpdb->prefix . 'pls_onboarding_progress';
-
-        $progress = self::get_progress( $user_id );
-        $completed_steps = $progress && $progress->completed_steps ? json_decode( $progress->completed_steps, true ) : array();
-
-        $step_key = $page . '_' . $step_index;
-        if ( $mark_completed && ! in_array( $step_key, $completed_steps, true ) ) {
-            $completed_steps[] = $step_key;
-        } elseif ( ! $mark_completed && in_array( $step_key, $completed_steps, true ) ) {
-            $completed_steps = array_values( array_diff( $completed_steps, array( $step_key ) ) );
-        }
-
-        $wpdb->update(
-            $table,
-            array(
-                'current_step' => $page,
-                'completed_steps' => wp_json_encode( $completed_steps ),
-            ),
-            array( 'user_id' => $user_id ),
-            array( '%s', '%s' ),
-            array( '%d' )
-        );
-
-        wp_send_json_success();
-    }
-
-    /**
-     * Complete onboarding.
-     */
-    public static function complete_onboarding() {
-        check_ajax_referer( 'pls_onboarding_nonce', 'nonce' );
-
-        if ( ! current_user_can( 'manage_woocommerce' ) ) {
-            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
-        }
-
-        $user_id = get_current_user_id();
-        global $wpdb;
-        $table = $wpdb->prefix . 'pls_onboarding_progress';
-
-        $progress = self::get_progress( $user_id );
-        $test_product_id = $progress ? $progress->test_product_id : null;
-
-        $wpdb->update(
-            $table,
-            array( 'completed_at' => current_time( 'mysql' ) ),
-            array( 'user_id' => $user_id ),
-            array( '%s' ),
-            array( '%d' )
-        );
-
-        wp_send_json_success(
-            array(
-                'message' => __( 'Onboarding completed!', 'pls-private-label-store' ),
-                'test_product_id' => $test_product_id,
-            )
-        );
-    }
-
-    /**
-     * Skip onboarding.
-     */
-    public static function skip_onboarding() {
-        check_ajax_referer( 'pls_onboarding_nonce', 'nonce' );
-
-        if ( ! current_user_can( 'manage_woocommerce' ) ) {
-            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
-        }
-
-        $user_id = get_current_user_id();
-        global $wpdb;
-        $table = $wpdb->prefix . 'pls_onboarding_progress';
-
-        $wpdb->update(
-            $table,
-            array( 'completed_at' => current_time( 'mysql' ) ),
-            array( 'user_id' => $user_id ),
-            array( '%s' ),
-            array( '%d' )
-        );
-
-        wp_send_json_success( array( 'message' => __( 'Onboarding skipped.', 'pls-private-label-store' ) ) );
-    }
-
-    /**
-     * Get onboarding steps (AJAX endpoint).
-     */
-    public static function get_steps() {
-        check_ajax_referer( 'pls_onboarding_nonce', 'nonce' );
-
-        wp_send_json_success( array( 'steps' => self::get_steps_definition() ) );
-    }
-
-    /**
-     * Delete test product.
-     */
-    public static function delete_test_product() {
-        check_ajax_referer( 'pls_onboarding_nonce', 'nonce' );
-
-        if ( ! current_user_can( 'manage_woocommerce' ) ) {
-            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
-        }
-
-        $product_id = isset( $_POST['product_id'] ) ? absint( $_POST['product_id'] ) : 0;
-        if ( ! $product_id ) {
-            wp_send_json_error( array( 'message' => __( 'Invalid product ID.', 'pls-private-label-store' ) ) );
-        }
-
-        $product = PLS_Repo_Base_Product::get( $product_id );
-        if ( ! $product ) {
-            wp_send_json_error( array( 'message' => __( 'Product not found.', 'pls-private-label-store' ) ) );
-        }
-
-        // Delete from WooCommerce if synced
-        if ( $product->wc_product_id ) {
-            wp_delete_post( $product->wc_product_id, true );
-        }
-
-        // Delete from PLS
-        global $wpdb;
-        $table = $wpdb->prefix . 'pls_base_product';
-        $wpdb->delete( $table, array( 'id' => $product_id ), array( '%d' ) );
-
-        // Clear test_product_id from progress
-        $user_id = get_current_user_id();
-        $progress_table = $wpdb->prefix . 'pls_onboarding_progress';
-        $wpdb->update(
-            $progress_table,
-            array( 'test_product_id' => null ),
-            array( 'user_id' => $user_id ),
-            array( '%d' ),
-            array( '%d' )
-        );
-
-        wp_send_json_success( array( 'message' => __( 'Test product deleted.', 'pls-private-label-store' ) ) );
-    }
-
-    /**
-     * AJAX: Get helper content for a page/section.
+     * AJAX: Get helper content for a page.
      */
     public static function get_helper_content_ajax() {
         check_ajax_referer( 'pls_onboarding_nonce', 'nonce' );
 
         $page = isset( $_POST['page'] ) ? sanitize_text_field( wp_unslash( $_POST['page'] ) ) : '';
-        $section = isset( $_POST['section'] ) ? sanitize_text_field( wp_unslash( $_POST['section'] ) ) : '';
 
         if ( empty( $page ) ) {
             wp_send_json_error( array( 'message' => __( 'Page parameter required.', 'pls-private-label-store' ) ), 400 );
         }
 
-        $content = self::get_helper_content( $page, $section );
+        $content = self::get_helper_content( $page );
 
         if ( empty( $content ) ) {
             wp_send_json_error( array( 'message' => __( 'Helper content not found.', 'pls-private-label-store' ) ), 404 );
         }
 
         wp_send_json_success( array( 'content' => $content ) );
-    }
-
-    /**
-     * Set test product ID.
-     *
-     * @param int $user_id User ID.
-     * @param int $product_id Product ID.
-     */
-    public static function set_test_product( $user_id, $product_id ) {
-        global $wpdb;
-        $table = $wpdb->prefix . 'pls_onboarding_progress';
-
-        $wpdb->update(
-            $table,
-            array( 'test_product_id' => $product_id ),
-            array( 'user_id' => $user_id ),
-            array( '%d' ),
-            array( '%d' )
-        );
-    }
-
-    /**
-     * Get explored features for a user.
-     *
-     * @param int $user_id User ID.
-     * @return array Array of explored feature keys.
-     */
-    public static function get_explored_features( $user_id ) {
-        $progress = self::get_progress( $user_id );
-        if ( ! $progress || ! $progress->explored_features ) {
-            return array();
-        }
-        $explored = json_decode( $progress->explored_features, true );
-        return is_array( $explored ) ? $explored : array();
-    }
-
-    /**
-     * Check if user has explored a specific feature.
-     *
-     * @param int $user_id User ID.
-     * @param string $exploration_key Exploration key (e.g., 'custom-orders', 'revenue', etc.).
-     * @return bool
-     */
-    public static function has_explored_feature( $user_id, $exploration_key ) {
-        $explored = self::get_explored_features( $user_id );
-        return in_array( $exploration_key, $explored, true );
-    }
-
-    /**
-     * Mark an exploration feature as complete.
-     *
-     * @param int $user_id User ID.
-     * @param string $exploration_key Exploration key.
-     */
-    public static function mark_exploration_complete( $user_id, $exploration_key ) {
-        global $wpdb;
-        $table = $wpdb->prefix . 'pls_onboarding_progress';
-
-        $explored = self::get_explored_features( $user_id );
-        if ( ! in_array( $exploration_key, $explored, true ) ) {
-            $explored[] = $exploration_key;
-        }
-
-        // Ensure progress record exists
-        $progress = self::get_progress( $user_id );
-        if ( ! $progress ) {
-            $wpdb->insert(
-                $table,
-                array(
-                    'user_id' => $user_id,
-                    'explored_features' => wp_json_encode( $explored ),
-                ),
-                array( '%d', '%s' )
-            );
-        } else {
-            $wpdb->update(
-                $table,
-                array( 'explored_features' => wp_json_encode( $explored ) ),
-                array( 'user_id' => $user_id ),
-                array( '%s' ),
-                array( '%d' )
-            );
-        }
-    }
-
-    /**
-     * AJAX: Complete an exploration feature.
-     */
-    public static function complete_exploration() {
-        check_ajax_referer( 'pls_onboarding_nonce', 'nonce' );
-
-        if ( ! current_user_can( 'manage_woocommerce' ) ) {
-            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
-        }
-
-        $exploration_key = isset( $_POST['exploration_key'] ) ? sanitize_text_field( wp_unslash( $_POST['exploration_key'] ) ) : '';
-        
-        if ( empty( $exploration_key ) ) {
-            wp_send_json_error( array( 'message' => __( 'Invalid exploration key.', 'pls-private-label-store' ) ), 400 );
-        }
-
-        $user_id = get_current_user_id();
-        self::mark_exploration_complete( $user_id, $exploration_key );
-
-        wp_send_json_success( array( 
-            'message' => __( 'Exploration completed.', 'pls-private-label-store' ),
-            'explored_features' => self::get_explored_features( $user_id ),
-        ) );
     }
 }
