@@ -13,7 +13,7 @@
     border-radius: 8px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
     z-index: 999999;
-    display: flex;
+    display: flex !important; /* Force display */
     flex-direction: column;
     transform: translateY(calc(100% - 60px));
     transition: transform 0.3s ease;
@@ -28,6 +28,12 @@
 
 .pls-debug-console:not(.pls-debug-console--open):hover {
     border-color: #135e96;
+}
+
+/* Make header always visible as toggle button */
+.pls-debug-console__header {
+    cursor: pointer;
+    user-select: none;
 }
 
 .pls-debug-console--open {

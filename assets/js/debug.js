@@ -12,13 +12,31 @@
         currentFilter: 'all',
 
         init: function() {
-            if (typeof PLS_Debug === 'undefined' || !PLS_Debug.enabled) {
+            // Always create console if debug is enabled (even if PLS_Debug object not yet loaded)
+            var debugEnabled = (typeof PLS_Debug !== 'undefined' && PLS_Debug.enabled) || 
+                              (typeof window.plsDebugEnabled !== 'undefined' && window.plsDebugEnabled);
+            
+            if (!debugEnabled) {
+                // Check option via AJAX if not available
                 return;
             }
 
             this.createConsole();
             this.bindEvents();
+            this.bindKeyboardShortcut();
             this.logPageLoad();
+        },
+        
+        bindKeyboardShortcut: function() {
+            var self = this;
+            $(document).on('keydown', function(e) {
+                // Use Ctrl+Shift+Alt+D to avoid Chrome bookmark conflict
+                if (e.ctrlKey && e.shiftKey && e.altKey && e.key === 'D') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    self.toggle();
+                }
+            });
         },
 
         createConsole: function() {
@@ -219,11 +237,17 @@
 
     // Initialize on DOM ready
     $(document).ready(function() {
-        PLS_Debug_Console.init();
-        // Load initial logs after initialization
-        setTimeout(function() {
-            PLS_Debug_Console.loadInitialLogs();
-        }, 100);
+        // Check if debug is enabled (multiple ways to check)
+        var debugEnabled = (typeof PLS_Debug !== 'undefined' && PLS_Debug.enabled) || 
+                          (typeof window.plsDebugEnabled !== 'undefined' && window.plsDebugEnabled);
+        
+        if (debugEnabled) {
+            PLS_Debug_Console.init();
+            // Load initial logs after initialization
+            setTimeout(function() {
+                PLS_Debug_Console.loadInitialLogs();
+            }, 100);
+        }
     });
 
     // Expose globally

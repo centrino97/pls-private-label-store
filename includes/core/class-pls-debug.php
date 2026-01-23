@@ -51,11 +51,18 @@ final class PLS_Debug {
             'pls-debug',
             'PLS_Debug',
             array(
-                'enabled' => self::$enabled,
+                'enabled' => self::$enabled ? 1 : 0, // Ensure boolean is converted to int for JS
                 'log_level' => self::$log_level,
                 'ajax_url' => admin_url( 'admin-ajax.php' ),
                 'nonce' => wp_create_nonce( 'pls_debug_nonce' ),
             )
+        );
+        
+        // Also set a global flag for early detection
+        wp_add_inline_script(
+            'pls-debug',
+            'window.plsDebugEnabled = ' . ( self::$enabled ? 'true' : 'false' ) . ';',
+            'before'
         );
 
         wp_enqueue_style(

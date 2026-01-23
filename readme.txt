@@ -24,12 +24,14 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 
 == Changelog ==
 = 2.0.3 =
-* **FIXED:** Database error - Fixed "Unknown column 'quantity'" by using correct column name `quantity_needed` in sample data
+* **FIXED:** Database error - Fixed "Unknown column 'quantity'" by using `quantity_needed` directly in order templates (no conversion needed)
+* **FIXED:** Debug console not visible - Fixed initialization check, added keyboard shortcut (Ctrl+Shift+Alt+D), and forced CSS display
 * **FIXED:** Debug settings not saving - Fixed form submission handler and added proper null checks
 * **FIXED:** PHP 8.1+ null warnings - Added comprehensive null checks and type validation for all WordPress sanitization functions
 * **FIXED:** WooCommerce duplicate category assignment - Added check to prevent duplicate term relationships
 * **IMPROVED:** Sample data custom orders - Dynamic format array building for flexible database insertion
 * **IMPROVED:** Category assignment - Checks existing categories before assigning to prevent duplicates
+* **IMPROVED:** Debug console - Changed shortcut to Ctrl+Shift+Alt+D to avoid Chrome bookmark conflict
 
 = 2.0.2 =
 * **FIXED:** Fatal error - Added missing validate_product_sync() method to PLS_WC_Sync class
