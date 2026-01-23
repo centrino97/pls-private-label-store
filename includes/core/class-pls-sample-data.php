@@ -250,7 +250,6 @@ final class PLS_Sample_Data {
 
         // Delete product categories except Face parent
         error_log( '[PLS Sample Data] Cleanup: Deleting product categories...' );
-        echo '<script>console.log("[PLS Sample Data] Cleanup: Deleting product categories...");</script>';
         $face_category = get_term_by( 'slug', 'face', 'product_cat' );
         $all_categories = get_terms( array(
             'taxonomy' => 'product_cat',
@@ -271,7 +270,6 @@ final class PLS_Sample_Data {
             $deleted_count++;
         }
         error_log( '[PLS Sample Data] Cleanup: Deleted ' . $deleted_count . ' categories.' );
-        echo '<script>console.log("[PLS Sample Data] Cleanup: Deleted ' . $deleted_count . ' categories.");</script>';
     }
 
     /**
