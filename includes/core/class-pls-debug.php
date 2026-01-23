@@ -32,7 +32,6 @@ final class PLS_Debug {
         // Enqueue debug script if enabled
         if ( self::$enabled && is_admin() ) {
             add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_scripts' ) );
-            add_action( 'admin_footer', array( __CLASS__, 'output_logs' ) );
         }
     }
 
@@ -309,30 +308,20 @@ final class PLS_Debug {
 
     /**
      * Output logs to browser console.
+     * CSP-safe implementation (no eval, no inline scripts with dynamic content).
      */
     public static function output_logs() {
         if ( ! self::$enabled || empty( self::$logs ) ) {
             return;
         }
 
-        ?>
-        <script type="text/javascript">
-        if ( typeof PLS_Debug !== 'undefined' && PLS_Debug.enabled ) {
-            var logs = <?php echo wp_json_encode( self::$logs ); ?>;
-            if ( typeof PLS_Debug_Console !== 'undefined' ) {
-                PLS_Debug_Console.addLogs( logs );
-            } else {
-                // Fallback: log to console directly
-                logs.forEach( function( log ) {
-                    var consoleMethod = log.level === 'error' ? 'error' : ( log.level === 'warn' ? 'warn' : 'log' );
-                    if ( console[ consoleMethod ] ) {
-                        console[ consoleMethod ]( '[PLS ' + log.level.toUpperCase() + ']', log.message, log.context );
-                    }
-                } );
-            }
-        }
-        </script>
-        <?php
+        // Use wp_localize_script instead of inline script to avoid CSP issues
+        // Logs will be passed via PLS_Debug object
+        wp_localize_script(
+            'pls-debug',
+            'PLS_Debug_Logs',
+            self::$logs
+        );
     }
 
     /**
