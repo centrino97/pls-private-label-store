@@ -12,19 +12,35 @@
         currentFilter: 'all',
 
         init: function() {
-            // Always create console if debug is enabled (even if PLS_Debug object not yet loaded)
-            var debugEnabled = (typeof PLS_Debug !== 'undefined' && PLS_Debug.enabled) || 
-                              (typeof window.plsDebugEnabled !== 'undefined' && window.plsDebugEnabled);
+            // Check if debug is enabled - multiple ways to check
+            var debugEnabled = false;
             
+            // Check PLS_Debug object (from wp_localize_script)
+            if (typeof PLS_Debug !== 'undefined') {
+                debugEnabled = PLS_Debug.enabled === 1 || PLS_Debug.enabled === true;
+            }
+            
+            // Check global flag (from inline script)
+            if (!debugEnabled && typeof window.plsDebugEnabled !== 'undefined') {
+                debugEnabled = window.plsDebugEnabled === true;
+            }
+            
+            // If still not enabled, don't initialize
             if (!debugEnabled) {
-                // Check option via AJAX if not available
                 return;
             }
 
+            // Create console
             this.createConsole();
             this.bindEvents();
             this.bindKeyboardShortcut();
             this.logPageLoad();
+            
+            // Load initial logs after a short delay to ensure PLS_Debug_Logs is available
+            var self = this;
+            setTimeout(function() {
+                self.loadInitialLogs();
+            }, 200);
         },
         
         bindKeyboardShortcut: function() {
@@ -237,17 +253,7 @@
 
     // Initialize on DOM ready
     $(document).ready(function() {
-        // Check if debug is enabled (multiple ways to check)
-        var debugEnabled = (typeof PLS_Debug !== 'undefined' && PLS_Debug.enabled) || 
-                          (typeof window.plsDebugEnabled !== 'undefined' && window.plsDebugEnabled);
-        
-        if (debugEnabled) {
-            PLS_Debug_Console.init();
-            // Load initial logs after initialization
-            setTimeout(function() {
-                PLS_Debug_Console.loadInitialLogs();
-            }, 100);
-        }
+        PLS_Debug_Console.init();
     });
 
     // Expose globally

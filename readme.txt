@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 2.0.3
+Stable tag: 2.0.4
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,13 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 2.0.4 =
+* **FIXED:** Debug console initialization - Improved detection logic and script loading order
+* **FIXED:** Debug console visibility - Added admin_footer hook to ensure logs are output
+* **FIXED:** PHP 8.1+ null warnings - Added comprehensive type checks for all get_option calls
+* **IMPROVED:** Debug console - Better initialization timing and log loading
+* **IMPROVED:** Settings page - Added array type validation for commission rates
+
 = 2.0.3 =
 * **FIXED:** Database error - Fixed "Unknown column 'quantity'" by using `quantity_needed` directly in order templates (no conversion needed)
 * **FIXED:** Debug console not visible - Fixed initialization check, added keyboard shortcut (Ctrl+Shift+Alt+D), and forced CSS display

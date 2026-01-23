@@ -26,12 +26,16 @@ final class PLS_Debug {
      * Initialize debug system.
      */
     public static function init() {
-        self::$enabled = get_option( 'pls_debug_enabled', false );
-        self::$log_level = get_option( 'pls_debug_log_level', self::LOG_LEVEL_DEBUG );
+        self::$enabled = (bool) get_option( 'pls_debug_enabled', false );
+        $log_level_raw = get_option( 'pls_debug_log_level', self::LOG_LEVEL_DEBUG );
+        // Ensure log_level is always a string
+        self::$log_level = ( is_string( $log_level_raw ) && ! empty( $log_level_raw ) ) ? $log_level_raw : self::LOG_LEVEL_DEBUG;
 
         // Enqueue debug script if enabled
         if ( self::$enabled && is_admin() ) {
-            add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_scripts' ) );
+            add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_scripts' ), 20 ); // Higher priority to ensure jQuery is loaded
+            // Also output logs after scripts are enqueued
+            add_action( 'admin_footer', array( __CLASS__, 'output_logs' ), 999 );
         }
     }
 
@@ -318,17 +322,23 @@ final class PLS_Debug {
      * CSP-safe implementation (no eval, no inline scripts with dynamic content).
      */
     public static function output_logs() {
-        if ( ! self::$enabled || empty( self::$logs ) ) {
+        if ( ! self::$enabled ) {
             return;
         }
 
-        // Use wp_localize_script instead of inline script to avoid CSP issues
-        // Logs will be passed via PLS_Debug object
-        wp_localize_script(
-            'pls-debug',
-            'PLS_Debug_Logs',
-            self::$logs
-        );
+        // Ensure script is enqueued
+        if ( ! wp_script_is( 'pls-debug', 'enqueued' ) ) {
+            return;
+        }
+
+        // Use wp_localize_script to pass logs (CSP-safe)
+        if ( ! empty( self::$logs ) ) {
+            wp_localize_script(
+                'pls-debug',
+                'PLS_Debug_Logs',
+                self::$logs
+            );
+        }
     }
 
     /**
