@@ -2786,9 +2786,10 @@ body.pls-modal-open {
   gap: var(--pls-space-md);
   font-size: var(--pls-font-size-sm);
   color: var(--pls-gray-600);
-  flex-shrink: 0; /* Prevent user section from shrinking */
-  min-width: 0; /* Allow flex item to shrink */
-  max-width: 200px; /* Limit maximum width */
+  flex-shrink: 1; /* Allow user section to shrink */
+  min-width: 0; /* Allow flex item to shrink below content size */
+  max-width: 180px; /* Limit maximum width */
+  overflow: hidden; /* Prevent overflow */
 }
 
 .pls-admin-header__user-name {
@@ -2796,17 +2797,30 @@ body.pls-modal-open {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0; /* Allow text to shrink */
   max-width: 100%;
 }
 
 /* Responsive header adjustments */
-@media (max-width: 1200px) {
+@media (max-width: 1400px) {
   .pls-admin-header__user {
     max-width: 150px;
   }
+}
+
+@media (max-width: 1200px) {
+  .pls-admin-header__user {
+    max-width: 120px;
+  }
+}
+
+@media (max-width: 992px) {
+  .pls-admin-header__user {
+    max-width: 100px;
+  }
   
   .pls-admin-header__user-name {
-    max-width: 120px;
+    font-size: var(--pls-font-size-xs);
   }
 }
 
