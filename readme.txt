@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 2.0.2
+Stable tag: 2.0.3
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,14 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 2.0.3 =
+* **FIXED:** Database error - Fixed "Unknown column 'quantity'" by using correct column name `quantity_needed` in sample data
+* **FIXED:** Debug settings not saving - Fixed form submission handler and added proper null checks
+* **FIXED:** PHP 8.1+ null warnings - Added comprehensive null checks and type validation for all WordPress sanitization functions
+* **FIXED:** WooCommerce duplicate category assignment - Added check to prevent duplicate term relationships
+* **IMPROVED:** Sample data custom orders - Dynamic format array building for flexible database insertion
+* **IMPROVED:** Category assignment - Checks existing categories before assigning to prevent duplicates
+
 = 2.0.2 =
 * **FIXED:** Fatal error - Added missing validate_product_sync() method to PLS_WC_Sync class
 * **FIXED:** WooCommerce deprecated meta_query - Replaced with WP_Query for sample order cleanup

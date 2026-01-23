@@ -47,8 +47,11 @@ if ( isset( $_POST['pls_save_settings'] ) && check_admin_referer( 'pls_save_sett
     update_option( 'pls_label_price_tier_1_2', $label_price );
 
     // Save commission email recipients
-    $email_recipients = isset( $_POST['commission_email_recipients'] ) ? sanitize_text_field( wp_unslash( $_POST['commission_email_recipients'] ) ) : '';
-    if ( $email_recipients ) {
+    $email_recipients = '';
+    if ( isset( $_POST['commission_email_recipients'] ) && ! empty( $_POST['commission_email_recipients'] ) ) {
+        $email_recipients = sanitize_text_field( wp_unslash( $_POST['commission_email_recipients'] ) );
+    }
+    if ( $email_recipients && is_string( $email_recipients ) ) {
         $emails = array_map( 'trim', explode( ',', $email_recipients ) );
         $emails = array_filter( array_map( 'sanitize_email', $emails ) );
         update_option( 'pls_commission_email_recipients', $emails );
@@ -324,6 +327,10 @@ if ( isset( $_GET['message'] ) && 'settings-saved' === $_GET['message'] ) {
                 <div class="pls-accordion__content">
                     <?php
                     $thank_you_url = get_option( 'pls_custom_order_thank_you_url', '' );
+                    // Ensure it's a string to prevent null warnings
+                    if ( ! is_string( $thank_you_url ) ) {
+                        $thank_you_url = '';
+                    }
                     ?>
                     <p class="description" style="margin-top: 0;"><?php esc_html_e( 'Configure the custom order form behavior.', 'pls-private-label-store' ); ?></p>
                     

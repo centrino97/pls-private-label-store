@@ -1902,7 +1902,7 @@ final class PLS_Sample_Data {
                     'contact_phone' => $template['contact_phone'],
                     'company_name' => $template['company_name'],
                     'category_id' => $category_id,
-                    'quantity' => $template['quantity'],
+                    'quantity_needed' => $template['quantity'], // Fixed: use quantity_needed not quantity
                     'budget' => $template['budget'],
                     'timeline' => $template['timeline'],
                     'message' => $template['message'],
@@ -1944,7 +1944,7 @@ final class PLS_Sample_Data {
                 'contact_phone' => '+61 400 123 456',
                 'company_name' => 'Beauty Boutique Co.',
                 'category_id' => $category_id,
-                'quantity' => 500,
+                'quantity_needed' => 500,
                 'budget' => 15000.00,
                 'timeline' => '4-6 weeks',
                 'message' => 'Looking for a custom face cleanser line for our boutique. Need professional label application.',
@@ -1957,7 +1957,7 @@ final class PLS_Sample_Data {
                 'contact_phone' => '+61 400 111 222',
                 'company_name' => 'Eco Beauty Essentials',
                 'category_id' => $category_id,
-                'quantity' => 750,
+                'quantity_needed' => 750,
                 'budget' => 18000.00,
                 'timeline' => '5-7 weeks',
                 'message' => 'Interested in organic skincare products with eco-friendly packaging.',
@@ -1970,7 +1970,7 @@ final class PLS_Sample_Data {
                 'contact_phone' => '+61 400 234 567',
                 'company_name' => 'Wellness Solutions Ltd',
                 'category_id' => $category_id,
-                'quantity' => 1000,
+                'quantity_needed' => 1000,
                 'budget' => 25000.00,
                 'timeline' => '6-8 weeks',
                 'message' => 'Interested in a complete skincare line. Would like samples first.',
@@ -1983,7 +1983,7 @@ final class PLS_Sample_Data {
                 'contact_phone' => '+61 400 333 444',
                 'company_name' => 'Glow Skincare Studio',
                 'category_id' => $category_id,
-                'quantity' => 600,
+                'quantity_needed' => 600,
                 'budget' => 16000.00,
                 'timeline' => '4-6 weeks',
                 'message' => 'Need samples for our new product line launch. Testing formulations.',
@@ -1996,7 +1996,7 @@ final class PLS_Sample_Data {
                 'contact_phone' => '+61 400 345 678',
                 'company_name' => 'Natural Skincare Co.',
                 'category_id' => $category_id,
-                'quantity' => 2000,
+                'quantity_needed' => 2000,
                 'budget' => 45000.00,
                 'timeline' => '8-10 weeks',
                 'message' => 'Large order for our new product launch. Need premium packaging options.',
@@ -2011,7 +2011,7 @@ final class PLS_Sample_Data {
                 'contact_phone' => '+61 400 678 901',
                 'company_name' => 'Eco Beauty Solutions',
                 'category_id' => $category_id,
-                'quantity' => 1500,
+                'quantity_needed' => 1500,
                 'budget' => 35000.00,
                 'timeline' => '4-6 weeks',
                 'message' => 'Eco-friendly packaging required. Need samples before finalizing.',
@@ -2024,11 +2024,26 @@ final class PLS_Sample_Data {
         $custom_orders = array_merge( $custom_orders, $recent_custom_orders );
 
         foreach ( $custom_orders as $order_data ) {
-            $wpdb->insert(
-                $table,
-                $order_data,
-                array( '%s', '%s', '%s', '%s', '%d', '%d', '%f', '%s', '%s', '%s', '%s', '%f', '%f', '%f', '%f', '%d', '%s', '%s' )
-            );
+            // Ensure quantity_needed key exists (fix for database column name)
+            if ( isset( $order_data['quantity'] ) && ! isset( $order_data['quantity_needed'] ) ) {
+                $order_data['quantity_needed'] = $order_data['quantity'];
+                unset( $order_data['quantity'] );
+            }
+            
+            // Build format array dynamically based on what's in order_data
+            $formats = array();
+            foreach ( $order_data as $key => $value ) {
+                if ( $key === 'budget' || $key === 'production_cost' || $key === 'total_value' || 
+                     $key === 'nikola_commission_rate' || $key === 'nikola_commission_amount' ) {
+                    $formats[] = '%f';
+                } elseif ( $key === 'category_id' || $key === 'quantity_needed' || $key === 'commission_confirmed' ) {
+                    $formats[] = '%d';
+                } else {
+                    $formats[] = '%s';
+                }
+            }
+            
+            $wpdb->insert( $table, $order_data, $formats );
         }
     }
 

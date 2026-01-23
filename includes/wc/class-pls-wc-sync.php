@@ -298,14 +298,28 @@ final class PLS_WC_Sync {
             $ids = array_map( 'absint', explode( ',', $base->category_path ) );
             $ids = array_filter( $ids );
             if ( $ids ) {
-                if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
-                    PLS_Debug::log_sync( 'sync_product_categories', array(
-                        'base_product_id' => $base_product_id,
-                        'wc_product_id' => $product->get_id(),
-                        'category_ids' => $ids,
-                    ) );
+                // Check existing categories to avoid duplicate assignment
+                $existing_terms = wp_get_object_terms( $product->get_id(), 'product_cat', array( 'fields' => 'ids' ) );
+                if ( is_wp_error( $existing_terms ) ) {
+                    $existing_terms = array();
                 }
-                wp_set_object_terms( $product->get_id(), $ids, 'product_cat' );
+                
+                // Only assign if categories are different
+                $ids_to_assign = array_diff( $ids, $existing_terms );
+                if ( ! empty( $ids_to_assign ) ) {
+                    if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+                        PLS_Debug::log_sync( 'sync_product_categories', array(
+                            'base_product_id' => $base_product_id,
+                            'wc_product_id' => $product->get_id(),
+                            'category_ids' => $ids,
+                            'existing_categories' => $existing_terms,
+                            'ids_to_assign' => $ids_to_assign,
+                        ) );
+                    }
+                    // Merge with existing to avoid duplicates
+                    $final_ids = array_unique( array_merge( $existing_terms, $ids_to_assign ) );
+                    wp_set_object_terms( $product->get_id(), $final_ids, 'product_cat' );
+                }
             }
         }
 
