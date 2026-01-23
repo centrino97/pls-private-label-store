@@ -866,9 +866,15 @@ final class PLS_Sample_Data {
                 $draft_count++;
             }
 
+            // Ensure name is a string to prevent null warnings
+            $product_name = isset( $product_data['name'] ) && is_string( $product_data['name'] ) ? $product_data['name'] : '';
+            if ( empty( $product_name ) ) {
+                continue; // Skip if no valid name
+            }
+            
             $product_id = PLS_Repo_Base_Product::insert( array(
-                'name' => $product_data['name'],
-                'slug' => sanitize_title( $product_data['name'] ),
+                'name' => $product_name,
+                'slug' => sanitize_title( $product_name ),
                 'status' => $product_status,
                 'category_path' => (string) $category_term->term_id,
             ) );
