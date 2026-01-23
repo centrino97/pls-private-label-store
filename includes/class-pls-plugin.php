@@ -53,6 +53,7 @@ final class PLS_Plugin {
     private function includes() {
         require_once PLS_PLS_DIR . 'includes/core/class-pls-admin-notices.php';
         require_once PLS_PLS_DIR . 'includes/core/class-pls-logger.php';
+        require_once PLS_PLS_DIR . 'includes/core/class-pls-debug.php';
         require_once PLS_PLS_DIR . 'includes/core/class-pls-capabilities.php';
         require_once PLS_PLS_DIR . 'includes/core/class-pls-taxonomies.php';
         require_once PLS_PLS_DIR . 'includes/core/class-pls-tier-rules.php';
@@ -96,6 +97,16 @@ final class PLS_Plugin {
 
         // HPOS compatibility declaration (safe even if HPOS is off).
         add_action( 'before_woocommerce_init', array( $this, 'declare_hpos_compat' ) );
+
+        // Initialize debug system
+        add_action( 'admin_init', array( $this, 'init_debug' ) );
+    }
+
+    /**
+     * Initialize debug system.
+     */
+    public function init_debug() {
+        PLS_Debug::init();
     }
 
     public function on_plugins_loaded() {

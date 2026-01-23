@@ -79,10 +79,52 @@ final class PLS_Shortcodes {
             <?php endif; ?>
 
             <?php if ( 'yes' === $atts['show_ingredients'] && ! empty( $profile->ingredients_list ) ) : ?>
-                <div class="pls-product-info__ingredients">
-                    <h3><?php esc_html_e( 'Ingredients', 'pls-private-label-store' ); ?></h3>
-                    <p><?php echo esc_html( $profile->ingredients_list ); ?></p>
-                </div>
+                <?php
+                // Get all ingredient term IDs
+                $ingredient_ids = array_filter( array_map( 'absint', explode( ',', $profile->ingredients_list ) ) );
+                $all_ingredients = array();
+                $key_ingredient_ids = array();
+                
+                // Get key ingredients if available
+                if ( ! empty( $profile->key_ingredients_json ) ) {
+                    $key_ingredients_data = json_decode( $profile->key_ingredients_json, true );
+                    if ( is_array( $key_ingredients_data ) ) {
+                        foreach ( $key_ingredients_data as $key_ing ) {
+                            $term_id = isset( $key_ing['term_id'] ) ? absint( $key_ing['term_id'] ) : ( isset( $key_ing['id'] ) ? absint( $key_ing['id'] ) : 0 );
+                            if ( $term_id ) {
+                                $key_ingredient_ids[] = $term_id;
+                            }
+                        }
+                    }
+                }
+                
+                // Get ingredient terms
+                foreach ( $ingredient_ids as $term_id ) {
+                    $term = get_term( $term_id, 'pls_ingredient' );
+                    if ( $term && ! is_wp_error( $term ) ) {
+                        $all_ingredients[] = array(
+                            'id' => $term_id,
+                            'name' => $term->name,
+                            'is_key' => in_array( $term_id, $key_ingredient_ids, true ),
+                        );
+                    }
+                }
+                ?>
+                <?php if ( ! empty( $all_ingredients ) ) : ?>
+                    <div class="pls-product-info__ingredients">
+                        <h3><?php esc_html_e( 'Ingredients', 'pls-private-label-store' ); ?></h3>
+                        <div class="pls-ingredients-list">
+                            <?php foreach ( $all_ingredients as $ingredient ) : ?>
+                                <span class="pls-ingredient-item<?php echo $ingredient['is_key'] ? ' pls-ingredient-item--key' : ''; ?>" title="<?php echo $ingredient['is_key'] ? esc_attr__( 'Key Ingredient', 'pls-private-label-store' ) : ''; ?>">
+                                    <?php echo esc_html( $ingredient['name'] ); ?>
+                                    <?php if ( $ingredient['is_key'] ) : ?>
+                                        <span class="pls-key-badge" title="<?php esc_attr_e( 'Key Ingredient', 'pls-private-label-store' ); ?>">★</span>
+                                    <?php endif; ?>
+                                </span>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
             <?php endif; ?>
         </div>
         <?php
@@ -249,8 +291,15 @@ final class PLS_Shortcodes {
             $wpdb->prepare( "SELECT * FROM {$table} WHERE wc_product_id = %d LIMIT 1", $product_id ),
             OBJECT
         );
+        
         if ( ! $base_product ) {
-            return '<div class="pls-note">' . esc_html__( 'PLS product not found.', 'pls-private-label-store' ) . '</div>';
+            // Debug logging if enabled
+            if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+                PLS_Debug::warn( 'Product page shortcode: PLS product not found for WooCommerce product', array(
+                    'wc_product_id' => $product_id,
+                ) );
+            }
+            return '<div class="pls-note">' . esc_html__( 'PLS product not found. This product may need to be synced from PLS admin.', 'pls-private-label-store' ) . '</div>';
         }
 
         $wc_product = wc_get_product( $product_id );
@@ -316,10 +365,52 @@ final class PLS_Shortcodes {
                     <?php endif; ?>
 
                     <?php if ( ! empty( $profile->ingredients_list ) ) : ?>
-                        <div class="pls-product-info__ingredients">
-                            <h3><?php esc_html_e( 'Ingredients', 'pls-private-label-store' ); ?></h3>
-                            <p><?php echo esc_html( $profile->ingredients_list ); ?></p>
-                        </div>
+                        <?php
+                        // Get all ingredient term IDs
+                        $ingredient_ids = array_filter( array_map( 'absint', explode( ',', $profile->ingredients_list ) ) );
+                        $all_ingredients = array();
+                        $key_ingredient_ids = array();
+                        
+                        // Get key ingredients if available
+                        if ( ! empty( $profile->key_ingredients_json ) ) {
+                            $key_ingredients_data = json_decode( $profile->key_ingredients_json, true );
+                            if ( is_array( $key_ingredients_data ) ) {
+                                foreach ( $key_ingredients_data as $key_ing ) {
+                                    $term_id = isset( $key_ing['term_id'] ) ? absint( $key_ing['term_id'] ) : ( isset( $key_ing['id'] ) ? absint( $key_ing['id'] ) : 0 );
+                                    if ( $term_id ) {
+                                        $key_ingredient_ids[] = $term_id;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Get ingredient terms
+                        foreach ( $ingredient_ids as $term_id ) {
+                            $term = get_term( $term_id, 'pls_ingredient' );
+                            if ( $term && ! is_wp_error( $term ) ) {
+                                $all_ingredients[] = array(
+                                    'id' => $term_id,
+                                    'name' => $term->name,
+                                    'is_key' => in_array( $term_id, $key_ingredient_ids, true ),
+                                );
+                            }
+                        }
+                        ?>
+                        <?php if ( ! empty( $all_ingredients ) ) : ?>
+                            <div class="pls-product-info__ingredients">
+                                <h3><?php esc_html_e( 'Ingredients', 'pls-private-label-store' ); ?></h3>
+                                <div class="pls-ingredients-list">
+                                    <?php foreach ( $all_ingredients as $ingredient ) : ?>
+                                        <span class="pls-ingredient-item<?php echo $ingredient['is_key'] ? ' pls-ingredient-item--key' : ''; ?>" title="<?php echo $ingredient['is_key'] ? esc_attr__( 'Key Ingredient', 'pls-private-label-store' ) : ''; ?>">
+                                            <?php echo esc_html( $ingredient['name'] ); ?>
+                                            <?php if ( $ingredient['is_key'] ) : ?>
+                                                <span class="pls-key-badge" title="<?php esc_attr_e( 'Key Ingredient', 'pls-private-label-store' ); ?>">★</span>
+                                            <?php endif; ?>
+                                        </span>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        <?php endif; ?>
                     <?php endif; ?>
                 <?php endif; ?>
             </div>

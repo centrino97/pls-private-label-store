@@ -39,7 +39,16 @@ foreach ( $orders as $order ) {
     $items = $order->get_items();
     foreach ( $items as $item ) {
         $product_id = $item->get_product_id();
+        $variation_id = $item->get_variation_id();
+        
+        // Check if product ID matches
         if ( in_array( $product_id, $pls_wc_ids, true ) ) {
+            $pls_orders[] = $order;
+            break;
+        }
+        
+        // Also check if variation ID matches (for variable products)
+        if ( $variation_id && in_array( $variation_id, $pls_wc_ids, true ) ) {
             $pls_orders[] = $order;
             break;
         }

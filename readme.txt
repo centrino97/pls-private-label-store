@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.10.0
+Stable tag: 2.0.0
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,19 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 2.0.0 =
+* **PRODUCTION READY:** Complete overhaul for production deployment with comprehensive debugging, perfect sync, and realistic sample data
+* **NEW:** Auto-detecting product page shortcode - `[pls_product_page]` now works without product_id, auto-detects from WooCommerce/Elementor context
+* **NEW:** Custom order form thank you page redirect - Configurable redirect URL in Settings, redirects after form submission
+* **NEW:** Comprehensive sync debugging system - Step-by-step logging of all sync operations with validation and error reporting
+* **NEW:** Sync validation - Post-sync validation compares PLS vs WooCommerce data, logs mismatches and errors
+* **IMPROVED:** Sample data realism - Products distributed across status (most active, 2 draft), orders span 12 months with realistic patterns
+* **IMPROVED:** Sample data completeness - All product options, order item meta, custom orders in all stages, commission records
+* **IMPROVED:** Sync reliability - Enhanced error handling, retry logic, comprehensive logging for troubleshooting
+* **IMPROVED:** Product page shortcode compatibility - Works seamlessly with Elementor Pro, Hello Elementor, and Yoast SEO
+* **FIXED:** Sync state detection accuracy - Improved comparison logic for pack tier prices and units
+* **FIXED:** Sample data sync logging - Complete sync summary with error reporting during sample generation
+
 = 1.10.0 =
 * **NEW:** Simplified help system - Replaced complex tutorial flows with simple page-specific help panel accessible from consistent location (help button on each page)
 * **NEW:** Enhanced sample data - Complete product options with all values and tier price overrides (Package Type, Color, Cap, Fragrances, Label Application, Custom Bottles, Box Packaging)

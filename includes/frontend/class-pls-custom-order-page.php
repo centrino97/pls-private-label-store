@@ -234,10 +234,19 @@ final class PLS_Custom_Order_Page {
 
         wp_mail( $admin_email, $subject, $email_body );
 
+        // Get thank you page URL from settings
+        $thank_you_url = get_option( 'pls_custom_order_thank_you_url', '' );
+        
+        // If URL provided, add order ID as query parameter
+        if ( $thank_you_url ) {
+            $thank_you_url = add_query_arg( 'order_id', $order_id, $thank_you_url );
+        }
+
         wp_send_json_success(
             array(
                 'message' => __( 'Thank you! Your request has been submitted. We\'ll contact you soon.', 'pls-private-label-store' ),
                 'order_id' => $order_id,
+                'redirect_url' => $thank_you_url,
             )
         );
     }

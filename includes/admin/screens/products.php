@@ -3,6 +3,11 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+// Debug logging
+if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+    PLS_Debug::log_page_load( 'products' );
+}
+
 $notice                = '';
 $label_guide_constant  = 'https://bodocibiophysics.com/label-guide/';
 
@@ -200,7 +205,10 @@ wp_localize_script(
           <h2 id="pls-modal-title"><?php esc_html_e( 'Create product', 'pls-private-label-store' ); ?></h2>
           <p class="description"><?php esc_html_e( 'Minimal, responsive editor with instant saves.', 'pls-private-label-store' ); ?></p>
         </div>
-        <button type="button" class="pls-modal__close" aria-label="Close">×</button>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <button type="button" class="button pls-help-button pls-modal-help-button" id="pls-product-modal-help" title="<?php esc_attr_e( 'View Help Guide', 'pls-private-label-store' ); ?>" style="width: 32px; height: 32px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; background: var(--pls-accent-light, #E5F2FF); color: var(--pls-accent, #007AFF); border: 1px solid var(--pls-accent, #007AFF); cursor: pointer;">?</button>
+          <button type="button" class="pls-modal__close" aria-label="Close">×</button>
+        </div>
       </div>
       <div class="pls-mode-toggle">
         <button type="button" class="pls-mode-btn is-active" data-mode="builder"><?php esc_html_e( 'Builder', 'pls-private-label-store' ); ?></button>
@@ -238,10 +246,6 @@ wp_localize_script(
             <button type="button" class="pls-stepper__item" data-step="attributes">
               <span class="pls-stepper__item-number">5</span>
               <?php esc_html_e( 'Product options', 'pls-private-label-store' ); ?>
-            </button>
-            <button type="button" class="pls-stepper__item" data-step="label">
-              <span class="pls-stepper__item-number">6</span>
-              <?php esc_html_e( 'Label application', 'pls-private-label-store' ); ?>
             </button>
           </div>
 
@@ -343,7 +347,8 @@ wp_localize_script(
                   </div>
                   <div class="pls-ingredient-columns">
                     <div class="pls-ingredient-panel">
-                      <p class="pls-micro"><?php esc_html_e( 'All ingredients', 'pls-private-label-store' ); ?></p>
+                      <p class="pls-micro"><?php esc_html_e( 'All Ingredients', 'pls-private-label-store' ); ?></p>
+                      <p class="pls-subtle" style="font-size: 11px; margin-top: 4px; margin-bottom: 8px;"><?php esc_html_e( 'Select all ingredients used in this product. All selected ingredients will be displayed on the frontend.', 'pls-private-label-store' ); ?></p>
                       <div class="pls-chip-group pls-ingredient-list" id="pls-ingredient-chips" data-default-icon="<?php echo esc_attr( PLS_Taxonomies::default_icon() ); ?>"></div>
                     </div>
                     <div class="pls-ingredient-panel">
@@ -448,10 +453,15 @@ wp_localize_script(
                       <select name="package_type_attr" id="pls-package-type-select" class="pls-package-type-select">
                         <option value=""><?php esc_html_e( 'Select package type', 'pls-private-label-store' ); ?></option>
                         <?php
-                        // Find Package Type attribute
+                        // Find Package Type attribute - try by attr_key first, then by label
                         $package_type_attr = null;
                         foreach ( $attr_payload as $attr ) {
-                            if ( isset( $attr['attr_key'] ) && $attr['attr_key'] === 'package-type' ) {
+                            $attr_key = isset( $attr['attr_key'] ) ? $attr['attr_key'] : '';
+                            $attr_label = isset( $attr['label'] ) ? strtolower( $attr['label'] ) : '';
+                            
+                            if ( $attr_key === 'package-type' || 
+                                 stripos( $attr_label, 'package type' ) !== false ||
+                                 stripos( $attr_label, 'container size' ) !== false ) {
                                 $package_type_attr = $attr;
                                 break;
                             }
@@ -464,6 +474,10 @@ wp_localize_script(
                                 </option>
                                 <?php
                             }
+                        } else {
+                            ?>
+                            <option value="" disabled><?php esc_html_e( 'No package types available. Please create package type options first.', 'pls-private-label-store' ); ?></option>
+                            <?php
                         }
                         ?>
                       </select>
@@ -531,10 +545,16 @@ wp_localize_script(
                   </div>
                   <div class="pls-cap-matrix" id="pls-cap-compatibility">
                     <?php
-                    // Find Package Cap attribute
+                    // Find Package Cap attribute - try by attr_key first, then by label
                     $package_cap_attr = null;
                     foreach ( $attr_payload as $attr ) {
-                        if ( isset( $attr['attr_key'] ) && $attr['attr_key'] === 'package-cap' ) {
+                        $attr_key = isset( $attr['attr_key'] ) ? $attr['attr_key'] : '';
+                        $attr_label = isset( $attr['label'] ) ? strtolower( $attr['label'] ) : '';
+                        
+                        if ( $attr_key === 'package-cap' ||
+                             stripos( $attr_label, 'package cap' ) !== false ||
+                             stripos( $attr_label, 'cap' ) !== false && stripos( $attr_label, 'package' ) !== false ||
+                             stripos( $attr_label, 'applicator' ) !== false ) {
                             $package_cap_attr = $attr;
                             break;
                         }
@@ -563,6 +583,12 @@ wp_localize_script(
                             </label>
                             <?php
                         }
+                    } else {
+                        ?>
+                        <p class="pls-muted" style="padding: 16px; background: #f8fafc; border-radius: 8px; border: 1px dashed #e2e8f0;">
+                            <?php esc_html_e( 'No package caps available. Please create package cap options in Product Options settings first.', 'pls-private-label-store' ); ?>
+                        </p>
+                        <?php
                     }
                     ?>
                   </div>
@@ -621,13 +647,12 @@ wp_localize_script(
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div class="pls-stepper__panel" data-step="label">
-              <div class="pls-modal__section">
+              <!-- Label Application Section (moved into Product Options) -->
+              <div class="pls-modal__section" style="margin-top: 32px; padding-top: 32px; border-top: 2px solid var(--pls-gray-200);">
                 <div class="pls-section-heading">
-                  <p class="pls-label"><?php esc_html_e( 'Label customization', 'pls-private-label-store' ); ?></p>
-                  <h3><?php esc_html_e( 'Application & pricing', 'pls-private-label-store' ); ?></h3>
+                  <p class="pls-label"><?php esc_html_e( 'LABEL CUSTOMIZATION', 'pls-private-label-store' ); ?></p>
+                  <h3><?php esc_html_e( 'Label Application & Pricing', 'pls-private-label-store' ); ?></h3>
                   <p class="pls-subtle"><?php esc_html_e( 'Decide how labels are applied, priced, and when artwork is collected.', 'pls-private-label-store' ); ?></p>
                 </div>
                 <div class="pls-label-flex">
@@ -650,7 +675,7 @@ wp_localize_script(
                     </div>
                   </label>
                 </div>
-                <div class="pls-design-callout">
+                <div class="pls-design-callout" style="margin-top: 16px;">
                   <div>
                     <p class="pls-label"><?php esc_html_e( 'Label design', 'pls-private-label-store' ); ?></p>
                     <h4><?php esc_html_e( 'Offer label design support', 'pls-private-label-store' ); ?></h4>

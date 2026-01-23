@@ -1,0 +1,224 @@
+/**
+ * PLS Debug Console Styles.
+ */
+
+.pls-debug-console {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 500px;
+    max-height: 600px;
+    background: #fff;
+    border: 2px solid #2271b1;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    z-index: 999999;
+    display: flex;
+    flex-direction: column;
+    transform: translateY(calc(100% - 60px));
+    transition: transform 0.3s ease;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    font-size: 13px;
+}
+
+.pls-debug-console--open {
+    transform: translateY(0);
+}
+
+.pls-debug-console__header {
+    background: #2271b1;
+    color: #fff;
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 6px 6px 0 0;
+    cursor: pointer;
+}
+
+.pls-debug-console__header h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.pls-debug-console__controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.pls-debug-filter {
+    padding: 4px 8px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.pls-debug-filter option {
+    background: #2271b1;
+    color: #fff;
+}
+
+.pls-debug-btn {
+    padding: 4px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.pls-debug-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.pls-debug-btn--close {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    line-height: 1;
+}
+
+.pls-debug-console__body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    background: #f8f9fa;
+    max-height: 540px;
+}
+
+.pls-debug-log {
+    margin-bottom: 12px;
+    padding: 10px;
+    background: #fff;
+    border-left: 4px solid #ccc;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.pls-debug-log--debug {
+    border-left-color: #6c757d;
+}
+
+.pls-debug-log--info {
+    border-left-color: #2271b1;
+}
+
+.pls-debug-log--warn {
+    border-left-color: #ffc107;
+    background: #fffbf0;
+}
+
+.pls-debug-log--error {
+    border-left-color: #dc3545;
+    background: #fff5f5;
+}
+
+.pls-debug-log__header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+.pls-debug-log__level {
+    text-transform: uppercase;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    background: #e9ecef;
+}
+
+.pls-debug-log--debug .pls-debug-log__level {
+    background: #6c757d;
+    color: #fff;
+}
+
+.pls-debug-log--info .pls-debug-log__level {
+    background: #2271b1;
+    color: #fff;
+}
+
+.pls-debug-log--warn .pls-debug-log__level {
+    background: #ffc107;
+    color: #000;
+}
+
+.pls-debug-log--error .pls-debug-log__level {
+    background: #dc3545;
+    color: #fff;
+}
+
+.pls-debug-log__time {
+    color: #6c757d;
+    font-size: 10px;
+    font-weight: normal;
+}
+
+.pls-debug-log__message {
+    color: #212529;
+    margin-bottom: 8px;
+    word-wrap: break-word;
+}
+
+.pls-debug-log__context {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #e9ecef;
+}
+
+.pls-debug-log__context pre {
+    margin: 0;
+    padding: 8px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    font-size: 11px;
+    overflow-x: auto;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.pls-debug-log__stack {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #e9ecef;
+    font-size: 11px;
+}
+
+.pls-debug-log__stack ul {
+    margin: 4px 0 0;
+    padding-left: 20px;
+    list-style: disc;
+}
+
+.pls-debug-log__stack li {
+    margin-bottom: 4px;
+    color: #6c757d;
+}
+
+.pls-debug-log-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: #6c757d;
+    font-style: italic;
+}
+
+/* Responsive */
+@media (max-width: 782px) {
+    .pls-debug-console {
+        width: calc(100% - 40px);
+        max-width: 500px;
+        right: 20px;
+        left: auto;
+    }
+}

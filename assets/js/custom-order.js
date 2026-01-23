@@ -41,13 +41,25 @@
                 data: formData,
                 success: function(response) {
                     if (response.success) {
-                        $messages.addClass('success').text(response.data.message).show();
-                        $form[0].reset();
-                        
-                        // Scroll to message
-                        $('html, body').animate({
-                            scrollTop: $messages.offset().top - 100
-                        }, 500);
+                        // Check if redirect URL is provided
+                        if (response.data.redirect_url) {
+                            // Redirect to thank you page after short delay
+                            setTimeout(function() {
+                                window.location.href = response.data.redirect_url;
+                            }, 1500);
+                            
+                            // Show success message briefly
+                            $messages.addClass('success').text(response.data.message).show();
+                        } else {
+                            // Show success message and reset form
+                            $messages.addClass('success').text(response.data.message).show();
+                            $form[0].reset();
+                            
+                            // Scroll to message
+                            $('html, body').animate({
+                                scrollTop: $messages.offset().top - 100
+                            }, 500);
+                        }
                     } else {
                         $messages.addClass('error').text(response.data.message || 'An error occurred. Please try again.').show();
                     }

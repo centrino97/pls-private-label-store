@@ -172,16 +172,30 @@ final class PLS_WC_Sync {
      * Sync one base product into Woo (variable + variations).
      */
     public static function sync_base_product_to_wc( $base_product_id ) {
+        // Debug logging
+        if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+            PLS_Debug::log_sync( 'sync_base_product_to_wc', array( 'base_product_id' => $base_product_id ) );
+        }
+
         if ( ! class_exists( 'WooCommerce' ) ) {
+            if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+                PLS_Debug::error( 'WooCommerce not active for sync', array( 'base_product_id' => $base_product_id ) );
+            }
             return new WP_Error( 'pls_wc_missing', __( 'WooCommerce not active; sync skipped.', 'pls-private-label-store' ) );
         }
 
         if ( ! function_exists( 'wc_get_product' ) ) {
+            if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+                PLS_Debug::error( 'WooCommerce product functions unavailable', array( 'base_product_id' => $base_product_id ) );
+            }
             return new WP_Error( 'pls_wc_missing', __( 'WooCommerce product functions unavailable; sync skipped.', 'pls-private-label-store' ) );
         }
 
         $base = PLS_Repo_Base_Product::get( $base_product_id );
         if ( ! $base ) {
+            if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+                PLS_Debug::error( 'Base product not found for sync', array( 'base_product_id' => $base_product_id ) );
+            }
             return new WP_Error( 'pls_base_missing', __( 'Base product not found.', 'pls-private-label-store' ) );
         }
 
@@ -189,11 +203,38 @@ final class PLS_WC_Sync {
         $product = null;
         $created = false;
 
+        // Debug: Log product status
+        if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+            PLS_Debug::log_sync( 'sync_product_status', array(
+                'base_product_id' => $base_product_id,
+                'pls_status' => $base->status,
+                'wc_status' => $status,
+                'existing_wc_id' => $base->wc_product_id,
+            ) );
+        }
+
         if ( $base->wc_product_id ) {
             $product = wc_get_product( $base->wc_product_id );
+            if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+                PLS_Debug::log_sync( 'sync_product_found', array(
+                    'base_product_id' => $base_product_id,
+                    'wc_product_id' => $base->wc_product_id,
+                    'product_exists' => ! ! $product,
+                ) );
+            }
         }
 
         if ( ! $product ) {
+            // Debug: Log product creation
+            if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+                PLS_Debug::log_sync( 'sync_product_create', array(
+                    'base_product_id' => $base_product_id,
+                    'name' => $base->name,
+                    'slug' => $base->slug,
+                    'status' => $status,
+                ) );
+            }
+
             $post_id = wp_insert_post(
                 array(
                     'post_title'  => $base->name,
@@ -204,20 +245,47 @@ final class PLS_WC_Sync {
             );
 
             if ( is_wp_error( $post_id ) ) {
-                return __( 'Failed to create WooCommerce product.', 'pls-private-label-store' );
+                if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+                    PLS_Debug::error( 'Failed to create WooCommerce product', array(
+                        'base_product_id' => $base_product_id,
+                        'error' => $post_id->get_error_message(),
+                    ) );
+                }
+                return new WP_Error( 'pls_wc_create_failed', __( 'Failed to create WooCommerce product.', 'pls-private-label-store' ) );
             }
 
             wp_set_object_terms( $post_id, 'variable', 'product_type' );
             PLS_Repo_Base_Product::set_wc_product_id( $base_product_id, $post_id );
             $product = wc_get_product( $post_id );
             $created = true;
+
+            if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+                PLS_Debug::log_sync( 'sync_product_created', array(
+                    'base_product_id' => $base_product_id,
+                    'wc_product_id' => $post_id,
+                ) );
+            }
         }
 
         if ( ! $product ) {
+            if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+                PLS_Debug::error( 'WooCommerce product not available after creation', array(
+                    'base_product_id' => $base_product_id,
+                ) );
+            }
             return new WP_Error( 'pls_wc_product_missing', __( 'WooCommerce product not available.', 'pls-private-label-store' ) );
         }
 
+        // Update product status if needed
         if ( $product->get_status() !== $status ) {
+            if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+                PLS_Debug::log_sync( 'sync_product_status_update', array(
+                    'base_product_id' => $base_product_id,
+                    'wc_product_id' => $product->get_id(),
+                    'old_status' => $product->get_status(),
+                    'new_status' => $status,
+                ) );
+            }
             $product->set_status( $status );
         }
 
@@ -230,12 +298,24 @@ final class PLS_WC_Sync {
             $ids = array_map( 'absint', explode( ',', $base->category_path ) );
             $ids = array_filter( $ids );
             if ( $ids ) {
+                if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+                    PLS_Debug::log_sync( 'sync_product_categories', array(
+                        'base_product_id' => $base_product_id,
+                        'wc_product_id' => $product->get_id(),
+                        'category_ids' => $ids,
+                    ) );
+                }
                 wp_set_object_terms( $product->get_id(), $ids, 'product_cat' );
             }
         }
 
         $pack_attr = self::ensure_pack_tier_attribute();
         if ( ! $pack_attr ) {
+            if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+                PLS_Debug::error( 'Unable to ensure pack tier attribute', array(
+                    'base_product_id' => $base_product_id,
+                ) );
+            }
             return new WP_Error( 'pls_pack_attribute_missing', __( 'Unable to ensure pack tier attribute.', 'pls-private-label-store' ) );
         }
 
@@ -249,10 +329,20 @@ final class PLS_WC_Sync {
         $product->set_attributes( array( $pack_attr['taxonomy'] => $wc_attribute ) );
         $product->save();
 
+        if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+            PLS_Debug::log_sync( 'sync_product_attributes_set', array(
+                'base_product_id' => $base_product_id,
+                'wc_product_id' => $product->get_id(),
+                'pack_attr_taxonomy' => $pack_attr['taxonomy'],
+            ) );
+        }
+
         // Variations from PLS pack tiers.
         // First, try to use new attribute-based system
         $pack_tier_attr_id = self::get_pack_tier_attribute_id();
         $created_variations = 0;
+        $updated_variations = 0;
+        $variation_errors = array();
 
         if ( $pack_tier_attr_id ) {
             // New system: Use pack tier attribute values
@@ -313,6 +403,16 @@ final class PLS_WC_Sync {
                 PLS_Repo_Pack_Tier::set_wc_variation_id( $base_product_id, $tier_key, $variation->get_id() );
                 $created_variations++;
             }
+
+            // Debug logging for sync completion
+            if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+                PLS_Debug::log_sync( 'sync_base_product_to_wc_complete', array(
+                    'base_product_id' => $base_product_id,
+                    'wc_product_id' => $product->get_id(),
+                    'created' => $created,
+                    'variations_created' => $created_variations,
+                ) );
+            }
         } else {
             // Fallback to old system for backwards compatibility
             $tiers = PLS_Repo_Pack_Tier::for_base( $base_product_id );
@@ -341,6 +441,32 @@ final class PLS_WC_Sync {
                 PLS_Repo_Pack_Tier::set_wc_variation_id( $base_product_id, $tier->tier_key, $variation->get_id() );
                 $created_variations++;
             }
+        }
+
+        // Validate sync
+        $validation_result = self::validate_product_sync( $base_product_id, $product->get_id() );
+        
+        // Debug logging for sync completion
+        if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+            PLS_Debug::log_sync( 'sync_base_product_to_wc_complete', array(
+                'base_product_id' => $base_product_id,
+                'wc_product_id' => $product->get_id(),
+                'created' => $created,
+                'variations_created' => $created_variations,
+                'validation' => $validation_result,
+            ) );
+            
+            if ( ! empty( $validation_result['errors'] ) ) {
+                PLS_Debug::warn( 'Product sync validation found errors', $validation_result );
+            }
+            if ( ! empty( $validation_result['warnings'] ) ) {
+                PLS_Debug::warn( 'Product sync validation found warnings', $validation_result );
+            }
+        }
+        
+        // Return validation result if invalid, otherwise return success message
+        if ( ! $validation_result['valid'] ) {
+            return new WP_Error( 'pls_sync_validation_failed', 'Sync validation failed', $validation_result );
         }
 
         if ( $created ) {

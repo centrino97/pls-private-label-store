@@ -9,3 +9,9 @@
 .pls-offer__title{font-weight:600}
 .pls-offer__btn{margin-top:12px;border:1px solid rgba(0,0,0,.18);border-radius:10px;padding:10px 14px;background:transparent;cursor:pointer}
 .pls-offer__list{margin-top:12px}
+
+/* Ingredients List Styles */
+.pls-ingredients-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.pls-ingredient-item{display:inline-flex;align-items:center;gap:4px;padding:6px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;font-size:14px;color:#475569}
+.pls-ingredient-item--key{background:#fff7ed;border-color:#fb923c;color:#9a3412;font-weight:500}
+.pls-key-badge{color:#f97316;font-size:12px;margin-left:2px}

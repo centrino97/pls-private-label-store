@@ -19,7 +19,7 @@
       $item.toggleClass('is-collapsed');
     });
 
-    var stepOrder = ['general','data','ingredients','packs','attributes','label'];
+    var stepOrder = ['general','data','ingredients','packs','attributes'];
     var defaultLabelGuide = 'https://bodocibiophysics.com/label-guide/';
     var currentStep = 0;
 
@@ -78,6 +78,26 @@
           });
         }
       });
+      
+      // Debug logging for product options
+      if (console && console.log) {
+        console.log('[PLS Debug] Loaded ' + PLS_ProductAdmin.attributes.length + ' attributes');
+        var packageTypeAttr = PLS_ProductAdmin.attributes.find(function(a) {
+          return (a.attr_key === 'package-type' || 
+                  (a.label && a.label.toLowerCase().indexOf('package type') !== -1));
+        });
+        var packageColorAttr = PLS_ProductAdmin.attributes.find(function(a) {
+          return (a.attr_key === 'package-color' || a.attr_key === 'package-colour' ||
+                  (a.label && a.label.toLowerCase().indexOf('package color') !== -1));
+        });
+        var packageCapAttr = PLS_ProductAdmin.attributes.find(function(a) {
+          return (a.attr_key === 'package-cap' ||
+                  (a.label && a.label.toLowerCase().indexOf('package cap') !== -1));
+        });
+        console.log('[PLS Debug] Package Type found:', !!packageTypeAttr, packageTypeAttr ? packageTypeAttr.label : 'N/A');
+        console.log('[PLS Debug] Package Color found:', !!packageColorAttr, packageColorAttr ? packageColorAttr.label : 'N/A');
+        console.log('[PLS Debug] Package Cap found:', !!packageCapAttr, packageCapAttr ? packageCapAttr.label : 'N/A');
+      }
     }
 
       goToStep('general');
@@ -801,6 +821,102 @@
         e.preventDefault();
         closeModalElement($('#pls-product-modal'));
       });
+
+    // Help button in product modal
+    $(document).on('click', '#pls-product-modal-help', function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      
+      // Check if PLS_Onboarding is available
+      if (typeof PLS_Onboarding === 'undefined' || !PLS_Onboarding.ajax_url) {
+        alert('Help system not available. Please refresh the page.');
+        return;
+      }
+
+      // Remove existing help panel if any
+      $('#pls-help-panel').remove();
+
+      // Fetch help content for products page
+      $.ajax({
+        url: PLS_Onboarding.ajax_url,
+        type: 'POST',
+        data: {
+          action: 'pls_get_helper_content',
+          nonce: PLS_Onboarding.nonce,
+          page: 'products'
+        },
+        success: function(resp) {
+          if (resp && resp.success && resp.data && resp.data.content) {
+            renderProductModalHelpPanel(resp.data.content);
+          } else {
+            alert('Unable to load help content. Please try again.');
+          }
+        },
+        error: function() {
+          alert('Error loading help content. Please refresh the page and try again.');
+        }
+      });
+    });
+
+    // Render help panel in modal context
+    function renderProductModalHelpPanel(content) {
+      var sectionsHtml = '';
+
+      if (content.sections && content.sections.length) {
+        content.sections.forEach(function(section) {
+          var itemsHtml = '';
+          
+          if (section.items && section.items.length) {
+            itemsHtml = '<ul class="pls-help-section__items">';
+            section.items.forEach(function(item) {
+              itemsHtml += '<li>' + item + '</li>';
+            });
+            itemsHtml += '</ul>';
+          }
+
+          sectionsHtml += '<div class="pls-help-section">' +
+            '<h3 class="pls-help-section__title">' + section.title + '</h3>' +
+            (section.content ? '<p class="pls-help-section__content">' + section.content + '</p>' : '') +
+            itemsHtml +
+            '</div>';
+        });
+      }
+
+      var panelHtml = '<div class="pls-help-panel pls-help-panel--modal" id="pls-help-panel">' +
+        '<div class="pls-help-panel__overlay"></div>' +
+        '<div class="pls-help-panel__content">' +
+        '<div class="pls-help-panel__header">' +
+        '<h2 class="pls-help-panel__title">' + (content.title || 'Products Guide') + '</h2>' +
+        '<button type="button" class="pls-help-panel__close" id="pls-help-close" aria-label="Close Help">×</button>' +
+        '</div>' +
+        '<div class="pls-help-panel__body">' +
+        sectionsHtml +
+        '</div>' +
+        '</div>' +
+        '</div>';
+
+      $('body').append(panelHtml);
+
+      // Attach close handlers
+      $('#pls-help-close, .pls-help-panel__overlay').on('click', function() {
+        $('#pls-help-panel').fadeOut(300, function() {
+          $(this).remove();
+        });
+      });
+
+      // Close on Escape key
+      $(document).on('keydown.pls-help-modal', function(e) {
+        if (e.key === 'Escape') {
+          $('#pls-help-panel').fadeOut(300, function() {
+            $(this).remove();
+          });
+          $(document).off('keydown.pls-help-modal');
+        }
+      });
+
+      // Scroll to top of panel
+      $('.pls-help-panel__body').scrollTop(0);
+    }
 
     $(document).on('click', '.pls-delete-product', function(e){
       e.preventDefault();

@@ -47,6 +47,10 @@
     animation: fadeIn 0.3s ease;
 }
 
+.pls-help-panel--modal {
+    z-index: 100001; /* Above product modal */
+}
+
 .pls-help-panel__overlay {
     position: absolute;
     top: 0;

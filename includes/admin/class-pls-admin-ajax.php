@@ -349,6 +349,7 @@ final class PLS_Admin_Ajax {
             $payload[] = array(
                 'id'          => $attr->id,
                 'label'       => $attr->label,
+                'attr_key'    => isset( $attr->attr_key ) ? $attr->attr_key : '',
                 'option_type' => isset( $attr->option_type ) ? $attr->option_type : 'product-option',
                 'is_primary'  => isset( $attr->is_primary ) ? (bool) $attr->is_primary : false,
                 'values'      => $values,
@@ -617,8 +618,46 @@ final class PLS_Admin_Ajax {
         $tier_count_diff = abs( count( $enabled_pls_tiers ) - count( $wc_variations ) );
         $tier_count_matches = $tier_count_diff <= 1; // Allow 1 variation difference for timing issues
 
-        // Determine if data matches - prioritize name and slug matching
-        $data_matches = $name_matches && $slug_matches && $categories_match && $tier_count_matches;
+        // Compare pack tier prices and units more accurately
+        $tiers_match = true;
+        if ( $tier_count_matches && count( $enabled_pls_tiers ) > 0 ) {
+            // Build map of WC variations by units
+            $wc_variations_by_units = array();
+            foreach ( $wc_variations as $variation ) {
+                $units = get_post_meta( $variation->get_id(), '_pls_units', true );
+                if ( $units ) {
+                    $wc_variations_by_units[ (int) $units ] = array(
+                        'variation' => $variation,
+                        'price' => (float) $variation->get_regular_price(),
+                        'units' => (int) $units,
+                    );
+                }
+            }
+
+            // Compare each PLS tier with corresponding WC variation
+            foreach ( $enabled_pls_tiers as $pls_tier ) {
+                $pls_units = (int) $pls_tier->units;
+                $pls_price = (float) $pls_tier->price;
+
+                if ( isset( $wc_variations_by_units[ $pls_units ] ) ) {
+                    $wc_tier = $wc_variations_by_units[ $pls_units ];
+                    $wc_price = $wc_tier['price'];
+                    
+                    // Allow small price differences (0.01) due to rounding
+                    if ( abs( $pls_price - $wc_price ) > 0.01 ) {
+                        $tiers_match = false;
+                        break;
+                    }
+                } else {
+                    // PLS tier has no matching WC variation
+                    $tiers_match = false;
+                    break;
+                }
+            }
+        }
+
+        // Determine if data matches - prioritize name, slug, categories, and tier data matching
+        $data_matches = $name_matches && $slug_matches && $categories_match && $tier_count_matches && $tiers_match;
 
         // Determine sync state
         if ( $data_matches && $status_matches ) {
@@ -639,7 +678,15 @@ final class PLS_Admin_Ajax {
     public static function save_product() {
         check_ajax_referer( 'pls_admin_nonce', 'nonce' );
 
+        // Debug logging
+        if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+            PLS_Debug::log_ajax_request( 'pls_save_product', array( 'product_id' => isset( $_POST['id'] ) ? absint( $_POST['id'] ) : 0 ) );
+        }
+
         if ( ! current_user_can( PLS_Capabilities::CAP_PRODUCTS ) ) {
+            if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+                PLS_Debug::error( 'Insufficient permissions for save_product', array( 'user_id' => get_current_user_id() ) );
+            }
             wp_send_json_error( array( 'ok' => false, 'errors' => array( array( 'field' => 'permission', 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ) ) ), 403 );
         }
 
@@ -652,6 +699,9 @@ final class PLS_Admin_Ajax {
 
         $persisted = self::persist_product( $payload );
         if ( is_wp_error( $persisted ) ) {
+            if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+                PLS_Debug::error( 'Product save failed', array( 'error' => $persisted->get_error_message(), 'payload' => $payload ) );
+            }
             wp_send_json_error(
                 array(
                     'ok'     => false,
@@ -699,13 +749,18 @@ final class PLS_Admin_Ajax {
         
         $product_payload = self::format_product_payload( PLS_Repo_Base_Product::get( $persisted['id'] ), 'https://bodocibiophysics.com/label-guide/' );
 
-        wp_send_json_success(
-            array(
-                'ok'            => true,
-                'product'       => $product_payload,
-                'sync_message'  => $sync_result ? $sync_result : __( 'Product saved. Activate to sync to WooCommerce.', 'pls-private-label-store' ),
-            )
+        $response = array(
+            'ok'            => true,
+            'product'       => $product_payload,
+            'sync_message'  => $sync_result ? $sync_result : __( 'Product saved. Activate to sync to WooCommerce.', 'pls-private-label-store' ),
         );
+
+        // Debug logging
+        if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+            PLS_Debug::log_ajax_response( 'pls_save_product', $response, true );
+        }
+
+        wp_send_json_success( $response );
     }
 
     /**

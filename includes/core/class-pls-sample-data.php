@@ -24,24 +24,120 @@ final class PLS_Sample_Data {
      * Clean up existing data and add sample data.
      */
     public static function generate() {
+        // Debug logging
+        if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+            PLS_Debug::info( 'Starting sample data generation', array( 'timestamp' => current_time( 'mysql' ) ) );
+        }
+
         self::cleanup();
+        
+        if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+            PLS_Debug::log_sync( 'sample_data_cleanup', array( 'completed' => true ) );
+        }
+
         self::add_categories();
+        
+        if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+            PLS_Debug::log_sync( 'sample_data_categories', array( 'completed' => true ) );
+        }
+
         self::add_ingredients();
+        
+        if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+            PLS_Debug::log_sync( 'sample_data_ingredients', array( 'completed' => true ) );
+        }
+
         self::add_product_options();
+        
+        if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+            PLS_Debug::log_sync( 'sample_data_product_options', array( 'completed' => true ) );
+        }
+
         self::add_products();
+        
+        if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+            $products = PLS_Repo_Base_Product::all();
+            $live_count = 0;
+            $draft_count = 0;
+            foreach ( $products as $p ) {
+                if ( $p->status === 'live' ) {
+                    $live_count++;
+                } else {
+                    $draft_count++;
+                }
+            }
+            PLS_Debug::log_sync( 'sample_data_products', array(
+                'total' => count( $products ),
+                'live' => $live_count,
+                'draft' => $draft_count,
+            ) );
+        }
+
         self::add_bundles();
         
+        if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+            PLS_Debug::log_sync( 'sample_data_bundles', array( 'completed' => true ) );
+        }
+        
         // Sync products and bundles to WooCommerce
-        self::sync_to_woocommerce();
+        $sync_result = self::sync_to_woocommerce();
+        
+        if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+            PLS_Debug::log_sync( 'sample_data_sync', array(
+                'completed' => true,
+                'result' => $sync_result,
+            ) );
+            
+            // Log sync summary
+            if ( is_array( $sync_result ) ) {
+                PLS_Debug::info( 'Sync Summary', array(
+                    'products_total' => $sync_result['products_total'] ?? 0,
+                    'products_synced' => $sync_result['products_synced'] ?? 0,
+                    'products_errors' => $sync_result['products_errors'] ?? 0,
+                    'bundles_total' => $sync_result['bundles_total'] ?? 0,
+                    'bundles_synced' => $sync_result['bundles_synced'] ?? 0,
+                    'bundles_errors' => $sync_result['bundles_errors'] ?? 0,
+                    'total_errors' => count( $sync_result['errors'] ?? array() ),
+                ) );
+                
+                // Log individual errors
+                if ( ! empty( $sync_result['errors'] ) ) {
+                    foreach ( $sync_result['errors'] as $error ) {
+                        PLS_Debug::error( 'Sync Error: ' . $error['type'], $error );
+                    }
+                }
+            }
+        }
         
         // Create comprehensive sample data
         self::add_woocommerce_orders();
+        
+        if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+            PLS_Debug::log_sync( 'sample_data_orders', array( 'completed' => true ) );
+        }
+
         self::add_custom_orders();
+        
+        if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+            PLS_Debug::log_sync( 'sample_data_custom_orders', array( 'completed' => true ) );
+        }
+
         self::add_commissions();
+        
+        if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+            PLS_Debug::log_sync( 'sample_data_commissions', array( 'completed' => true ) );
+        }
         
         // Ensure commission email settings are configured
         if ( ! get_option( 'pls_commission_email_recipients' ) ) {
             update_option( 'pls_commission_email_recipients', array( 'n.nikolic97@gmail.com' ) );
+        }
+
+        if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+            PLS_Debug::info( 'Sample data generation completed', array(
+                'timestamp' => current_time( 'mysql' ),
+                'products' => count( PLS_Repo_Base_Product::all() ),
+            ) );
         }
     }
 
@@ -749,10 +845,19 @@ final class PLS_Sample_Data {
                 continue;
             }
 
+            // Determine product status: most products are live, 2 are draft
+            static $draft_count = 0;
+            $product_status = 'live';
+            if ( $draft_count < 2 ) {
+                // Make first 2 products draft
+                $product_status = 'draft';
+                $draft_count++;
+            }
+
             $product_id = PLS_Repo_Base_Product::insert( array(
                 'name' => $product_data['name'],
                 'slug' => sanitize_title( $product_data['name'] ),
-                'status' => 'live', // Set to live so they sync properly
+                'status' => $product_status,
                 'category_path' => (string) $category_term->term_id,
             ) );
 
@@ -777,29 +882,48 @@ final class PLS_Sample_Data {
             $attributes_table = $wpdb->prefix . 'pls_attribute';
             $values_table = $wpdb->prefix . 'pls_attribute_value';
             
-            // Get Package Type attribute and values
-            $package_type_attr = $wpdb->get_row( "SELECT * FROM {$attributes_table} WHERE label = 'Package Type' LIMIT 1" );
+            // Get Package Type attribute and values - try by attr_key first, then by label
+            $package_type_attr = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$attributes_table} WHERE attr_key = %s LIMIT 1", 'package-type' ) );
+            if ( ! $package_type_attr ) {
+                $package_type_attr = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$attributes_table} WHERE label = %s LIMIT 1", 'Package Type' ) );
+            }
+            if ( ! $package_type_attr ) {
+                // Try case-insensitive label match
+                $package_type_attr = $wpdb->get_row( "SELECT * FROM {$attributes_table} WHERE LOWER(label) LIKE '%package type%' OR LOWER(label) LIKE '%container size%' LIMIT 1" );
+            }
             $package_type_values = array();
             if ( $package_type_attr ) {
                 $package_type_values = PLS_Repo_Attributes::values_for_attr( $package_type_attr->id );
             }
             
-            // Get Package Color attribute and values
-            $package_color_attr = $wpdb->get_row( "SELECT * FROM {$attributes_table} WHERE attr_key = 'package-color' LIMIT 1" );
+            // Get Package Color attribute and values - try multiple variations
+            $package_color_attr = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$attributes_table} WHERE attr_key = %s LIMIT 1", 'package-color' ) );
+            if ( ! $package_color_attr ) {
+                $package_color_attr = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$attributes_table} WHERE attr_key = %s LIMIT 1", 'package-colour' ) );
+            }
+            if ( ! $package_color_attr ) {
+                $package_color_attr = $wpdb->get_row( "SELECT * FROM {$attributes_table} WHERE LOWER(label) LIKE '%package color%' OR LOWER(label) LIKE '%package colour%' LIMIT 1" );
+            }
             $package_color_values = array();
             if ( $package_color_attr ) {
                 $package_color_values = PLS_Repo_Attributes::values_for_attr( $package_color_attr->id );
             }
             
-            // Get Package Cap attribute and values
-            $package_cap_attr = $wpdb->get_row( "SELECT * FROM {$attributes_table} WHERE attr_key = 'package-cap' LIMIT 1" );
+            // Get Package Cap attribute and values - try multiple variations
+            $package_cap_attr = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$attributes_table} WHERE attr_key = %s LIMIT 1", 'package-cap' ) );
+            if ( ! $package_cap_attr ) {
+                $package_cap_attr = $wpdb->get_row( "SELECT * FROM {$attributes_table} WHERE LOWER(label) LIKE '%package cap%' OR LOWER(label) LIKE '%applicator%' LIMIT 1" );
+            }
             $package_cap_values = array();
             if ( $package_cap_attr ) {
                 $package_cap_values = PLS_Repo_Attributes::values_for_attr( $package_cap_attr->id );
             }
             
-            // Get Fragrance attribute and values
-            $fragrance_attr = $wpdb->get_row( "SELECT * FROM {$attributes_table} WHERE attr_key = 'fragrance' LIMIT 1" );
+            // Get Fragrance attribute and values - try multiple variations
+            $fragrance_attr = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$attributes_table} WHERE attr_key = %s LIMIT 1", 'fragrance' ) );
+            if ( ! $fragrance_attr ) {
+                $fragrance_attr = $wpdb->get_row( "SELECT * FROM {$attributes_table} WHERE LOWER(label) LIKE '%fragrance%' OR LOWER(label) LIKE '%scent%' LIMIT 1" );
+            }
             $fragrance_values = array();
             if ( $fragrance_attr ) {
                 $fragrance_values = PLS_Repo_Attributes::values_for_attr( $fragrance_attr->id );
@@ -898,22 +1022,31 @@ final class PLS_Sample_Data {
                 }
             }
             
-            // Get Label Application attribute and values
-            $label_app_attr = $wpdb->get_row( "SELECT * FROM {$attributes_table} WHERE attr_key = 'label-application' LIMIT 1" );
+            // Get Label Application attribute and values - try multiple variations
+            $label_app_attr = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$attributes_table} WHERE attr_key = %s LIMIT 1", 'label-application' ) );
+            if ( ! $label_app_attr ) {
+                $label_app_attr = $wpdb->get_row( "SELECT * FROM {$attributes_table} WHERE LOWER(label) LIKE '%label application%' LIMIT 1" );
+            }
             $label_app_values_list = array();
             if ( $label_app_attr ) {
                 $label_app_values_list = PLS_Repo_Attributes::values_for_attr( $label_app_attr->id );
             }
             
-            // Get Custom Printed Bottles attribute and values (Tier 4+)
-            $custom_bottle_attr = $wpdb->get_row( "SELECT * FROM {$attributes_table} WHERE attr_key = 'custom-bottles' LIMIT 1" );
+            // Get Custom Printed Bottles attribute and values (Tier 4+) - try multiple variations
+            $custom_bottle_attr = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$attributes_table} WHERE attr_key = %s LIMIT 1", 'custom-bottles' ) );
+            if ( ! $custom_bottle_attr ) {
+                $custom_bottle_attr = $wpdb->get_row( "SELECT * FROM {$attributes_table} WHERE LOWER(label) LIKE '%custom printed%' OR LOWER(label) LIKE '%custom bottle%' LIMIT 1" );
+            }
             $custom_bottle_values_list = array();
             if ( $custom_bottle_attr ) {
                 $custom_bottle_values_list = PLS_Repo_Attributes::values_for_attr( $custom_bottle_attr->id );
             }
             
-            // Get External Box Packaging attribute and values (Tier 4+)
-            $box_packaging_attr = $wpdb->get_row( "SELECT * FROM {$attributes_table} WHERE attr_key = 'box-packaging' LIMIT 1" );
+            // Get External Box Packaging attribute and values (Tier 4+) - try multiple variations
+            $box_packaging_attr = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$attributes_table} WHERE attr_key = %s LIMIT 1", 'box-packaging' ) );
+            if ( ! $box_packaging_attr ) {
+                $box_packaging_attr = $wpdb->get_row( "SELECT * FROM {$attributes_table} WHERE LOWER(label) LIKE '%external box%' OR LOWER(label) LIKE '%box packaging%' LIMIT 1" );
+            }
             $box_packaging_values_list = array();
             if ( $box_packaging_attr ) {
                 $box_packaging_values_list = PLS_Repo_Attributes::values_for_attr( $box_packaging_attr->id );
@@ -1057,13 +1190,30 @@ final class PLS_Sample_Data {
             }
             
             // Add product profile with full options
+            // Collect ALL ingredients (key ingredients + additional common ingredients)
             $ingredient_ids = array();
+            $all_ingredient_names = array();
+            
+            // Add key ingredients first
             if ( ! empty( $product_data['key_ingredients'] ) ) {
                 foreach ( $product_data['key_ingredients'] as $ing_name ) {
-                    $ing_term = get_term_by( 'name', $ing_name, 'pls_ingredient' );
-                    if ( $ing_term ) {
-                        $ingredient_ids[] = $ing_term->term_id;
-                    }
+                    $all_ingredient_names[] = $ing_name;
+                }
+            }
+            
+            // Add additional common ingredients based on product type
+            $additional_ingredients = array( 'Water', 'Glycerin', 'Aloe Vera', 'Vitamin E' );
+            foreach ( $additional_ingredients as $ing_name ) {
+                if ( ! in_array( $ing_name, $all_ingredient_names, true ) ) {
+                    $all_ingredient_names[] = $ing_name;
+                }
+            }
+            
+            // Convert ingredient names to term IDs
+            foreach ( $all_ingredient_names as $ing_name ) {
+                $ing_term = get_term_by( 'name', $ing_name, 'pls_ingredient' );
+                if ( $ing_term ) {
+                    $ingredient_ids[] = $ing_term->term_id;
                 }
             }
             
@@ -1074,8 +1224,8 @@ final class PLS_Sample_Data {
                 'skin_types_json' => $skin_types_array,
                 'benefits_json' => $benefits_array,
                 'key_ingredients_json' => $key_ingredients_array,
-                'ingredients_list' => implode( ',', $ingredient_ids ),
-                'basics_json' => $basics_attrs,
+                'ingredients_list' => implode( ',', $ingredient_ids ), // ALL ingredients
+                'basics_json' => $basics_attrs, // Will be JSON encoded by upsert method
                 'label_enabled' => 1,
                 'label_price_per_unit' => 0.50,
                 'label_requires_file' => 1,
@@ -1083,7 +1233,7 @@ final class PLS_Sample_Data {
                 'label_guide_url' => 'https://bodocibiophysics.com/label-guide/',
             ) );
 
-            // Add key ingredients
+            // Add key ingredients (already handled above, but keeping for compatibility)
             if ( ! empty( $product_data['key_ingredients'] ) ) {
                 $ingredient_ids = array();
                 foreach ( $product_data['key_ingredients'] as $ing_name ) {
@@ -1180,22 +1330,112 @@ final class PLS_Sample_Data {
      */
     private static function sync_to_woocommerce() {
         if ( ! self::is_woocommerce_active() ) {
-            return;
+            if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+                PLS_Debug::error( 'WooCommerce not active - sync skipped', array() );
+            }
+            return array( 'success' => false, 'message' => 'WooCommerce not active' );
         }
 
         require_once PLS_PLS_DIR . 'includes/wc/class-pls-wc-sync.php';
 
+        $sync_summary = array(
+            'products_total' => 0,
+            'products_synced' => 0,
+            'products_errors' => 0,
+            'bundles_total' => 0,
+            'bundles_synced' => 0,
+            'bundles_errors' => 0,
+            'errors' => array(),
+        );
+
         // Sync all products
         $products = PLS_Repo_Base_Product::all();
+        $sync_summary['products_total'] = count( $products );
+        
+        if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+            PLS_Debug::log_sync( 'sync_batch_start', array(
+                'type' => 'products',
+                'count' => count( $products ),
+            ) );
+        }
+
         foreach ( $products as $product ) {
-            PLS_WC_Sync::sync_base_product_to_wc( $product->id );
+            $sync_result = PLS_WC_Sync::sync_base_product_to_wc( $product->id );
+            
+            if ( is_wp_error( $sync_result ) ) {
+                $sync_summary['products_errors']++;
+                $sync_summary['errors'][] = array(
+                    'type' => 'product',
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'error' => $sync_result->get_error_message(),
+                );
+                
+                if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+                    PLS_Debug::error( 'Product sync failed', array(
+                        'product_id' => $product->id,
+                        'product_name' => $product->name,
+                        'error' => $sync_result->get_error_message(),
+                    ) );
+                }
+            } else {
+                $sync_summary['products_synced']++;
+            }
+        }
+
+        if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+            PLS_Debug::log_sync( 'sync_batch_complete', array(
+                'type' => 'products',
+                'synced' => $sync_summary['products_synced'],
+                'errors' => $sync_summary['products_errors'],
+            ) );
         }
 
         // Sync all bundles
         $bundles = PLS_Repo_Bundle::all();
-        foreach ( $bundles as $bundle ) {
-            PLS_WC_Sync::sync_bundle_to_wc( $bundle->id );
+        $sync_summary['bundles_total'] = count( $bundles );
+        
+        if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+            PLS_Debug::log_sync( 'sync_batch_start', array(
+                'type' => 'bundles',
+                'count' => count( $bundles ),
+            ) );
         }
+        foreach ( $bundles as $bundle ) {
+            $sync_result = PLS_WC_Sync::sync_bundle_to_wc( $bundle->id );
+            
+            if ( is_wp_error( $sync_result ) ) {
+                $sync_summary['bundles_errors']++;
+                $sync_summary['errors'][] = array(
+                    'type' => 'bundle',
+                    'id' => $bundle->id,
+                    'name' => $bundle->name,
+                    'error' => $sync_result->get_error_message(),
+                );
+                
+                if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+                    PLS_Debug::error( 'Bundle sync failed', array(
+                        'bundle_id' => $bundle->id,
+                        'bundle_name' => $bundle->name,
+                        'error' => $sync_result->get_error_message(),
+                    ) );
+                }
+            } else {
+                $sync_summary['bundles_synced']++;
+            }
+        }
+
+        if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+            PLS_Debug::log_sync( 'sync_batch_complete', array(
+                'type' => 'bundles',
+                'synced' => $sync_summary['bundles_synced'],
+                'errors' => $sync_summary['bundles_errors'],
+            ) );
+            
+            PLS_Debug::info( 'WooCommerce sync completed', $sync_summary );
+        }
+
+        return $sync_summary;
     }
 
     /**
@@ -1407,29 +1647,59 @@ final class PLS_Sample_Data {
                     continue;
                 }
 
-                // Get variation for tier
+                // Get variation for tier - match by units, not tier_key
                 $variations = $wc_product->get_children();
                 $tier_key = $item_data['tier'];
                 $variation_id = null;
 
-                foreach ( $variations as $var_id ) {
-                    $variation = wc_get_product( $var_id );
-                    if ( ! $variation ) {
-                        continue;
+                // Get pack tier to find units
+                $pack_tiers = PLS_Repo_Pack_Tier::for_base( $base_product->id );
+                $target_units = null;
+                foreach ( $pack_tiers as $tier ) {
+                    if ( $tier->tier_key === $tier_key ) {
+                        $target_units = (int) $tier->units;
+                        break;
                     }
+                }
 
-                    $attributes = $variation->get_attributes();
-                    if ( isset( $attributes['pa_pack-tier'] ) ) {
-                        $term = get_term_by( 'slug', $tier_key, 'pa_pack-tier' );
-                        if ( $term && $attributes['pa_pack-tier'] === $term->slug ) {
+                // If we have target units, find matching variation by checking variation meta
+                if ( $target_units ) {
+                    foreach ( $variations as $var_id ) {
+                        $variation = wc_get_product( $var_id );
+                        if ( ! $variation ) {
+                            continue;
+                        }
+
+                        // Check if this variation matches the units
+                        $var_units = get_post_meta( $var_id, '_pls_units', true );
+                        if ( $var_units && (int) $var_units === $target_units ) {
                             $variation_id = $var_id;
                             break;
+                        }
+
+                        // Also try matching by attribute slug (value_key)
+                        $attributes = $variation->get_attributes();
+                        if ( isset( $attributes['pa_pack-tier'] ) ) {
+                            // Get tier value by units to find value_key
+                            require_once PLS_PLS_DIR . 'includes/core/class-pls-tier-rules.php';
+                            require_once PLS_PLS_DIR . 'includes/wc/class-pls-wc-sync.php';
+                            $pack_tier_values = PLS_WC_Sync::get_pack_tier_values();
+                            foreach ( $pack_tier_values as $tier_value ) {
+                                $units = PLS_Tier_Rules::get_default_units_for_tier( $tier_value->id );
+                                if ( $units && $units === $target_units ) {
+                                    if ( $attributes['pa_pack-tier'] === $tier_value->value_key ) {
+                                        $variation_id = $var_id;
+                                        break 2;
+                                    }
+                                }
+                            }
                         }
                     }
                 }
 
+                // Fallback: use first variation if no match found
                 if ( ! $variation_id && ! empty( $variations ) ) {
-                    $variation_id = $variations[0]; // Fallback to first variation
+                    $variation_id = $variations[0];
                 }
 
                 if ( $variation_id ) {

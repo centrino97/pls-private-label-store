@@ -2707,11 +2707,15 @@ body.pls-modal-open {
   top: 0;
   z-index: 100;
   box-shadow: var(--pls-shadow-sm);
+  gap: var(--pls-space-md);
+  min-width: 0; /* Allow flex children to shrink */
 }
 
 .pls-admin-header__brand {
   display: flex;
   align-items: center;
+  flex-shrink: 0; /* Prevent brand from shrinking */
+  min-width: 0;
 }
 
 .pls-admin-header__logo {
@@ -2780,10 +2784,45 @@ body.pls-modal-open {
   gap: var(--pls-space-md);
   font-size: var(--pls-font-size-sm);
   color: var(--pls-gray-600);
+  flex-shrink: 0; /* Prevent user section from shrinking */
+  min-width: 0; /* Allow flex item to shrink */
+  max-width: 200px; /* Limit maximum width */
 }
 
 .pls-admin-header__user-name {
   font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+/* Responsive header adjustments */
+@media (max-width: 1200px) {
+  .pls-admin-header__user {
+    max-width: 150px;
+  }
+}
+
+@media (max-width: 782px) {
+  .pls-admin-header {
+    flex-wrap: wrap;
+    gap: var(--pls-space-sm);
+  }
+
+  .pls-admin-header__user {
+    max-width: 120px;
+    order: 3;
+    width: 100%;
+    justify-content: flex-end;
+    margin-top: var(--pls-space-xs);
+  }
+
+  .pls-admin-nav {
+    order: 2;
+    width: 100%;
+    margin-top: var(--pls-space-xs);
+  }
 }
 
 .pls-admin-header__user-link {
