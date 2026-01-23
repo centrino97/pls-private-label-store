@@ -146,7 +146,6 @@ final class PLS_Sample_Data {
      */
     private static function cleanup() {
         error_log( '[PLS Sample Data] Cleanup: Starting data cleanup...' );
-        echo '<script>console.log("[PLS Sample Data] Cleanup: Starting data cleanup...");</script>';
         global $wpdb;
 
         // Delete WooCommerce products that were synced from PLS
