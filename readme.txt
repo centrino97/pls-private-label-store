@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.9.0
+Stable tag: 1.10.0
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,14 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 1.10.0 =
+* **NEW:** Simplified help system - Replaced complex tutorial flows with simple page-specific help panel accessible from consistent location (help button on each page)
+* **NEW:** Enhanced sample data - Complete product options with all values and tier price overrides (Package Type, Color, Cap, Fragrances, Label Application, Custom Bottles, Box Packaging)
+* **NEW:** Complete order data - WooCommerce orders now include product option values stored as order item meta for full functionality showcase
+* **IMPROVED:** Sample data realism - Orders span past 12 months with various statuses, custom orders in all Kanban stages, comprehensive financials
+* **IMPROVED:** Price impact system - All attribute values have tier_price_overrides set and default price impacts synced to WooCommerce term meta
+* **IMPROVED:** Admin UX - Help button (?) on each page provides detailed, page-specific guides without intrusive tutorials
+
 = 1.9.0 =
 * **FIXED:** Sync status issue - "Update Available" badge now properly clears after syncing products by clearing WooCommerce caches and improving sync state detection.
 * **FIXED:** Label Application Pricing tier rules format - Fixed tier pricing keys to use numeric format (1, 2, 3) instead of string format (tier_1, tier_2).
