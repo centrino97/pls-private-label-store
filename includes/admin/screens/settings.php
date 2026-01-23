@@ -7,7 +7,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 if ( isset( $_POST['pls_generate_sample_data'] ) && check_admin_referer( 'pls_generate_sample_data', 'pls_sample_data_nonce' ) ) {
     if ( current_user_can( 'manage_options' ) ) {
         require_once PLS_PLS_DIR . 'includes/core/class-pls-sample-data.php';
+        
+        // Generate sample data (logs to error_log)
         PLS_Sample_Data::generate();
+        
+        // Show success message
         $message = 'sample-data-generated';
         wp_safe_redirect( add_query_arg( 'message', $message, admin_url( 'admin.php?page=pls-settings' ) ) );
         exit;
@@ -99,6 +103,16 @@ $email_recipients_string = is_array( $email_recipients ) ? implode( ', ', $email
 
 if ( isset( $_GET['message'] ) && 'settings-saved' === $_GET['message'] ) {
     echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Settings saved successfully.', 'pls-private-label-store' ) . '</p></div>';
+}
+
+if ( isset( $_GET['message'] ) && 'sample-data-generated' === $_GET['message'] ) {
+    echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Sample data generated successfully! Check browser console and PHP error log for details.', 'pls-private-label-store' ) . '</p></div>';
+    echo '<script>
+    console.log("%c[PLS Sample Data] ==========================================", "color: #007AFF; font-weight: bold;");
+    console.log("%c[PLS Sample Data] Sample data generation completed!", "color: #34C759; font-weight: bold;");
+    console.log("%c[PLS Sample Data] Check PHP error log for detailed steps.", "color: #737373;");
+    console.log("%c[PLS Sample Data] ==========================================", "color: #007AFF; font-weight: bold;");
+    </script>';
 }
 ?>
 <div class="wrap pls-wrap pls-page-settings">

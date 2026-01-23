@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 2.0.5
+Stable tag: 2.1.0
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,16 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 2.1.0 =
+* **MAJOR:** Production-ready release with comprehensive fixes and improvements
+* **FIXED:** Update system - Fixed download URL mismatch in UUPD configuration
+* **FIXED:** Header overflow - User name now properly constrained with flex layout
+* **IMPROVED:** Sample data logging - Enhanced error_log statements with detailed step tracking and success indicators
+* **IMPROVED:** Sample data console output - Added styled console.log messages after generation completes
+* **IMPROVED:** Sample data sync reporting - Detailed sync results with error reporting
+* **REMOVED:** Debug settings - Removed non-functional debug settings section
+* **FIXED:** PHP 8.1+ compatibility - All null warnings resolved with proper type validation
+
 = 2.0.5 =
 * **FIXED:** Header overflow - Fixed user name overflow in admin header with proper flex constraints and max-width
 * **REMOVED:** Debug settings section - Removed non-functional debug settings from Settings page
