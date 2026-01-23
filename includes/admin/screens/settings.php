@@ -348,60 +348,6 @@ if ( isset( $_GET['message'] ) && 'settings-saved' === $_GET['message'] ) {
                 </div>
             </div>
 
-            <!-- Debug Settings -->
-            <div class="pls-accordion__item">
-                <button type="button" class="pls-accordion__header">
-                    <?php esc_html_e( 'Debug Settings', 'pls-private-label-store' ); ?>
-                </button>
-                <div class="pls-accordion__content">
-                    <?php
-                    $debug_enabled = get_option( 'pls_debug_enabled', false );
-                    $debug_log_level = get_option( 'pls_debug_log_level', 'debug' );
-                    ?>
-                    <p class="description" style="margin-top: 0;"><?php esc_html_e( 'Enable comprehensive debugging system to track all plugin operations, AJAX calls, sync operations, and errors. Logs are displayed in a floating console panel.', 'pls-private-label-store' ); ?></p>
-                    
-                    <table class="form-table" style="margin-top: 16px;">
-                        <tr>
-                            <th scope="row">
-                                <label for="pls_debug_enabled"><?php esc_html_e( 'Enable Debugging', 'pls-private-label-store' ); ?></label>
-                            </th>
-                            <td>
-                                <label>
-                                    <input type="checkbox" name="pls_debug_enabled" id="pls_debug_enabled" value="1" <?php checked( $debug_enabled, true ); ?> />
-                                    <?php esc_html_e( 'Enable debug logging and console', 'pls-private-label-store' ); ?>
-                                </label>
-                                <p class="description"><?php esc_html_e( 'When enabled, a floating debug console will appear on all admin pages showing logs, errors, and operations.', 'pls-private-label-store' ); ?></p>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th scope="row">
-                                <label for="pls_debug_log_level"><?php esc_html_e( 'Log Level', 'pls-private-label-store' ); ?></label>
-                            </th>
-                            <td>
-                                <select name="pls_debug_log_level" id="pls_debug_log_level">
-                                    <option value="debug" <?php selected( $debug_log_level, 'debug' ); ?>><?php esc_html_e( 'Debug (All)', 'pls-private-label-store' ); ?></option>
-                                    <option value="info" <?php selected( $debug_log_level, 'info' ); ?>><?php esc_html_e( 'Info', 'pls-private-label-store' ); ?></option>
-                                    <option value="warn" <?php selected( $debug_log_level, 'warn' ); ?>><?php esc_html_e( 'Warnings & Errors', 'pls-private-label-store' ); ?></option>
-                                    <option value="error" <?php selected( $debug_log_level, 'error' ); ?>><?php esc_html_e( 'Errors Only', 'pls-private-label-store' ); ?></option>
-                                </select>
-                                <p class="description"><?php esc_html_e( 'Minimum log level to display. Lower levels include higher levels (e.g., Info includes Warnings and Errors).', 'pls-private-label-store' ); ?></p>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th scope="row"><?php esc_html_e( 'Debug Console', 'pls-private-label-store' ); ?></th>
-                            <td>
-                                <p class="description">
-                                    <?php esc_html_e( 'Press Ctrl+Shift+D to toggle the debug console, or click the bug icon in the bottom-right corner.', 'pls-private-label-store' ); ?>
-                                </p>
-                                <label>
-                                    <input type="checkbox" name="pls_debug_clear_logs" value="1" />
-                                    <?php esc_html_e( 'Clear all debug logs on save', 'pls-private-label-store' ); ?>
-                                </label>
-                            </td>
-                        </tr>
-                    </table>
-                </div>
-            </div>
 
         </div>
 

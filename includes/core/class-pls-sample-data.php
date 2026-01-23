@@ -24,29 +24,29 @@ final class PLS_Sample_Data {
      * Clean up existing data and add sample data.
      */
     public static function generate() {
-        // Debug logging
-        if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
-            PLS_Debug::info( 'Starting sample data generation', array( 'timestamp' => current_time( 'mysql' ) ) );
-        }
-
+        error_log( '[PLS Sample Data] Starting sample data generation...' );
+        echo '<script>console.log("[PLS Sample Data] Starting sample data generation...");</script>';
+        
+        error_log( '[PLS Sample Data] Step 1: Cleaning up existing data...' );
+        echo '<script>console.log("[PLS Sample Data] Step 1: Cleaning up existing data...");</script>';
         self::cleanup();
-        
-        if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
-            PLS_Debug::log_sync( 'sample_data_cleanup', array( 'completed' => true ) );
-        }
+        error_log( '[PLS Sample Data] Cleanup completed.' );
+        echo '<script>console.log("[PLS Sample Data] Cleanup completed.");</script>';
 
+        error_log( '[PLS Sample Data] Step 2: Adding categories...' );
+        echo '<script>console.log("[PLS Sample Data] Step 2: Adding categories...");</script>';
         self::add_categories();
-        
-        if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
-            PLS_Debug::log_sync( 'sample_data_categories', array( 'completed' => true ) );
-        }
+        error_log( '[PLS Sample Data] Categories added.' );
+        echo '<script>console.log("[PLS Sample Data] Categories added.");</script>';
 
+        error_log( '[PLS Sample Data] Step 3: Adding ingredients...' );
+        echo '<script>console.log("[PLS Sample Data] Step 3: Adding ingredients...");</script>';
         self::add_ingredients();
-        
-        if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
-            PLS_Debug::log_sync( 'sample_data_ingredients', array( 'completed' => true ) );
-        }
+        error_log( '[PLS Sample Data] Ingredients added.' );
+        echo '<script>console.log("[PLS Sample Data] Ingredients added.");</script>';
 
+        error_log( '[PLS Sample Data] Step 4: Adding product options...' );
+        echo '<script>console.log("[PLS Sample Data] Step 4: Adding product options...");</script>';
         self::add_product_options();
         
         if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
@@ -145,6 +145,8 @@ final class PLS_Sample_Data {
      * Clean up existing data.
      */
     private static function cleanup() {
+        error_log( '[PLS Sample Data] Cleanup: Starting data cleanup...' );
+        echo '<script>console.log("[PLS Sample Data] Cleanup: Starting data cleanup...");</script>';
         global $wpdb;
 
         // Delete WooCommerce products that were synced from PLS
@@ -247,19 +249,29 @@ final class PLS_Sample_Data {
         $wpdb->query( "TRUNCATE TABLE {$bundle_items_table}" );
 
         // Delete product categories except Face parent
+        error_log( '[PLS Sample Data] Cleanup: Deleting product categories...' );
+        echo '<script>console.log("[PLS Sample Data] Cleanup: Deleting product categories...");</script>';
         $face_category = get_term_by( 'slug', 'face', 'product_cat' );
         $all_categories = get_terms( array(
             'taxonomy' => 'product_cat',
             'hide_empty' => false,
         ) );
 
+        if ( is_wp_error( $all_categories ) ) {
+            $all_categories = array();
+        }
+
+        $deleted_count = 0;
         foreach ( $all_categories as $category ) {
             // Keep Face category if it exists
             if ( $face_category && $category->term_id === $face_category->term_id ) {
                 continue;
             }
             wp_delete_term( $category->term_id, 'product_cat' );
+            $deleted_count++;
         }
+        error_log( '[PLS Sample Data] Cleanup: Deleted ' . $deleted_count . ' categories.' );
+        echo '<script>console.log("[PLS Sample Data] Cleanup: Deleted ' . $deleted_count . ' categories.");</script>';
     }
 
     /**
