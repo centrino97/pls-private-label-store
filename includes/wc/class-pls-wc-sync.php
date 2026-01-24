@@ -132,33 +132,75 @@ final class PLS_WC_Sync {
         $pack_tier_values = self::get_pack_tier_values();
         require_once PLS_PLS_DIR . 'includes/core/class-pls-tier-rules.php';
 
-        foreach ( $pack_tier_values as $tier_value ) {
-            $units = PLS_Tier_Rules::get_default_units_for_tier( $tier_value->id );
-            if ( ! $units ) {
-                continue;
-            }
+        // If no pack tier values from attribute system, use defaults
+        if ( empty( $pack_tier_values ) ) {
+            $default_tiers = array(
+                array( 'level' => 1, 'units' => 50, 'label' => 'Trial Pack', 'slug' => 'tier-1' ),
+                array( 'level' => 2, 'units' => 100, 'label' => 'Starter Pack', 'slug' => 'tier-2' ),
+                array( 'level' => 3, 'units' => 250, 'label' => 'Brand Entry', 'slug' => 'tier-3' ),
+                array( 'level' => 4, 'units' => 500, 'label' => 'Growth Brand', 'slug' => 'tier-4' ),
+                array( 'level' => 5, 'units' => 1000, 'label' => 'Wholesale Launch', 'slug' => 'tier-5' ),
+            );
 
-            $key = 'u' . $units;
-            $label = $tier_value->label . ' (' . $units . ' units)';
+            foreach ( $default_tiers as $tier_data ) {
+                $key = 'u' . $tier_data['units'];
+                $label = $tier_data['label'] . ' (' . $tier_data['units'] . ' units)';
 
-            $term = get_term_by( 'slug', $tier_value->value_key, $taxonomy );
-            if ( ! $term ) {
-                $inserted = wp_insert_term( $label, $taxonomy, array( 'slug' => $tier_value->value_key ) );
-                if ( ! is_wp_error( $inserted ) ) {
-                    $term_ids[ $key ] = $inserted['term_id'];
-                    // Store tier level and units in term meta
-                    update_term_meta( $inserted['term_id'], '_pls_tier_level', PLS_Tier_Rules::get_tier_level_from_value( $tier_value->id ) );
-                    update_term_meta( $inserted['term_id'], '_pls_default_units', $units );
+                $term = get_term_by( 'slug', $tier_data['slug'], $taxonomy );
+                if ( ! $term ) {
+                    $inserted = wp_insert_term( $label, $taxonomy, array( 'slug' => $tier_data['slug'] ) );
+                    if ( ! is_wp_error( $inserted ) ) {
+                        $term_ids[ $key ] = $inserted['term_id'];
+                        update_term_meta( $inserted['term_id'], '_pls_tier_level', $tier_data['level'] );
+                        update_term_meta( $inserted['term_id'], '_pls_default_units', $tier_data['units'] );
+                    }
+                } else {
+                    $term_ids[ $key ] = $term->term_id;
+                    update_term_meta( $term->term_id, '_pls_tier_level', $tier_data['level'] );
+                    update_term_meta( $term->term_id, '_pls_default_units', $tier_data['units'] );
                 }
-            } else {
-                $term_ids[ $key ] = $term->term_id;
-                // Ensure metadata is set
-                $tier_level = PLS_Tier_Rules::get_tier_level_from_value( $tier_value->id );
-                if ( $tier_level ) {
-                    update_term_meta( $term->term_id, '_pls_tier_level', $tier_level );
-                }
-                update_term_meta( $term->term_id, '_pls_default_units', $units );
             }
+        } else {
+            // Use attribute system values
+            foreach ( $pack_tier_values as $tier_value ) {
+                $units = PLS_Tier_Rules::get_default_units_for_tier( $tier_value->id );
+                if ( ! $units ) {
+                    continue;
+                }
+
+                $key = 'u' . $units;
+                $label = $tier_value->label . ' (' . $units . ' units)';
+
+                $term = get_term_by( 'slug', $tier_value->value_key, $taxonomy );
+                if ( ! $term ) {
+                    $inserted = wp_insert_term( $label, $taxonomy, array( 'slug' => $tier_value->value_key ) );
+                    if ( ! is_wp_error( $inserted ) ) {
+                        $term_ids[ $key ] = $inserted['term_id'];
+                        // Store tier level and units in term meta
+                        update_term_meta( $inserted['term_id'], '_pls_tier_level', PLS_Tier_Rules::get_tier_level_from_value( $tier_value->id ) );
+                        update_term_meta( $inserted['term_id'], '_pls_default_units', $units );
+                    }
+                } else {
+                    $term_ids[ $key ] = $term->term_id;
+                    // Ensure metadata is set
+                    $tier_level = PLS_Tier_Rules::get_tier_level_from_value( $tier_value->id );
+                    if ( $tier_level ) {
+                        update_term_meta( $term->term_id, '_pls_tier_level', $tier_level );
+                    }
+                    update_term_meta( $term->term_id, '_pls_default_units', $units );
+                }
+            }
+        }
+
+        // Ensure we have at least one term ID
+        if ( empty( $term_ids ) ) {
+            if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+                PLS_Debug::error( 'No pack tier terms could be created', array(
+                    'attribute_id' => $attribute->attribute_id,
+                    'taxonomy' => $taxonomy,
+                ) );
+            }
+            return null;
         }
 
         return array(
@@ -256,13 +298,21 @@ final class PLS_WC_Sync {
 
             wp_set_object_terms( $post_id, 'variable', 'product_type' );
             PLS_Repo_Base_Product::set_wc_product_id( $base_product_id, $post_id );
-            $product = wc_get_product( $post_id );
+            
+            // Clear WooCommerce product cache and create as variable product directly
+            wc_delete_product_transients( $post_id );
+            wp_cache_delete( $post_id, 'product' );
+            wp_cache_delete( 'wc_product_' . $post_id, 'products' );
+            
+            // Create a new WC_Product_Variable instance to ensure correct type
+            $product = new WC_Product_Variable( $post_id );
             $created = true;
 
             if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
                 PLS_Debug::log_sync( 'sync_product_created', array(
                     'base_product_id' => $base_product_id,
                     'wc_product_id' => $post_id,
+                    'product_type' => $product->get_type(),
                 ) );
             }
         }
@@ -276,6 +326,27 @@ final class PLS_WC_Sync {
             return new WP_Error( 'pls_wc_product_missing', __( 'WooCommerce product not available.', 'pls-private-label-store' ) );
         }
 
+        // Ensure product is variable type - if not, convert it
+        if ( ! $product->is_type( 'variable' ) ) {
+            if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+                PLS_Debug::log_sync( 'sync_product_converting_to_variable', array(
+                    'base_product_id' => $base_product_id,
+                    'wc_product_id' => $product->get_id(),
+                    'current_type' => $product->get_type(),
+                ) );
+            }
+            
+            // Set the product type term
+            wp_set_object_terms( $product->get_id(), 'variable', 'product_type' );
+            
+            // Clear cache and reload as variable product
+            wc_delete_product_transients( $product->get_id() );
+            wp_cache_delete( $product->get_id(), 'product' );
+            
+            // Reload as variable product
+            $product = new WC_Product_Variable( $product->get_id() );
+        }
+
         // Update product status if needed
         if ( $product->get_status() !== $status ) {
             if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
@@ -287,10 +358,6 @@ final class PLS_WC_Sync {
                 ) );
             }
             $product->set_status( $status );
-        }
-
-        if ( method_exists( $product, 'set_type' ) ) {
-            $product->set_type( 'variable' );
         }
 
         // Categories from PLS (comma-separated IDs in category_path).
@@ -428,8 +495,26 @@ final class PLS_WC_Sync {
                 ) );
             }
         } else {
-            // Fallback to old system for backwards compatibility
+            // Fallback: Create variations using default tier term slugs based on units
             $tiers = PLS_Repo_Pack_Tier::for_base( $base_product_id );
+            
+            // Map units to term slugs (from our default tiers in ensure_pack_tier_attribute)
+            $units_to_slug = array(
+                50 => 'tier-1',
+                100 => 'tier-2',
+                250 => 'tier-3',
+                500 => 'tier-4',
+                1000 => 'tier-5',
+            );
+            
+            // Map units to tier level for metadata
+            $units_to_level = array(
+                50 => 1,
+                100 => 2,
+                250 => 3,
+                500 => 4,
+                1000 => 5,
+            );
 
             foreach ( $tiers as $tier ) {
                 if ( (int) $tier->is_enabled !== 1 ) {
@@ -446,14 +531,45 @@ final class PLS_WC_Sync {
                     $variation->set_parent_id( $product->get_id() );
                 }
 
-                $variation->set_attributes( array( $pack_attr['taxonomy'] => $tier->tier_key ) );
+                // Get the correct term slug for this tier's units
+                $tier_units = (int) $tier->units;
+                $term_slug = isset( $units_to_slug[ $tier_units ] ) ? $units_to_slug[ $tier_units ] : 'tier-' . $tier_units;
+                $tier_level = isset( $units_to_level[ $tier_units ] ) ? $units_to_level[ $tier_units ] : 1;
+                
+                // Ensure the term exists
+                $term = get_term_by( 'slug', $term_slug, $pack_attr['taxonomy'] );
+                if ( ! $term ) {
+                    // Create the term if it doesn't exist
+                    $label = $tier_units . ' units';
+                    $inserted = wp_insert_term( $label, $pack_attr['taxonomy'], array( 'slug' => $term_slug ) );
+                    if ( ! is_wp_error( $inserted ) ) {
+                        update_term_meta( $inserted['term_id'], '_pls_tier_level', $tier_level );
+                        update_term_meta( $inserted['term_id'], '_pls_default_units', $tier_units );
+                    }
+                }
+
+                $variation->set_attributes( array( $pack_attr['taxonomy'] => $term_slug ) );
                 $variation->set_regular_price( $tier->price );
                 $variation->set_status( 'publish' );
                 $variation->save();
 
+                // Store tier metadata
                 update_post_meta( $variation->get_id(), '_pls_units', $tier->units );
+                update_post_meta( $variation->get_id(), '_pls_tier_level', $tier_level );
+                
                 PLS_Repo_Pack_Tier::set_wc_variation_id( $base_product_id, $tier->tier_key, $variation->get_id() );
                 $created_variations++;
+                
+                if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+                    PLS_Debug::log_sync( 'sync_variation_created', array(
+                        'base_product_id' => $base_product_id,
+                        'tier_key' => $tier->tier_key,
+                        'units' => $tier->units,
+                        'term_slug' => $term_slug,
+                        'variation_id' => $variation->get_id(),
+                        'price' => $tier->price,
+                    ) );
+                }
             }
         }
 
