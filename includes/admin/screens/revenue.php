@@ -144,7 +144,12 @@ for ( $i = 5; $i >= 0; $i-- ) {
     foreach ( $month_orders as $order ) {
         $items = $order->get_items();
         foreach ( $items as $item ) {
-            if ( in_array( $item->get_product_id(), $pls_wc_ids, true ) ) {
+            $product_id = $item->get_product_id();
+            $variation_id = $item->get_variation_id();
+            
+            // Check if product ID or variation ID matches PLS products
+            if ( in_array( $product_id, $pls_wc_ids, true ) || 
+                 ( $variation_id && in_array( $variation_id, $pls_wc_ids, true ) ) ) {
                 $month_revenue += $item->get_total();
             }
         }
@@ -331,7 +336,11 @@ $top_products = array_slice( $revenue_by_product, 0, 5, true );
                         
                         foreach ( $order_items as $item ) {
                             $product_id = $item->get_product_id();
-                            if ( ! in_array( $product_id, $pls_wc_ids, true ) ) {
+                            $variation_id = $item->get_variation_id();
+                            
+                            // Check if product ID or variation ID matches PLS products
+                            if ( ! in_array( $product_id, $pls_wc_ids, true ) && 
+                                 ! ( $variation_id && in_array( $variation_id, $pls_wc_ids, true ) ) ) {
                                 continue;
                             }
                             
