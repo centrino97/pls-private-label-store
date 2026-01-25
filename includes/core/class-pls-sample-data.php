@@ -1685,7 +1685,11 @@ final class PLS_Sample_Data {
         }
 
         foreach ( $orders_data as $order_data ) {
-            $order = wc_create_order( array( 'status' => $order_data['status'] ) );
+            // Create order with proper status (wc_create_order handles status correctly)
+            $order = wc_create_order( array( 
+                'status' => $order_data['status'],
+                'created_via' => 'pls-sample-data', // Track how order was created
+            ) );
             
             if ( is_wp_error( $order ) ) {
                 error_log( '[PLS Sample Data] Order: Failed to create order: ' . $order->get_error_message() );
@@ -1695,16 +1699,57 @@ final class PLS_Sample_Data {
             // Set order date
             $order->set_date_created( strtotime( $order_data['date'] ) );
 
-            // Set customer
+            // Try to get or create customer for better data integrity (WooCommerce best practice)
+            $customer_email = $order_data['customer']['email'];
+            $customer_id = email_exists( $customer_email );
+            
+            if ( ! $customer_id ) {
+                // Try to find by email using WooCommerce customer lookup
+                if ( function_exists( 'wc_get_customer_id_by_email' ) ) {
+                    $customer_id = wc_get_customer_id_by_email( $customer_email );
+                }
+                
+                // Create customer if doesn't exist
+                if ( ! $customer_id ) {
+                    // Generate unique username from email
+                    $username = sanitize_user( str_replace( '@', '_', $customer_email ), true );
+                    $counter = 1;
+                    while ( username_exists( $username ) ) {
+                        $username = sanitize_user( str_replace( '@', '_', $customer_email ) . '_' . $counter, true );
+                        $counter++;
+                    }
+                    
+                    $customer_id = wp_create_user( $username, wp_generate_password( 12, false ), $customer_email );
+                    if ( ! is_wp_error( $customer_id ) ) {
+                        // Set customer name and role
+                        wp_update_user( array(
+                            'ID' => $customer_id,
+                            'first_name' => $order_data['customer']['first_name'],
+                            'last_name' => $order_data['customer']['last_name'],
+                            'role' => 'customer',
+                        ) );
+                    } else {
+                        $customer_id = 0; // Use guest checkout if creation fails
+                    }
+                }
+            }
+            
+            // Set customer ID if we have one (WooCommerce standard)
+            if ( $customer_id ) {
+                $order->set_customer_id( $customer_id );
+            }
+
+            // Set billing address
             $order->set_billing_first_name( $order_data['customer']['first_name'] );
             $order->set_billing_last_name( $order_data['customer']['last_name'] );
-            $order->set_billing_email( $order_data['customer']['email'] );
+            $order->set_billing_email( $customer_email );
             $order->set_billing_address_1( $order_data['customer']['address'] );
             $order->set_billing_city( $order_data['customer']['city'] );
             $order->set_billing_state( $order_data['customer']['state'] );
             $order->set_billing_postcode( $order_data['customer']['postcode'] );
             $order->set_billing_country( $order_data['customer']['country'] );
 
+            // Set shipping address (same as billing for sample data)
             $order->set_shipping_first_name( $order_data['customer']['first_name'] );
             $order->set_shipping_last_name( $order_data['customer']['last_name'] );
             $order->set_shipping_address_1( $order_data['customer']['address'] );
@@ -1987,14 +2032,33 @@ final class PLS_Sample_Data {
 
             // Only save order if at least one product was added
             if ( $products_added > 0 ) {
+                // Calculate totals first
                 $order->calculate_totals();
+                
+                // Set payment method for completed/processing orders (WooCommerce best practice)
+                if ( in_array( $order_data['status'], array( 'completed', 'processing' ), true ) ) {
+                    // Try to get a default payment gateway, or use 'bacs' as fallback
+                    $available_gateways = WC()->payment_gateways()->get_available_payment_gateways();
+                    $payment_method = 'bacs'; // Bank transfer as default
+                    if ( ! empty( $available_gateways ) ) {
+                        // Use first available gateway
+                        $payment_method = key( $available_gateways );
+                    }
+                    $order->set_payment_method( $payment_method );
+                    
+                    // Set payment date for completed orders
+                    if ( $order_data['status'] === 'completed' ) {
+                        $order->set_date_paid( strtotime( $order_data['date'] ) );
+                    }
+                }
                 
                 // Mark as sample order for cleanup
                 $order->update_meta_data( '_pls_sample_order', '1' );
                 
+                // Save order
                 $order->save();
                 $orders_created++;
-                error_log( '[PLS Sample Data] Order: Created order #' . $order->get_id() . ' with ' . $products_added . ' product(s)' );
+                error_log( '[PLS Sample Data] Order: Created order #' . $order->get_id() . ' with ' . $products_added . ' product(s), status: ' . $order_data['status'] );
             } else {
                 // Delete the empty order
                 $orders_skipped++;
