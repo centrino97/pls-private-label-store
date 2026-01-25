@@ -1508,13 +1508,18 @@ final class PLS_Sample_Data {
                     $status = $recent_statuses[ array_rand( $recent_statuses ) ];
                 }
                 
-                // Random product selection
-                $num_items = rand( 1, 3 );
+                // Random product selection - use actual product count
+                $max_product_index = count( $products ) - 1;
+                $num_items = rand( 1, min( 3, $max_product_index + 1 ) );
                 $items = array();
                 $used_products = array();
                 
-                for ( $j = 0; $j < $num_items; $j++ ) {
-                    $product_index = rand( 0, min( 9, count( $products ) - 1 ) );
+                // Retry logic to ensure we get the requested number of items
+                $attempts = 0;
+                $max_attempts = $num_items * 3;
+                while ( count( $items ) < $num_items && $attempts < $max_attempts ) {
+                    $attempts++;
+                    $product_index = rand( 0, $max_product_index );
                     // Avoid duplicate products in same order
                     if ( in_array( $product_index, $used_products, true ) ) {
                         continue;
@@ -1545,65 +1550,87 @@ final class PLS_Sample_Data {
             }
         }
         
-        // Add some very recent orders (last few days)
-        $recent_orders = array(
-            array(
+        // Add some very recent orders (last few days) - dynamically adjust to available products
+        $max_idx = count( $products ) - 1;
+        $recent_orders = array();
+
+        // Only add orders with valid product indices
+        if ( $max_idx >= 1 ) {
+            $recent_orders[] = array(
                 'date' => date( 'Y-m-d H:i:s', strtotime( '-5 days' ) ),
                 'status' => 'completed',
                 'customer' => $customers[0],
                 'items' => array(
                     array( 'product_index' => 0, 'tier' => 'tier_2', 'quantity' => 2 ),
-                    array( 'product_index' => 1, 'tier' => 'tier_3', 'quantity' => 1 ),
+                    array( 'product_index' => min( 1, $max_idx ), 'tier' => 'tier_3', 'quantity' => 1 ),
                 ),
-            ),
-            array(
+            );
+            $recent_orders[] = array(
                 'date' => date( 'Y-m-d H:i:s', strtotime( '-4 days' ) ),
                 'status' => 'completed',
                 'customer' => $customers[1],
                 'items' => array(
                     array( 'product_index' => 0, 'tier' => 'tier_3', 'quantity' => 1 ),
-                    array( 'product_index' => 1, 'tier' => 'tier_3', 'quantity' => 1 ),
+                    array( 'product_index' => min( 1, $max_idx ), 'tier' => 'tier_3', 'quantity' => 1 ),
                 ),
                 'bundle_qualified' => 'mini_line',
-            ),
-            array(
+            );
+        }
+
+        if ( $max_idx >= 5 ) {
+            $recent_orders[] = array(
                 'date' => date( 'Y-m-d H:i:s', strtotime( '-1 day' ) ),
                 'status' => 'processing',
                 'customer' => $customers[3],
                 'items' => array(
-                    array( 'product_index' => 4, 'tier' => 'tier_3', 'quantity' => 2 ),
-                    array( 'product_index' => 5, 'tier' => 'tier_2', 'quantity' => 1 ),
+                    array( 'product_index' => min( 4, $max_idx ), 'tier' => 'tier_3', 'quantity' => 2 ),
+                    array( 'product_index' => min( 5, $max_idx ), 'tier' => 'tier_2', 'quantity' => 1 ),
                 ),
-            ),
-            array(
+            );
+        } elseif ( $max_idx >= 2 ) {
+            $recent_orders[] = array(
+                'date' => date( 'Y-m-d H:i:s', strtotime( '-1 day' ) ),
+                'status' => 'processing',
+                'customer' => $customers[3],
+                'items' => array(
+                    array( 'product_index' => min( 2, $max_idx ), 'tier' => 'tier_3', 'quantity' => 2 ),
+                ),
+            );
+        }
+
+        if ( $max_idx >= 3 ) {
+            $recent_orders[] = array(
                 'date' => date( 'Y-m-d H:i:s', strtotime( '-2 days' ) ),
                 'status' => 'processing',
                 'customer' => $customers[4],
                 'items' => array(
-                    array( 'product_index' => 6, 'tier' => 'tier_1', 'quantity' => 3 ),
-                    array( 'product_index' => 7, 'tier' => 'tier_4', 'quantity' => 1 ),
+                    array( 'product_index' => min( 2, $max_idx ), 'tier' => 'tier_1', 'quantity' => 3 ),
+                    array( 'product_index' => min( 3, $max_idx ), 'tier' => 'tier_4', 'quantity' => 1 ),
                 ),
-            ),
-            array(
+            );
+            $recent_orders[] = array(
                 'date' => date( 'Y-m-d H:i:s', strtotime( '-3 days' ) ),
                 'status' => 'on-hold',
                 'customer' => $customers[5],
                 'items' => array(
-                    array( 'product_index' => 8, 'tier' => 'tier_3', 'quantity' => 1 ),
-                    array( 'product_index' => 9, 'tier' => 'tier_2', 'quantity' => 2 ),
+                    array( 'product_index' => min( 3, $max_idx ), 'tier' => 'tier_3', 'quantity' => 1 ),
+                    array( 'product_index' => min( 4, $max_idx ), 'tier' => 'tier_2', 'quantity' => 2 ),
                 ),
-            ),
-            array(
+            );
+        }
+
+        if ( $max_idx >= 3 ) {
+            $recent_orders[] = array(
                 'date' => date( 'Y-m-d H:i:s', strtotime( '-6 hours' ) ),
                 'status' => 'pending',
                 'customer' => $customers[6],
                 'items' => array(
-                    array( 'product_index' => 3, 'tier' => 'tier_2', 'quantity' => 1 ),
+                    array( 'product_index' => min( 3, $max_idx ), 'tier' => 'tier_2', 'quantity' => 1 ),
                 ),
-            ),
-        );
+            );
+        }
         
-        // Merge recent orders (they'll override any duplicates)
+        // Merge recent orders
         foreach ( $recent_orders as $recent_order ) {
             $recent_order['customer']['country'] = 'AU';
             $orders_data[] = $recent_order;
@@ -1613,6 +1640,7 @@ final class PLS_Sample_Data {
             $order = wc_create_order( array( 'status' => $order_data['status'] ) );
             
             if ( is_wp_error( $order ) ) {
+                error_log( '[PLS Sample Data] Order: Failed to create order: ' . $order->get_error_message() );
                 continue;
             }
 
@@ -1637,11 +1665,14 @@ final class PLS_Sample_Data {
             $order->set_shipping_postcode( $order_data['customer']['postcode'] );
             $order->set_shipping_country( $order_data['customer']['country'] );
 
+            // Track successfully added products
+            $products_added = 0;
+
             // Add products
             foreach ( $order_data['items'] as $item_data ) {
                 $product_index = $item_data['product_index'];
                 if ( ! isset( $products[ $product_index ] ) ) {
-                    error_log( '[PLS Sample Data] Order: Product index ' . $product_index . ' not found in products array' );
+                    error_log( '[PLS Sample Data] Order: Product index ' . $product_index . ' not found in products array (max index: ' . ( count( $products ) - 1 ) . ')' );
                     continue;
                 }
 
@@ -1899,18 +1930,27 @@ final class PLS_Sample_Data {
                         }
                         
                         $item->save();
+                        $products_added++;
                     } else {
                         error_log( '[PLS Sample Data] Order: Failed to add product ' . $base_product->name . ' (variation ' . $variation_id . ') to order' );
                     }
                 }
             }
 
-            $order->calculate_totals();
-            
-            // Mark as sample order for cleanup
-            $order->update_meta_data( '_pls_sample_order', '1' );
-            
-            $order->save();
+            // Only save order if at least one product was added
+            if ( $products_added > 0 ) {
+                $order->calculate_totals();
+                
+                // Mark as sample order for cleanup
+                $order->update_meta_data( '_pls_sample_order', '1' );
+                
+                $order->save();
+                error_log( '[PLS Sample Data] Order: Created order #' . $order->get_id() . ' with ' . $products_added . ' product(s)' );
+            } else {
+                // Delete the empty order
+                error_log( '[PLS Sample Data] Order: Deleting empty order #' . $order->get_id() . ' (no products could be added)' );
+                $order->delete( true );
+            }
         }
     }
 

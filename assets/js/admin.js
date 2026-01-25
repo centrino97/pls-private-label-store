@@ -58,6 +58,16 @@
       $(this).closest('.pls-repeater__row').remove();
     });
 
+    // Stock management toggle - show/hide stock quantity fields
+    $(document).on('change', '#pls-manage-stock', function(){
+      var stockFields = $('#pls-stock-fields');
+      if ($(this).is(':checked')) {
+        stockFields.slideDown(200);
+      } else {
+        stockFields.slideUp(200);
+      }
+    });
+
     var productMap = {};
     if (window.PLS_ProductAdmin && Array.isArray(PLS_ProductAdmin.products)) {
       PLS_ProductAdmin.products.forEach(function(item){
@@ -286,6 +296,17 @@
         $('#pls-label-file').prop('checked', false);
         setLabelState(true);
         $('#pls-product-errors').hide().find('ul').empty();
+        
+        // Reset stock management fields
+        $('#pls-manage-stock').prop('checked', false);
+        $('#pls-stock-quantity, #pls-low-stock-threshold').val('');
+        $('#pls-stock-status').val('instock');
+        $('#pls-backorders-allowed').prop('checked', false);
+        $('#pls-stock-fields').hide();
+        
+        // Reset cost fields
+        $('#pls-shipping-cost, #pls-packaging-cost').val('');
+        
         goToStep('general');
         renderSelectedIngredients([]);
         keySelected = [];
@@ -664,6 +685,23 @@
         $('#pls-label-price').val(formatPrice(data.label_price_per_unit || ''));
         $('#pls-label-file').prop('checked', !!parseInt(data.label_requires_file));
         $('#pls-label-guide').val(data.label_guide_url || defaultLabelGuide);
+
+        // Stock management fields
+        var manageStock = !!parseInt(data.manage_stock || 0);
+        $('#pls-manage-stock').prop('checked', manageStock);
+        if (manageStock) {
+          $('#pls-stock-fields').show();
+        } else {
+          $('#pls-stock-fields').hide();
+        }
+        $('#pls-stock-quantity').val(data.stock_quantity || '');
+        $('#pls-stock-status').val(data.stock_status || 'instock');
+        $('#pls-backorders-allowed').prop('checked', !!parseInt(data.backorders_allowed || 0));
+        $('#pls-low-stock-threshold').val(data.low_stock_threshold || '');
+
+        // Cost fields
+        $('#pls-shipping-cost').val(data.shipping_cost || '');
+        $('#pls-packaging-cost').val(data.packaging_cost || '');
 
         // Handle Package Type, Color, Cap separately
         if (Array.isArray(data.attributes)){

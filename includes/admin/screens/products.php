@@ -332,6 +332,65 @@ wp_localize_script(
                   <textarea name="benefits_text" id="pls-benefits" class="pls-rich-textarea" rows="5" placeholder="Hydrates instantly&#10;Boosts elasticity"></textarea>
                 </div>
               </div>
+
+              <!-- Stock & Inventory Management -->
+              <div class="pls-modal__grid pls-bento-grid">
+                <div class="pls-modal__section">
+                  <div class="pls-section-heading">
+                    <p class="pls-label"><?php esc_html_e( 'Inventory', 'pls-private-label-store' ); ?></p>
+                    <h3><?php esc_html_e( 'Stock Management', 'pls-private-label-store' ); ?></h3>
+                    <p class="pls-subtle"><?php esc_html_e( 'Control product availability and stock tracking.', 'pls-private-label-store' ); ?></p>
+                  </div>
+                  <div class="pls-field-stack">
+                    <label class="pls-toggle-field">
+                      <input type="checkbox" name="manage_stock" id="pls-manage-stock" value="1" />
+                      <span><?php esc_html_e( 'Track stock quantity', 'pls-private-label-store' ); ?></span>
+                    </label>
+                    <div class="pls-stock-fields" id="pls-stock-fields" style="display: none;">
+                      <label><?php esc_html_e( 'Stock quantity', 'pls-private-label-store' ); ?>
+                        <input type="number" name="stock_quantity" id="pls-stock-quantity" min="0" step="1" placeholder="0" />
+                      </label>
+                      <label><?php esc_html_e( 'Low stock threshold', 'pls-private-label-store' ); ?>
+                        <input type="number" name="low_stock_threshold" id="pls-low-stock-threshold" min="0" step="1" placeholder="5" />
+                        <span class="pls-field-hint"><?php esc_html_e( 'Alert when stock falls below this level.', 'pls-private-label-store' ); ?></span>
+                      </label>
+                    </div>
+                    <label><?php esc_html_e( 'Stock status', 'pls-private-label-store' ); ?>
+                      <select name="stock_status" id="pls-stock-status">
+                        <option value="instock"><?php esc_html_e( 'In stock', 'pls-private-label-store' ); ?></option>
+                        <option value="outofstock"><?php esc_html_e( 'Out of stock', 'pls-private-label-store' ); ?></option>
+                        <option value="onbackorder"><?php esc_html_e( 'On backorder', 'pls-private-label-store' ); ?></option>
+                      </select>
+                    </label>
+                    <label class="pls-toggle-field">
+                      <input type="checkbox" name="backorders_allowed" id="pls-backorders-allowed" value="1" />
+                      <span><?php esc_html_e( 'Allow backorders', 'pls-private-label-store' ); ?></span>
+                    </label>
+                    <span class="pls-field-hint"><?php esc_html_e( 'Allow customers to order when product is out of stock.', 'pls-private-label-store' ); ?></span>
+                  </div>
+                </div>
+                <div class="pls-modal__section">
+                  <div class="pls-section-heading">
+                    <p class="pls-label"><?php esc_html_e( 'Costs', 'pls-private-label-store' ); ?></p>
+                    <h3><?php esc_html_e( 'Shipping & Packaging', 'pls-private-label-store' ); ?></h3>
+                    <p class="pls-subtle"><?php esc_html_e( 'Manual cost inputs for accurate profit calculations.', 'pls-private-label-store' ); ?></p>
+                  </div>
+                  <label><?php esc_html_e( 'Shipping cost (per unit)', 'pls-private-label-store' ); ?>
+                    <div class="pls-input-with-prefix">
+                      <span class="pls-input-prefix">$</span>
+                      <input type="number" name="shipping_cost" id="pls-shipping-cost" min="0" step="0.01" placeholder="0.00" />
+                    </div>
+                    <span class="pls-field-hint"><?php esc_html_e( 'Average shipping cost per unit for Australian delivery.', 'pls-private-label-store' ); ?></span>
+                  </label>
+                  <label><?php esc_html_e( 'Packaging cost (per unit)', 'pls-private-label-store' ); ?>
+                    <div class="pls-input-with-prefix">
+                      <span class="pls-input-prefix">$</span>
+                      <input type="number" name="packaging_cost" id="pls-packaging-cost" min="0" step="0.01" placeholder="0.00" />
+                    </div>
+                    <span class="pls-field-hint"><?php esc_html_e( 'Cost of packaging materials per unit.', 'pls-private-label-store' ); ?></span>
+                  </label>
+                </div>
+              </div>
             </div>
 
             <div class="pls-stepper__panel" data-step="ingredients">

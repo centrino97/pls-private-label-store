@@ -76,4 +76,99 @@ final class PLS_Repo_Base_Product {
             array( '%d' )
         );
     }
+
+    /**
+     * Update stock management fields.
+     *
+     * @param int   $id   Product ID.
+     * @param array $data Stock data.
+     * @return int|false
+     */
+    public static function update_stock( $id, $data ) {
+        global $wpdb;
+        $table = PLS_Repositories::table( 'base_product' );
+
+        $update_data = array();
+        $formats = array();
+
+        if ( isset( $data['manage_stock'] ) ) {
+            $update_data['manage_stock'] = (int) $data['manage_stock'];
+            $formats[] = '%d';
+        }
+
+        if ( isset( $data['stock_quantity'] ) ) {
+            $update_data['stock_quantity'] = $data['stock_quantity'] !== '' ? (int) $data['stock_quantity'] : null;
+            $formats[] = $data['stock_quantity'] !== '' ? '%d' : null;
+        }
+
+        if ( isset( $data['stock_status'] ) ) {
+            $update_data['stock_status'] = sanitize_text_field( $data['stock_status'] );
+            $formats[] = '%s';
+        }
+
+        if ( isset( $data['backorders_allowed'] ) ) {
+            $update_data['backorders_allowed'] = (int) $data['backorders_allowed'];
+            $formats[] = '%d';
+        }
+
+        if ( isset( $data['low_stock_threshold'] ) ) {
+            $update_data['low_stock_threshold'] = $data['low_stock_threshold'] !== '' ? (int) $data['low_stock_threshold'] : null;
+            $formats[] = $data['low_stock_threshold'] !== '' ? '%d' : null;
+        }
+
+        if ( empty( $update_data ) ) {
+            return false;
+        }
+
+        // Filter out null formats for NULL values
+        $clean_formats = array_filter( $formats, function( $f ) { return $f !== null; } );
+        
+        return $wpdb->update(
+            $table,
+            $update_data,
+            array( 'id' => $id ),
+            $clean_formats,
+            array( '%d' )
+        );
+    }
+
+    /**
+     * Update cost fields.
+     *
+     * @param int   $id   Product ID.
+     * @param array $data Cost data.
+     * @return int|false
+     */
+    public static function update_costs( $id, $data ) {
+        global $wpdb;
+        $table = PLS_Repositories::table( 'base_product' );
+
+        $update_data = array();
+        $formats = array();
+
+        if ( isset( $data['shipping_cost'] ) ) {
+            $update_data['shipping_cost'] = $data['shipping_cost'] !== '' ? floatval( $data['shipping_cost'] ) : null;
+            $formats[] = $data['shipping_cost'] !== '' ? '%f' : null;
+        }
+
+        if ( isset( $data['packaging_cost'] ) ) {
+            $update_data['packaging_cost'] = $data['packaging_cost'] !== '' ? floatval( $data['packaging_cost'] ) : null;
+            $formats[] = $data['packaging_cost'] !== '' ? '%f' : null;
+        }
+
+        if ( empty( $update_data ) ) {
+            return false;
+        }
+
+        // Filter out null formats for NULL values
+        $clean_formats = array_filter( $formats, function( $f ) { return $f !== null; } );
+
+        return $wpdb->update(
+            $table,
+            $update_data,
+            array( 'id' => $id ),
+            $clean_formats,
+            array( '%d' )
+        );
+    }
 }

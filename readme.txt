@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 2.2.0
+Stable tag: 2.3.0
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,16 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 2.3.0 =
+* **FIXED:** "Update Available" badge persistence - Categories now properly replaced instead of merged during sync
+* **FIXED:** Empty WooCommerce orders - Sample data now uses dynamic product count and validates orders before saving
+* **FIXED:** Variation cache issues - Comprehensive cache clearing for parent product and all variations after sync
+* **NEW:** Stock management - Track stock quantity, set low stock threshold, and control backorder settings
+* **NEW:** Cost tracking - Manual shipping and packaging cost fields per product for accurate profit calculations
+* **NEW:** WooCommerce stock sync - Stock settings automatically synced to WooCommerce variable products
+* **IMPROVED:** Sample data reliability - Orders only created when products successfully added, dynamic product indices
+* **IMPROVED:** Database migration system - New v2.3.0 migration adds stock and cost columns
+
 = 2.1.1 =
 * **FIXED:** Debug console completely removed - Removed all debug console initialization code and file includes
 * **FIXED:** Header overflow - Improved flex layout with proper shrink behavior and responsive max-width constraints

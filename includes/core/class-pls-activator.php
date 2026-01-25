@@ -62,6 +62,12 @@ final class PLS_Activator {
             require_once PLS_PLS_DIR . 'includes/core/class-pls-migration-v130.php';
             PLS_Migration_v130::run();
         }
+        
+        // Run v2.3.0 migration if upgrading from earlier version
+        if ( version_compare( $stored_version, '2.3.0', '<' ) ) {
+            require_once PLS_PLS_DIR . 'includes/core/class-pls-migration-v230.php';
+            PLS_Migration_v230::run();
+        }
     }
 
     private static function maybe_create_tables() {

@@ -2960,3 +2960,122 @@ body.pls-modal-open {
 .pls-form-actions {
   margin-top: var(--pls-space-lg);
 }
+
+/* ============================================
+   Stock Management & Cost Fields (v2.3.0)
+   ============================================ */
+
+.pls-toggle-field {
+  display: flex;
+  align-items: center;
+  gap: var(--pls-space-sm);
+  cursor: pointer;
+  padding: var(--pls-space-sm) 0;
+}
+
+.pls-toggle-field input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--pls-accent);
+  cursor: pointer;
+  margin: 0;
+}
+
+.pls-toggle-field span {
+  font-size: var(--pls-font-size-base);
+  color: var(--pls-gray-700);
+  user-select: none;
+}
+
+.pls-stock-fields {
+  background: var(--pls-gray-50);
+  border: 1px solid var(--pls-gray-200);
+  border-radius: var(--pls-radius-md);
+  padding: var(--pls-space-md);
+  margin-top: var(--pls-space-sm);
+  margin-bottom: var(--pls-space-sm);
+}
+
+.pls-stock-fields label {
+  display: block;
+  margin-bottom: var(--pls-space-md);
+}
+
+.pls-stock-fields label:last-child {
+  margin-bottom: 0;
+}
+
+.pls-stock-fields input[type="number"] {
+  width: 100%;
+  padding: var(--pls-space-sm) var(--pls-space-md);
+  border: 1px solid var(--pls-gray-300);
+  border-radius: var(--pls-radius-md);
+  font-size: var(--pls-font-size-base);
+  margin-top: var(--pls-space-xs);
+}
+
+.pls-input-with-prefix {
+  display: flex;
+  align-items: stretch;
+  margin-top: var(--pls-space-xs);
+}
+
+.pls-input-prefix {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--pls-space-md);
+  background: var(--pls-gray-100);
+  border: 1px solid var(--pls-gray-300);
+  border-right: none;
+  border-radius: var(--pls-radius-md) 0 0 var(--pls-radius-md);
+  font-size: var(--pls-font-size-base);
+  color: var(--pls-gray-600);
+  font-weight: 500;
+}
+
+.pls-input-with-prefix input {
+  flex: 1;
+  padding: var(--pls-space-sm) var(--pls-space-md);
+  border: 1px solid var(--pls-gray-300);
+  border-radius: 0 var(--pls-radius-md) var(--pls-radius-md) 0;
+  font-size: var(--pls-font-size-base);
+  margin-top: 0 !important;
+}
+
+.pls-input-with-prefix input:focus {
+  outline: none;
+  border-color: var(--pls-accent);
+  box-shadow: 0 0 0 2px var(--pls-accent-light);
+}
+
+/* Stock status indicator styles */
+.pls-stock-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--pls-radius-sm);
+  font-size: var(--pls-font-size-xs);
+  font-weight: 500;
+}
+
+.pls-stock-badge--instock {
+  background: var(--pls-success-light);
+  color: #166534;
+}
+
+.pls-stock-badge--outofstock {
+  background: var(--pls-error-light);
+  color: #991b1b;
+}
+
+.pls-stock-badge--onbackorder {
+  background: var(--pls-warning-light);
+  color: #92400e;
+}
+
+.pls-stock-badge--low {
+  background: var(--pls-warning-light);
+  color: #92400e;
+}

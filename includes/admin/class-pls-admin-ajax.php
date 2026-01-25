@@ -503,6 +503,15 @@ final class PLS_Admin_Ajax {
             'attributes'          => $profile_attrs,
             'sync_status'         => self::get_sync_status( $product->id ),
             'sync_state'          => self::detect_product_sync_state( $product->id ),
+            // Stock management fields
+            'manage_stock'        => isset( $product->manage_stock ) ? absint( $product->manage_stock ) : 0,
+            'stock_quantity'      => isset( $product->stock_quantity ) ? $product->stock_quantity : '',
+            'stock_status'        => isset( $product->stock_status ) ? $product->stock_status : 'instock',
+            'backorders_allowed'  => isset( $product->backorders_allowed ) ? absint( $product->backorders_allowed ) : 0,
+            'low_stock_threshold' => isset( $product->low_stock_threshold ) ? $product->low_stock_threshold : '',
+            // Cost fields
+            'shipping_cost'       => isset( $product->shipping_cost ) ? floatval( $product->shipping_cost ) : '',
+            'packaging_cost'      => isset( $product->packaging_cost ) ? floatval( $product->packaging_cost ) : '',
         );
     }
 
@@ -1174,6 +1183,17 @@ final class PLS_Admin_Ajax {
             }
         }
 
+        // Stock management fields
+        $payload['manage_stock']        = isset( $data['manage_stock'] ) ? 1 : 0;
+        $payload['stock_quantity']      = isset( $data['stock_quantity'] ) && '' !== $data['stock_quantity'] ? absint( $data['stock_quantity'] ) : '';
+        $payload['stock_status']        = isset( $data['stock_status'] ) ? sanitize_text_field( $data['stock_status'] ) : 'instock';
+        $payload['backorders_allowed']  = isset( $data['backorders_allowed'] ) ? 1 : 0;
+        $payload['low_stock_threshold'] = isset( $data['low_stock_threshold'] ) && '' !== $data['low_stock_threshold'] ? absint( $data['low_stock_threshold'] ) : '';
+
+        // Cost fields
+        $payload['shipping_cost']  = isset( $data['shipping_cost'] ) && '' !== $data['shipping_cost'] ? round( floatval( $data['shipping_cost'] ), 2 ) : '';
+        $payload['packaging_cost'] = isset( $data['packaging_cost'] ) && '' !== $data['packaging_cost'] ? round( floatval( $data['packaging_cost'] ), 2 ) : '';
+
         return $payload;
     }
 
@@ -1402,6 +1422,21 @@ final class PLS_Admin_Ajax {
         );
 
         PLS_Repo_Product_Profile::upsert( $base_id, $profile_data );
+
+        // Stock management fields
+        PLS_Repo_Base_Product::update_stock( $base_id, array(
+            'manage_stock'        => $payload['manage_stock'],
+            'stock_quantity'      => $payload['stock_quantity'],
+            'stock_status'        => $payload['stock_status'],
+            'backorders_allowed'  => $payload['backorders_allowed'],
+            'low_stock_threshold' => $payload['low_stock_threshold'],
+        ) );
+
+        // Cost fields
+        PLS_Repo_Base_Product::update_costs( $base_id, array(
+            'shipping_cost'  => $payload['shipping_cost'],
+            'packaging_cost' => $payload['packaging_cost'],
+        ) );
 
         return array(
             'id'      => $base_id,

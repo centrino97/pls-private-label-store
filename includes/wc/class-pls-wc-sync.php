@@ -386,34 +386,30 @@ final class PLS_WC_Sync {
         }
 
         // Categories from PLS (comma-separated IDs in category_path).
+        // REPLACE categories instead of merging to ensure PLS is the source of truth
+        $pls_category_ids = array();
         if ( ! empty( $base->category_path ) ) {
-            $ids = array_map( 'absint', explode( ',', $base->category_path ) );
-            $ids = array_filter( $ids );
-            if ( $ids ) {
-                // Check existing categories to avoid duplicate assignment
-                $existing_terms = wp_get_object_terms( $product->get_id(), 'product_cat', array( 'fields' => 'ids' ) );
-                if ( is_wp_error( $existing_terms ) ) {
-                    $existing_terms = array();
-                }
-                
-                // Only assign if categories are different
-                $ids_to_assign = array_diff( $ids, $existing_terms );
-                if ( ! empty( $ids_to_assign ) ) {
-                    if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
-                        PLS_Debug::log_sync( 'sync_product_categories', array(
-                            'base_product_id' => $base_product_id,
-                            'wc_product_id' => $product->get_id(),
-                            'category_ids' => $ids,
-                            'existing_categories' => $existing_terms,
-                            'ids_to_assign' => $ids_to_assign,
-                        ) );
-                    }
-                    // Merge with existing to avoid duplicates
-                    $final_ids = array_unique( array_merge( $existing_terms, $ids_to_assign ) );
-                    wp_set_object_terms( $product->get_id(), $final_ids, 'product_cat' );
-                }
-            }
+            $pls_category_ids = array_map( 'absint', explode( ',', $base->category_path ) );
+            $pls_category_ids = array_filter( $pls_category_ids );
         }
+
+        // Get current WC categories for logging
+        $existing_terms = wp_get_object_terms( $product->get_id(), 'product_cat', array( 'fields' => 'ids' ) );
+        if ( is_wp_error( $existing_terms ) ) {
+            $existing_terms = array();
+        }
+
+        // Replace categories (false = replace, not append)
+        if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+            PLS_Debug::log_sync( 'sync_product_categories', array(
+                'base_product_id' => $base_product_id,
+                'wc_product_id' => $product->get_id(),
+                'pls_category_ids' => $pls_category_ids,
+                'existing_wc_categories' => $existing_terms,
+                'action' => 'replace',
+            ) );
+        }
+        wp_set_object_terms( $product->get_id(), $pls_category_ids, 'product_cat', false );
 
         $pack_attr = self::ensure_pack_tier_attribute();
         if ( ! $pack_attr ) {
@@ -433,6 +429,39 @@ final class PLS_WC_Sync {
         $wc_attribute->set_variation( true );
 
         $product->set_attributes( array( $pack_attr['taxonomy'] => $wc_attribute ) );
+
+        // Sync stock management settings from PLS to WooCommerce
+        $manage_stock = isset( $base->manage_stock ) && $base->manage_stock ? true : false;
+        $product->set_manage_stock( $manage_stock );
+        
+        if ( $manage_stock && isset( $base->stock_quantity ) && '' !== $base->stock_quantity ) {
+            $product->set_stock_quantity( absint( $base->stock_quantity ) );
+        }
+        
+        // Set stock status
+        $stock_status = isset( $base->stock_status ) ? $base->stock_status : 'instock';
+        $product->set_stock_status( $stock_status );
+        
+        // Set backorders setting
+        $backorders_allowed = isset( $base->backorders_allowed ) && $base->backorders_allowed ? 'yes' : 'no';
+        $product->set_backorders( $backorders_allowed );
+        
+        // Set low stock threshold
+        if ( $manage_stock && isset( $base->low_stock_threshold ) && '' !== $base->low_stock_threshold ) {
+            $product->set_low_stock_amount( absint( $base->low_stock_threshold ) );
+        }
+
+        if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+            PLS_Debug::log_sync( 'sync_stock_settings', array(
+                'base_product_id' => $base_product_id,
+                'wc_product_id' => $product->get_id(),
+                'manage_stock' => $manage_stock,
+                'stock_quantity' => $manage_stock ? $base->stock_quantity : null,
+                'stock_status' => $stock_status,
+                'backorders' => $backorders_allowed,
+            ) );
+        }
+
         $product->save();
 
         if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
@@ -685,6 +714,22 @@ final class PLS_WC_Sync {
             }
         }
 
+        // Clear all caches for main product AND variations to ensure fresh state detection
+        wc_delete_product_transients( $product->get_id() );
+        wp_cache_delete( $product->get_id(), 'posts' );
+        wp_cache_delete( $product->get_id(), 'post_meta' );
+        wp_cache_delete( 'wc_product_' . $product->get_id(), 'products' );
+        delete_transient( 'wc_product_type_' . $product->get_id() );
+
+        // Clear variation caches
+        $variation_ids = $product->get_children();
+        foreach ( $variation_ids as $variation_id ) {
+            wc_delete_product_transients( $variation_id );
+            wp_cache_delete( $variation_id, 'posts' );
+            wp_cache_delete( $variation_id, 'post_meta' );
+            wp_cache_delete( 'wc_product_' . $variation_id, 'products' );
+        }
+
         // Validate sync
         $validation_result = self::validate_product_sync( $base_product_id, $product->get_id() );
         
@@ -695,6 +740,7 @@ final class PLS_WC_Sync {
                 'wc_product_id' => $product->get_id(),
                 'created' => $created,
                 'variations_created' => $created_variations,
+                'variations_cache_cleared' => count( $variation_ids ),
                 'validation' => $validation_result,
             ) );
             
