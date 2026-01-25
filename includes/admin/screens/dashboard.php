@@ -31,6 +31,15 @@ foreach ( $pls_products as $pls_product ) {
     }
 }
 
+// Also include bundle WooCommerce product IDs
+require_once PLS_PLS_DIR . 'includes/data/repo-bundle.php';
+$bundles = PLS_Repo_Bundle::all();
+foreach ( $bundles as $bundle ) {
+    if ( $bundle->wc_product_id ) {
+        $pls_wc_product_ids[] = $bundle->wc_product_id;
+    }
+}
+
 // Count only orders containing PLS products
 $active_orders = 0;
 foreach ( $all_orders as $order ) {
