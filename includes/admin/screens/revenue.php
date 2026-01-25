@@ -16,6 +16,13 @@ $pls_wc_ids   = array();
 foreach ( $pls_products as $product ) {
     if ( $product->wc_product_id ) {
         $pls_wc_ids[] = $product->wc_product_id;
+        
+        // Also include variation IDs if product is variable (for proper order detection)
+        $wc_product = wc_get_product( $product->wc_product_id );
+        if ( $wc_product && $wc_product->is_type( 'variable' ) ) {
+            $variations = $wc_product->get_children();
+            $pls_wc_ids = array_merge( $pls_wc_ids, $variations );
+        }
     }
 }
 
@@ -50,26 +57,34 @@ foreach ( $all_orders as $order ) {
     
     foreach ( $items as $item ) {
         $product_id = $item->get_product_id();
-        if ( in_array( $product_id, $pls_wc_ids, true ) ) {
+        $variation_id = $item->get_variation_id();
+        
+        // Check if product ID or variation ID matches PLS products
+        $is_pls_product = in_array( $product_id, $pls_wc_ids, true ) || 
+                          ( $variation_id && in_array( $variation_id, $pls_wc_ids, true ) );
+        
+        if ( $is_pls_product ) {
             $order_contains_pls = true;
             $order_total += $item->get_total();
             
-            // Track by product
+            // Track by product (use parent product ID for grouping)
             if ( ! isset( $revenue_by_product[ $product_id ] ) ) {
                 $revenue_by_product[ $product_id ] = 0;
             }
             $revenue_by_product[ $product_id ] += $item->get_total();
             
             // Track by tier/bundle
-            if ( $item->get_variation_id() ) {
-                $variation = wc_get_product( $item->get_variation_id() );
-                $attributes = $variation->get_attributes();
-                if ( isset( $attributes['pa_pack-tier'] ) ) {
-                    $tier = $attributes['pa_pack-tier'];
-                    if ( ! isset( $revenue_by_tier[ $tier ] ) ) {
-                        $revenue_by_tier[ $tier ] = 0;
+            if ( $variation_id ) {
+                $variation = wc_get_product( $variation_id );
+                if ( $variation ) {
+                    $attributes = $variation->get_attributes();
+                    if ( isset( $attributes['pa_pack-tier'] ) ) {
+                        $tier = $attributes['pa_pack-tier'];
+                        if ( ! isset( $revenue_by_tier[ $tier ] ) ) {
+                            $revenue_by_tier[ $tier ] = 0;
+                        }
+                        $revenue_by_tier[ $tier ] += $item->get_total();
                     }
-                    $revenue_by_tier[ $tier ] += $item->get_total();
                 }
             }
         }
