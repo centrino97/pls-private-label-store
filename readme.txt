@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 4.6.2
+Stable tag: 4.6.3
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,11 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 4.6.3 =
+* **FIXED:** Commission creation now works - fixed wrong order status format in query ('wc-completed' → 'completed')
+* **FIXED:** Added manual commission trigger after saving completed/processing orders to ensure commissions are created even if hook doesn't fire
+* **IMPROVED:** Commissions are now properly created for all completed and processing WooCommerce orders
+
 = 4.6.2 =
 * **CRITICAL FIX:** Fixed fatal error in order generation - `add_product()` returns item ID (int), not object. Now properly retrieves item object using `get_item()` before calling `update_meta_data()`
 * **FIXED:** Order generation now works correctly - all orders were failing with "Call to a member function update_meta_data() on int" error

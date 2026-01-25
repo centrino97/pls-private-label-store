@@ -2849,6 +2849,16 @@ final class PLS_Sample_Data {
                 try {
                     $order->save();
                     $orders_created++;
+                    
+                    // Manually trigger commission creation for completed/processing orders
+                    // The hook may not fire reliably during bulk creation
+                    if ( in_array( $order_data['status'], array( 'completed', 'processing' ), true ) ) {
+                        if ( class_exists( 'PLS_Plugin' ) && method_exists( PLS_Plugin::instance(), 'check_order_payment' ) ) {
+                            $plugin_instance = PLS_Plugin::instance();
+                            $plugin_instance->check_order_payment( $order->get_id(), 'new', $order_data['status'], $order );
+                        }
+                    }
+                    
                     $action_log[] = array( 'message' => '✓ Created order #' . $order->get_id() . ' with ' . $products_added . ' product(s), status: ' . $order_data['status'], 'type' => 'success' );
                     error_log( '[PLS Sample Data] Order: Created order #' . $order->get_id() . ' with ' . $products_added . ' product(s), status: ' . $order_data['status'] );
                 } catch ( Exception $e ) {
@@ -3482,9 +3492,10 @@ final class PLS_Sample_Data {
         require_once PLS_PLS_DIR . 'includes/data/repo-commission.php';
 
         // Get WooCommerce orders with PLS products
+        // Note: WC_Order_Query uses status without 'wc-' prefix
         $orders_query = new WC_Order_Query( array(
             'limit' => -1,
-            'status' => array( 'wc-completed', 'wc-processing' ),
+            'status' => array( 'completed', 'processing' ),
         ) );
         $orders = $orders_query->get_orders();
 
