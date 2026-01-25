@@ -129,54 +129,100 @@ final class PLS_Sample_Data {
     }
 
     /**
-     * Clean up existing data.
+     * Clean up existing data - deletes everything that sample data can create.
      */
     private static function cleanup() {
-        error_log( '[PLS Sample Data] Cleanup: Starting data cleanup...' );
+        error_log( '[PLS Sample Data] Cleanup: Starting comprehensive data cleanup...' );
         global $wpdb;
 
-        // Delete WooCommerce products that were synced from PLS
-        $pls_products = PLS_Repo_Base_Product::all();
-        foreach ( $pls_products as $pls_product ) {
-            if ( $pls_product->wc_product_id ) {
-                wp_delete_post( $pls_product->wc_product_id, true );
-            }
-        }
-
-        // Delete WooCommerce bundles
-        $pls_bundles = PLS_Repo_Bundle::all();
-        foreach ( $pls_bundles as $bundle ) {
-            if ( $bundle->wc_product_id ) {
-                wp_delete_post( $bundle->wc_product_id, true );
-            }
-        }
-
-        // Delete sample WooCommerce orders (only those created by sample data)
-        // Use WP_Query instead of deprecated meta_query in WC_Order_Query
-        $order_ids = get_posts( array(
-            'post_type' => 'shop_order',
-            'posts_per_page' => -1,
-            'post_status' => 'any',
-            'meta_key' => '_pls_sample_order',
-            'meta_value' => '1',
-            'fields' => 'ids',
-        ) );
-        
-        foreach ( $order_ids as $order_id ) {
-            wp_delete_post( $order_id, true );
-        }
-        
-        // Also try wc_get_orders with simple query for compatibility
-        $sample_orders = wc_get_orders( array(
+        // Step 1: Delete all WooCommerce orders created by sample data (check both meta and created_via)
+        error_log( '[PLS Sample Data] Cleanup: Deleting sample WooCommerce orders...' );
+        $all_orders = wc_get_orders( array(
             'limit' => -1,
             'status' => 'any',
         ) );
-        // Filter orders by meta in PHP instead of query
-        foreach ( $sample_orders as $order ) {
-            if ( $order && get_post_meta( $order->get_id(), '_pls_sample_order', true ) === '1' ) {
-                wp_delete_post( $order->get_id(), true );
+        
+        $orders_deleted = 0;
+        foreach ( $all_orders as $order ) {
+            if ( ! $order ) {
+                continue;
+            }
+            
+            $order_id = $order->get_id();
+            $is_sample_order = false;
+            
+            // Check old meta flag
+            if ( get_post_meta( $order_id, '_pls_sample_order', true ) === '1' ) {
+                $is_sample_order = true;
+            }
+            
+            // Check created_via meta (newer method)
+            if ( $order->get_meta( '_created_via' ) === 'pls-sample-data' ) {
+                $is_sample_order = true;
+            }
+            
+            if ( $is_sample_order ) {
+                wp_delete_post( $order_id, true );
+                $orders_deleted++;
             }
         }
+        error_log( '[PLS Sample Data] Cleanup: Deleted ' . $orders_deleted . ' sample WooCommerce orders.' );
+
+        // Step 2: Delete WooCommerce products and variations that were synced from PLS
+        error_log( '[PLS Sample Data] Cleanup: Deleting WooCommerce products and variations...' );
+        $pls_products = PLS_Repo_Base_Product::all();
+        $wc_products_deleted = 0;
+        foreach ( $pls_products as $pls_product ) {
+            if ( $pls_product->wc_product_id ) {
+                $wc_product = wc_get_product( $pls_product->wc_product_id );
+                if ( $wc_product ) {
+                    // Delete variations first if it's a variable product
+                    if ( $wc_product->is_type( 'variable' ) ) {
+                        $variations = $wc_product->get_children();
+                        foreach ( $variations as $variation_id ) {
+                            wp_delete_post( $variation_id, true );
+                        }
+                    }
+                    wp_delete_post( $pls_product->wc_product_id, true );
+                    $wc_products_deleted++;
+                }
+            }
+        }
+        error_log( '[PLS Sample Data] Cleanup: Deleted ' . $wc_products_deleted . ' WooCommerce products.' );
+
+        // Step 3: Delete WooCommerce bundles (grouped products)
+        error_log( '[PLS Sample Data] Cleanup: Deleting WooCommerce bundles...' );
+        $pls_bundles = PLS_Repo_Bundle::all();
+        $bundles_deleted = 0;
+        foreach ( $pls_bundles as $bundle ) {
+            if ( $bundle->wc_product_id ) {
+                wp_delete_post( $bundle->wc_product_id, true );
+                $bundles_deleted++;
+            }
+        }
+        error_log( '[PLS Sample Data] Cleanup: Deleted ' . $bundles_deleted . ' WooCommerce bundles.' );
+
+        // Step 4: Delete orphaned WooCommerce products/variations (products with PLS meta but no PLS record)
+        error_log( '[PLS Sample Data] Cleanup: Checking for orphaned WooCommerce products...' );
+        $orphaned_products = get_posts( array(
+            'post_type' => array( 'product', 'product_variation' ),
+            'posts_per_page' => -1,
+            'post_status' => 'any',
+            'meta_key' => '_pls_base_product_id',
+            'fields' => 'ids',
+        ) );
+        
+        $orphaned_deleted = 0;
+        foreach ( $orphaned_products as $orphan_id ) {
+            // Verify it's truly orphaned (no PLS product with this WC ID)
+            $pls_id = get_post_meta( $orphan_id, '_pls_base_product_id', true );
+            $pls_product = PLS_Repo_Base_Product::get( $pls_id );
+            if ( ! $pls_product || ! $pls_product->wc_product_id || $pls_product->wc_product_id != $orphan_id ) {
+                wp_delete_post( $orphan_id, true );
+                $orphaned_deleted++;
+            }
+        }
+        error_log( '[PLS Sample Data] Cleanup: Deleted ' . $orphaned_deleted . ' orphaned WooCommerce products.' );
 
         // Delete all PLS products
         $products_table = $wpdb->prefix . 'pls_base_product';
@@ -234,7 +280,7 @@ final class PLS_Sample_Data {
         $bundle_items_table = $wpdb->prefix . 'pls_bundle_item';
         $wpdb->query( "TRUNCATE TABLE {$bundle_items_table}" );
 
-        // Delete product categories except Face parent
+        // Step 5: Delete product categories except Face parent
         error_log( '[PLS Sample Data] Cleanup: Deleting product categories...' );
         $face_category = get_term_by( 'slug', 'face', 'product_cat' );
         $all_categories = get_terms( array(
@@ -256,6 +302,25 @@ final class PLS_Sample_Data {
             $deleted_count++;
         }
         error_log( '[PLS Sample Data] Cleanup: Deleted ' . $deleted_count . ' categories.' );
+
+        // Step 6: Delete commission reports
+        error_log( '[PLS Sample Data] Cleanup: Deleting commission reports...' );
+        $reports_table = $wpdb->prefix . 'pls_commission_reports';
+        if ( $wpdb->get_var( "SHOW TABLES LIKE '{$reports_table}'" ) === $reports_table ) {
+            $wpdb->query( "TRUNCATE TABLE {$reports_table}" );
+        }
+
+        // Step 7: Clear all caches
+        error_log( '[PLS Sample Data] Cleanup: Clearing caches...' );
+        wp_cache_flush();
+        clean_object_term_cache( null, 'product_cat' );
+        clean_object_term_cache( null, 'pls_ingredient' );
+        if ( function_exists( 'wc_delete_product_transients' ) ) {
+            // Clear WooCommerce product transients
+            $wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_wc_%' OR option_name LIKE '_transient_timeout_wc_%'" );
+        }
+        
+        error_log( '[PLS Sample Data] Cleanup: Comprehensive cleanup completed successfully.' );
     }
 
     /**
@@ -877,14 +942,26 @@ final class PLS_Sample_Data {
                 continue; // Skip if no valid name
             }
             
+            $product_slug = sanitize_title( $product_name );
+            
+            // Check for duplicate product by slug (prevent stale duplicates)
+            global $wpdb;
+            $products_table = $wpdb->prefix . 'pls_base_product';
+            $existing_product = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$products_table} WHERE slug = %s LIMIT 1", $product_slug ) );
+            if ( $existing_product ) {
+                error_log( '[PLS Sample Data] Skipping duplicate product: ' . $product_name . ' (slug: ' . $product_slug . ')' );
+                continue; // Skip duplicate
+            }
+            
             $product_id = PLS_Repo_Base_Product::insert( array(
                 'name' => $product_name,
-                'slug' => sanitize_title( $product_name ),
+                'slug' => $product_slug,
                 'status' => $product_status,
                 'category_path' => (string) $category_term->term_id,
             ) );
 
             if ( ! $product_id ) {
+                error_log( '[PLS Sample Data] Failed to insert product: ' . $product_name );
                 continue;
             }
 
