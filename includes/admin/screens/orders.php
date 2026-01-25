@@ -35,40 +35,18 @@ foreach ( $bundles as $bundle ) {
     }
 }
 
-// Get WooCommerce orders
-$orders = array();
+// Get ALL WooCommerce orders - Since WooCommerce is ONLY used for PLS products, ALL orders are PLS orders
+$pls_orders = array();
 if ( $woocommerce_active ) {
     $orders_query = new WC_Order_Query(
         array(
-            'limit'    => 50,
+            'limit'    => 100,
             'orderby'  => 'date',
             'order'    => 'DESC',
-            'status'   => array( 'wc-completed', 'wc-processing', 'wc-on-hold' ),
+            'status'   => array( 'wc-completed', 'wc-processing', 'wc-on-hold', 'wc-pending', 'wc-cancelled', 'wc-refunded', 'wc-failed' ),
         )
     );
-    $orders = $orders_query->get_orders();
-}
-
-// Filter orders that contain PLS products
-$pls_orders = array();
-foreach ( $orders as $order ) {
-    $items = $order->get_items();
-    foreach ( $items as $item ) {
-        $product_id = $item->get_product_id();
-        $variation_id = $item->get_variation_id();
-        
-        // Check if product ID matches
-        if ( in_array( $product_id, $pls_wc_ids, true ) ) {
-            $pls_orders[] = $order;
-            break;
-        }
-        
-        // Also check if variation ID matches (for variable products)
-        if ( $variation_id && in_array( $variation_id, $pls_wc_ids, true ) ) {
-            $pls_orders[] = $order;
-            break;
-        }
-    }
+    $pls_orders = $orders_query->get_orders();
 }
 
 // Get commission rates
@@ -80,8 +58,8 @@ $bundle_rates     = isset( $commission_rates['bundles'] ) ? $commission_rates['b
     <div class="pls-page-head">
         <div>
             <p class="pls-label"><?php esc_html_e( 'Orders', 'pls-private-label-store' ); ?></p>
-            <h1><?php esc_html_e( 'PLS Product Orders', 'pls-private-label-store' ); ?></h1>
-            <p class="description"><?php esc_html_e( 'WooCommerce orders containing PLS-synced products with commission tracking.', 'pls-private-label-store' ); ?></p>
+            <h1><?php esc_html_e( 'Orders', 'pls-private-label-store' ); ?></h1>
+            <p class="description"><?php esc_html_e( 'All WooCommerce orders with commission tracking.', 'pls-private-label-store' ); ?></p>
         </div>
     </div>
 
@@ -89,18 +67,9 @@ $bundle_rates     = isset( $commission_rates['bundles'] ) ? $commission_rates['b
         <div class="pls-card">
             <p><?php esc_html_e( 'WooCommerce is not active. Please activate WooCommerce to view orders.', 'pls-private-label-store' ); ?></p>
         </div>
-    <?php elseif ( empty( $pls_wc_ids ) ) : ?>
-        <div class="pls-card">
-            <p><?php esc_html_e( 'No PLS products have been synced to WooCommerce yet. Sync your products first, then orders will appear here once customers make purchases.', 'pls-private-label-store' ); ?></p>
-            <p style="margin-top: 16px;">
-                <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-products' ) ); ?>" class="button button-primary">
-                    <?php esc_html_e( 'Go to Products', 'pls-private-label-store' ); ?>
-                </a>
-            </p>
-        </div>
     <?php elseif ( empty( $pls_orders ) ) : ?>
         <div class="pls-card">
-            <p><?php esc_html_e( 'No WooCommerce orders found containing PLS products. Orders will appear here once customers purchase PLS products.', 'pls-private-label-store' ); ?></p>
+            <p><?php esc_html_e( 'No WooCommerce orders found. Orders will appear here once customers make purchases.', 'pls-private-label-store' ); ?></p>
             <p style="margin-top: 16px;">
                 <a href="<?php echo esc_url( admin_url( 'admin.php?page=wc-orders' ) ); ?>" class="button button-secondary">
                     <?php esc_html_e( 'View All WooCommerce Orders', 'pls-private-label-store' ); ?>
@@ -137,17 +106,35 @@ $bundle_rates     = isset( $commission_rates['bundles'] ) ? $commission_rates['b
                     // Calculate commission for each item
                     foreach ( $order_items as $item_id => $item ) {
                         $product_id = $item->get_product_id();
-                        if ( ! in_array( $product_id, $pls_wc_ids, true ) ) {
+                        $variation_id = $item->get_variation_id();
+                        $product = $item->get_product();
+                        
+                        if ( $product ) {
+                            $product_names[] = $product->get_name();
+                        } else {
+                            $product_names[] = sprintf( __( 'Product #%d (deleted)', 'pls-private-label-store' ), $product_id );
+                        }
+                        
+                        $quantity = $item->get_quantity();
+                        
+                        // Check if this is a PLS product (for commission calculation)
+                        $is_pls_product = false;
+                        if ( ! empty( $pls_wc_ids ) ) {
+                            if ( in_array( $product_id, $pls_wc_ids, true ) ) {
+                                $is_pls_product = true;
+                            } elseif ( $variation_id && in_array( $variation_id, $pls_wc_ids, true ) ) {
+                                $is_pls_product = true;
+                            }
+                        }
+                        
+                        // Only calculate commission for PLS products
+                        if ( ! $is_pls_product ) {
                             continue;
                         }
 
-                        $product = $item->get_product();
-                        $product_names[] = $product->get_name();
-                        $quantity = $item->get_quantity();
-
                         // Check if it's a variation (pack tier)
-                        if ( $item->get_variation_id() ) {
-                            $variation = wc_get_product( $item->get_variation_id() );
+                        if ( $variation_id ) {
+                            $variation = wc_get_product( $variation_id );
                             $attributes = $variation->get_attributes();
                             
                             // Find tier key from attributes

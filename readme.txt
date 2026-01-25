@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.0.3
+Stable tag: 3.0.4
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,15 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 3.0.4 =
+* **Orders Page Improvements**
+* **FIXED:** Orders page now shows ALL WooCommerce orders (not just PLS-filtered ones)
+* **FIXED:** Commission calculation logic - Fixed variation ID handling for proper commission tracking
+* **IMPROVED:** Better error handling for deleted products - Shows "Product #X (deleted)" instead of breaking
+* **IMPROVED:** Increased order limit from 50 to 100 orders
+* **IMPROVED:** Added all order statuses (pending, cancelled, refunded, failed) for complete order visibility
+* **IMPROVED:** Updated page title and description for clarity
+
 = 3.0.3 =
 * **Maintenance & Cleanup**
 * **FIXED:** Version consistency - All version numbers now match across plugin file, UUPD, and readme
