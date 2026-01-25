@@ -255,8 +255,17 @@ final class PLS_WC_Sync {
             ) );
         }
 
+        // ALWAYS verify against WooCommerce directly (backend sync - WooCommerce is source of truth)
         if ( $base->wc_product_id ) {
             $product = wc_get_product( $base->wc_product_id );
+            
+            // If product doesn't exist in WooCommerce, clear the wc_product_id reference
+            if ( ! $product ) {
+                error_log( '[PLS WC Sync] Product ' . $base->wc_product_id . ' not found in WooCommerce, clearing reference for PLS product ' . $base_product_id );
+                PLS_Repo_Base_Product::set_wc_product_id( $base_product_id, null );
+                $base->wc_product_id = null;
+            }
+            
             if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
                 PLS_Debug::log_sync( 'sync_product_found', array(
                     'base_product_id' => $base_product_id,

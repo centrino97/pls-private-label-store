@@ -521,15 +521,97 @@ final class PLS_Admin_Ajax {
      * @param array $products Base products list.
      * @return array Filtered products.
      */
+    /**
+     * Reconcile products - reads ALL WooCommerce products directly and ensures PLS records match.
+     * WooCommerce is the source of truth (backend sync).
+     */
     public static function reconcile_orphaned_products( $products ) {
+        if ( ! class_exists( 'WooCommerce' ) || ! function_exists( 'wc_get_product' ) ) {
+            return $products; // Return as-is if WooCommerce not available
+        }
+
+        // Step 1: Read ALL WooCommerce products with PLS markers directly from WooCommerce
+        $all_wc_products = get_posts( array(
+            'post_type' => 'product',
+            'posts_per_page' => -1,
+            'post_status' => 'any',
+            'meta_key' => '_pls_base_product_id',
+            'fields' => 'ids',
+        ) );
+
+        // Step 2: Build map of WC product ID => PLS base product ID
+        $wc_to_pls_map = array();
+        foreach ( $all_wc_products as $wc_product_id ) {
+            $pls_base_id = get_post_meta( $wc_product_id, '_pls_base_product_id', true );
+            if ( $pls_base_id ) {
+                $wc_to_pls_map[ $wc_product_id ] = absint( $pls_base_id );
+            }
+        }
+
+        // Step 3: Verify each PLS product's WooCommerce product exists
         $clean = array();
+        $pls_ids_found = array();
 
         foreach ( $products as $product ) {
-            if ( $product->wc_product_id && ! get_post( $product->wc_product_id ) ) {
-                self::delete_product_records( $product->id );
-                continue;
+            if ( $product->wc_product_id ) {
+                // Verify WooCommerce product exists directly
+                $wc_product = wc_get_product( $product->wc_product_id );
+                if ( ! $wc_product ) {
+                    // WooCommerce product doesn't exist - clear reference
+                    error_log( '[PLS Reconcile] WooCommerce product ' . $product->wc_product_id . ' not found, clearing reference for PLS product ' . $product->id );
+                    PLS_Repo_Base_Product::set_wc_product_id( $product->id, null );
+                    $product->wc_product_id = null;
+                } else {
+                    // Verify the PLS base_product_id meta matches
+                    $meta_pls_id = get_post_meta( $product->wc_product_id, '_pls_base_product_id', true );
+                    if ( $meta_pls_id && absint( $meta_pls_id ) !== $product->id ) {
+                        error_log( '[PLS Reconcile] Mismatch: WC product ' . $product->wc_product_id . ' has PLS ID ' . $meta_pls_id . ' but PLS record says ' . $product->id );
+                        // WooCommerce meta is source of truth - update PLS record
+                        PLS_Repo_Base_Product::set_wc_product_id( absint( $meta_pls_id ), $product->wc_product_id );
+                        // Clear this product's reference
+                        PLS_Repo_Base_Product::set_wc_product_id( $product->id, null );
+                        $product->wc_product_id = null;
+                    }
+                }
             }
+            
+            if ( $product->wc_product_id ) {
+                $pls_ids_found[] = $product->id;
+            }
+            
             $clean[] = $product;
+        }
+
+        // Step 4: Find WooCommerce products with PLS markers that don't have PLS records
+        foreach ( $wc_to_pls_map as $wc_product_id => $pls_base_id ) {
+            $pls_product = PLS_Repo_Base_Product::get( $pls_base_id );
+            if ( ! $pls_product ) {
+                // WooCommerce product exists but PLS record doesn't - create PLS record from WooCommerce
+                $wc_product = wc_get_product( $wc_product_id );
+                if ( $wc_product ) {
+                    error_log( '[PLS Reconcile] Creating PLS record for WooCommerce product ' . $wc_product_id . ' (name: ' . $wc_product->get_name() . ')' );
+                    // Create PLS record from WooCommerce product
+                    $slug = sanitize_title( $wc_product->get_name() );
+                    $new_pls_id = PLS_Repo_Base_Product::insert( array(
+                        'name' => $wc_product->get_name(),
+                        'slug' => $slug,
+                        'status' => ( $wc_product->get_status() === 'publish' ) ? 'live' : 'draft',
+                        'category_path' => '',
+                    ) );
+                    if ( $new_pls_id ) {
+                        PLS_Repo_Base_Product::set_wc_product_id( $new_pls_id, $wc_product_id );
+                        // Add to clean array
+                        $pls_product = PLS_Repo_Base_Product::get( $new_pls_id );
+                        if ( $pls_product ) {
+                            $clean[] = $pls_product;
+                        }
+                    }
+                }
+            } elseif ( ! $pls_product->wc_product_id || $pls_product->wc_product_id != $wc_product_id ) {
+                // PLS record exists but wc_product_id doesn't match - update it
+                error_log( '[PLS Reconcile] Updating PLS product ' . $pls_base_id . ' to point to WooCommerce product ' . $wc_product_id );
+                PLS_Repo_Base_Product::set_wc_product_id( $pls_base_id, $wc_product_id );
+            }
         }
 
         return $clean;
