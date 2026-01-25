@@ -87,8 +87,14 @@ final class PLS_Sample_Data {
 
             // Step 8: WooCommerce Orders
             error_log( '[PLS Sample Data] Step 8: Adding WooCommerce orders...' );
-            self::add_woocommerce_orders();
-            error_log( '[PLS Sample Data] ✓ WooCommerce orders added.' );
+            // Refresh products array to ensure we have latest wc_product_id values after sync
+            wp_cache_flush(); // Clear all caches to ensure fresh data
+            $orders_result = self::add_woocommerce_orders();
+            if ( is_array( $orders_result ) ) {
+                error_log( '[PLS Sample Data] ✓ WooCommerce orders added: ' . ( $orders_result['orders_created'] ?? 0 ) . ' created, ' . ( $orders_result['orders_skipped'] ?? 0 ) . ' skipped (no products)' );
+            } else {
+                error_log( '[PLS Sample Data] ✓ WooCommerce orders added.' );
+            }
 
             // Step 9: Commissions
             error_log( '[PLS Sample Data] Step 9: Adding commissions...' );
@@ -100,8 +106,12 @@ final class PLS_Sample_Data {
 
         // Step 10: Custom Orders
         error_log( '[PLS Sample Data] Step 10: Adding custom orders...' );
-        self::add_custom_orders();
-        error_log( '[PLS Sample Data] ✓ Custom orders added.' );
+        $custom_orders_result = self::add_custom_orders();
+        if ( is_array( $custom_orders_result ) ) {
+            error_log( '[PLS Sample Data] ✓ Custom orders added: ' . ( $custom_orders_result['orders_created'] ?? 0 ) . ' created' );
+        } else {
+            error_log( '[PLS Sample Data] ✓ Custom orders added.' );
+        }
 
         // Ensure commission email settings are configured
         if ( ! get_option( 'pls_commission_email_recipients' ) ) {
@@ -1452,13 +1462,51 @@ final class PLS_Sample_Data {
      */
     private static function add_woocommerce_orders() {
         if ( ! class_exists( 'WooCommerce' ) || ! function_exists( 'wc_create_order' ) ) {
-            return;
+            return array( 'orders_created' => 0, 'orders_skipped' => 0, 'message' => 'WooCommerce not active' );
         }
 
+        // Clear cache and refresh products to ensure we have latest wc_product_id values
+        wp_cache_flush();
         $products = PLS_Repo_Base_Product::all();
         if ( empty( $products ) ) {
-            return;
+            error_log( '[PLS Sample Data] Order: No products found, skipping order creation' );
+            return array( 'orders_created' => 0, 'orders_skipped' => 0, 'message' => 'No products found' );
         }
+
+        // Filter to only products that have been synced (have wc_product_id)
+        $synced_products = array();
+        foreach ( $products as $idx => $product ) {
+            if ( ! empty( $product->wc_product_id ) ) {
+                $synced_products[ $idx ] = $product;
+            }
+        }
+
+        if ( empty( $synced_products ) ) {
+            error_log( '[PLS Sample Data] Order: No products have wc_product_id set. Products may not be synced yet.' );
+            // Try to sync products now
+            require_once PLS_PLS_DIR . 'includes/wc/class-pls-wc-sync.php';
+            foreach ( $products as $product ) {
+                PLS_WC_Sync::sync_base_product_to_wc( $product->id );
+            }
+            // Refresh products again
+            wp_cache_flush();
+            $products = PLS_Repo_Base_Product::all();
+            $synced_products = array();
+            foreach ( $products as $idx => $product ) {
+                if ( ! empty( $product->wc_product_id ) ) {
+                    $synced_products[ $idx ] = $product;
+                }
+            }
+            if ( empty( $synced_products ) ) {
+                error_log( '[PLS Sample Data] Order: Still no synced products after re-sync attempt' );
+                return array( 'orders_created' => 0, 'orders_skipped' => 0, 'message' => 'No synced products available' );
+            }
+        }
+
+        // Use synced products for order creation
+        $products = array_values( $synced_products );
+        $orders_created = 0;
+        $orders_skipped = 0;
 
         // Generate orders spread across the past year (12 months)
         // Create ~30-40 orders distributed across different months
@@ -1945,13 +1993,21 @@ final class PLS_Sample_Data {
                 $order->update_meta_data( '_pls_sample_order', '1' );
                 
                 $order->save();
+                $orders_created++;
                 error_log( '[PLS Sample Data] Order: Created order #' . $order->get_id() . ' with ' . $products_added . ' product(s)' );
             } else {
                 // Delete the empty order
+                $orders_skipped++;
                 error_log( '[PLS Sample Data] Order: Deleting empty order #' . $order->get_id() . ' (no products could be added)' );
                 $order->delete( true );
             }
         }
+
+        return array(
+            'orders_created' => $orders_created,
+            'orders_skipped' => $orders_skipped,
+            'message' => sprintf( 'Created %d orders, skipped %d empty orders', $orders_created, $orders_skipped ),
+        );
     }
 
     /**
@@ -2140,6 +2196,7 @@ final class PLS_Sample_Data {
         // Merge recent orders
         $custom_orders = array_merge( $custom_orders, $recent_custom_orders );
 
+        $orders_created = 0;
         foreach ( $custom_orders as $order_data ) {
             // Ensure quantity_needed key exists (fix for database column name)
             if ( isset( $order_data['quantity'] ) && ! isset( $order_data['quantity_needed'] ) ) {
@@ -2160,8 +2217,18 @@ final class PLS_Sample_Data {
                 }
             }
             
-            $wpdb->insert( $table, $order_data, $formats );
+            $result = $wpdb->insert( $table, $order_data, $formats );
+            if ( $result !== false ) {
+                $orders_created++;
+            } else {
+                error_log( '[PLS Sample Data] Custom Order: Failed to insert order for ' . ( $order_data['contact_name'] ?? 'Unknown' ) . ': ' . $wpdb->last_error );
+            }
         }
+
+        return array(
+            'orders_created' => $orders_created,
+            'message' => sprintf( 'Created %d custom orders', $orders_created ),
+        );
     }
 
     /**
