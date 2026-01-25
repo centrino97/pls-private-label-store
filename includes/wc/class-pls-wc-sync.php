@@ -336,15 +336,40 @@ final class PLS_WC_Sync {
                 ) );
             }
             
-            // Set the product type term
-            wp_set_object_terms( $product->get_id(), 'variable', 'product_type' );
+            // Delete existing variations if product was simple (they'll be recreated)
+            if ( $product->is_type( 'simple' ) ) {
+                $variations = $product->get_children();
+                foreach ( $variations as $variation_id ) {
+                    wp_delete_post( $variation_id, true );
+                }
+            }
             
-            // Clear cache and reload as variable product
+            // Set the product type term
+            wp_set_object_terms( $product->get_id(), 'variable', 'product_type', false );
+            
+            // Clear all caches
             wc_delete_product_transients( $product->get_id() );
             wp_cache_delete( $product->get_id(), 'product' );
+            wp_cache_delete( 'wc_product_' . $product->get_id(), 'products' );
+            wp_cache_delete( $product->get_id(), 'post_meta' );
+            
+            // Delete object cache for product type
+            delete_transient( 'wc_product_type_' . $product->get_id() );
             
             // Reload as variable product
             $product = new WC_Product_Variable( $product->get_id() );
+            
+            // Verify conversion worked
+            if ( ! $product->is_type( 'variable' ) ) {
+                if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+                    PLS_Debug::error( 'Failed to convert product to variable type', array(
+                        'base_product_id' => $base_product_id,
+                        'wc_product_id' => $product->get_id(),
+                        'product_type' => $product->get_type(),
+                    ) );
+                }
+                return new WP_Error( 'pls_product_type_conversion_failed', __( 'Failed to convert product to variable type.', 'pls-private-label-store' ) );
+            }
         }
 
         // Update product status if needed
@@ -467,8 +492,50 @@ final class PLS_WC_Sync {
                     $variation->set_parent_id( $product->get_id() );
                 }
 
-                // Use value_key as the term slug
-                $variation->set_attributes( array( $pack_attr['taxonomy'] => $tier_value->value_key ) );
+                // Ensure the term exists and get its ID
+                $term = get_term_by( 'slug', $tier_value->value_key, $pack_attr['taxonomy'] );
+                if ( ! $term ) {
+                    // Try to find by term_id if stored
+                    if ( $tier_value->term_id ) {
+                        $term = get_term( $tier_value->term_id, $pack_attr['taxonomy'] );
+                    }
+                    
+                    // If still not found, create the term
+                    if ( ! $term || is_wp_error( $term ) ) {
+                        $label = $tier_value->label . ' (' . $tier_data['units'] . ' units)';
+                        $inserted = wp_insert_term( $label, $pack_attr['taxonomy'], array( 'slug' => $tier_value->value_key ) );
+                        if ( ! is_wp_error( $inserted ) ) {
+                            $term = get_term( $inserted['term_id'], $pack_attr['taxonomy'] );
+                            // Store term_id back to attribute value
+                            PLS_Repo_Attributes::set_term_id_for_value( $tier_value->id, $inserted['term_id'] );
+                        } else {
+                            if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+                                PLS_Debug::error( 'Failed to create term for variation', array(
+                                    'base_product_id' => $base_product_id,
+                                    'tier_key' => $tier_key,
+                                    'value_key' => $tier_value->value_key,
+                                    'error' => $inserted->get_error_message(),
+                                ) );
+                            }
+                            continue; // Skip this variation if term creation failed
+                        }
+                    }
+                }
+                
+                if ( ! $term || is_wp_error( $term ) ) {
+                    if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+                        PLS_Debug::error( 'Term not found for variation', array(
+                            'base_product_id' => $base_product_id,
+                            'tier_key' => $tier_key,
+                            'value_key' => $tier_value->value_key,
+                            'taxonomy' => $pack_attr['taxonomy'],
+                        ) );
+                    }
+                    continue; // Skip this variation
+                }
+
+                // Use term slug (WooCommerce stores and returns slugs in variation attributes)
+                $variation->set_attributes( array( $pack_attr['taxonomy'] => $term->slug ) );
                 $variation->set_regular_price( $tier_data['price'] );
                 $variation->set_status( 'publish' );
                 $variation->save();
@@ -479,10 +546,26 @@ final class PLS_WC_Sync {
                     update_post_meta( $variation->get_id(), '_pls_tier_level', $tier_level );
                 }
                 update_post_meta( $variation->get_id(), '_pls_units', $tier_data['units'] );
+                
+                // Ensure term meta is set
+                update_term_meta( $term->term_id, '_pls_tier_level', $tier_level ? $tier_level : 1 );
+                update_term_meta( $term->term_id, '_pls_default_units', $tier_data['units'] );
 
                 // Update backreference
                 PLS_Repo_Pack_Tier::set_wc_variation_id( $base_product_id, $tier_key, $variation->get_id() );
                 $created_variations++;
+                
+                if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+                    PLS_Debug::log_sync( 'sync_variation_created_attr', array(
+                        'base_product_id' => $base_product_id,
+                        'tier_key' => $tier_key,
+                        'variation_id' => $variation->get_id(),
+                        'term_id' => $term->term_id,
+                        'term_slug' => $term->slug,
+                        'units' => $tier_data['units'],
+                        'price' => $tier_data['price'],
+                    ) );
+                }
             }
 
             // Debug logging for sync completion
@@ -543,12 +626,36 @@ final class PLS_WC_Sync {
                     $label = $tier_units . ' units';
                     $inserted = wp_insert_term( $label, $pack_attr['taxonomy'], array( 'slug' => $term_slug ) );
                     if ( ! is_wp_error( $inserted ) ) {
+                        $term = get_term( $inserted['term_id'], $pack_attr['taxonomy'] );
                         update_term_meta( $inserted['term_id'], '_pls_tier_level', $tier_level );
                         update_term_meta( $inserted['term_id'], '_pls_default_units', $tier_units );
+                    } else {
+                        if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+                            PLS_Debug::error( 'Failed to create term for variation (fallback)', array(
+                                'base_product_id' => $base_product_id,
+                                'tier_key' => $tier->tier_key,
+                                'term_slug' => $term_slug,
+                                'error' => $inserted->get_error_message(),
+                            ) );
+                        }
+                        continue; // Skip this variation if term creation failed
                     }
                 }
+                
+                if ( ! $term || is_wp_error( $term ) ) {
+                    if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+                        PLS_Debug::error( 'Term not found for variation (fallback)', array(
+                            'base_product_id' => $base_product_id,
+                            'tier_key' => $tier->tier_key,
+                            'term_slug' => $term_slug,
+                            'taxonomy' => $pack_attr['taxonomy'],
+                        ) );
+                    }
+                    continue; // Skip this variation
+                }
 
-                $variation->set_attributes( array( $pack_attr['taxonomy'] => $term_slug ) );
+                // Use term slug (WooCommerce stores and returns slugs in variation attributes)
+                $variation->set_attributes( array( $pack_attr['taxonomy'] => $term->slug ) );
                 $variation->set_regular_price( $tier->price );
                 $variation->set_status( 'publish' );
                 $variation->save();
@@ -557,15 +664,20 @@ final class PLS_WC_Sync {
                 update_post_meta( $variation->get_id(), '_pls_units', $tier->units );
                 update_post_meta( $variation->get_id(), '_pls_tier_level', $tier_level );
                 
+                // Ensure term meta is set
+                update_term_meta( $term->term_id, '_pls_tier_level', $tier_level );
+                update_term_meta( $term->term_id, '_pls_default_units', $tier_units );
+                
                 PLS_Repo_Pack_Tier::set_wc_variation_id( $base_product_id, $tier->tier_key, $variation->get_id() );
                 $created_variations++;
                 
                 if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
-                    PLS_Debug::log_sync( 'sync_variation_created', array(
+                    PLS_Debug::log_sync( 'sync_variation_created_fallback', array(
                         'base_product_id' => $base_product_id,
                         'tier_key' => $tier->tier_key,
                         'units' => $tier->units,
                         'term_slug' => $term_slug,
+                        'term_id' => $term->term_id,
                         'variation_id' => $variation->get_id(),
                         'price' => $tier->price,
                     ) );

@@ -117,7 +117,8 @@ final class PLS_Admin_Menu {
             'pls-commission',
             'pls-revenue',
             'pls-product-preview',
-            'pls-settings', // Include settings page
+            'pls-settings',
+            'pls-system-test', // System test page (admin only)
         );
 
         $current_page = isset( $_GET['page'] ) ? sanitize_text_field( wp_unslash( $_GET['page'] ) ) : '';
@@ -325,6 +326,16 @@ final class PLS_Admin_Menu {
             array( __CLASS__, 'render_settings' )
         );
 
+        // System Test page (admin only)
+        add_submenu_page(
+            'pls-dashboard',
+            __( 'PLS – System Test', 'pls-private-label-store' ),
+            __( 'System Test', 'pls-private-label-store' ),
+            'manage_options',
+            'pls-system-test',
+            array( __CLASS__, 'render_system_test' )
+        );
+
         // Hidden preview page (accessed via direct link)
         add_submenu_page(
             null, // Hidden from menu
@@ -415,6 +426,33 @@ final class PLS_Admin_Menu {
             );
         }
 
+        // Enqueue system test assets on system test page
+        if ( strpos( $hook, 'pls-system-test' ) !== false ) {
+            wp_enqueue_style(
+                'pls-system-test',
+                PLS_PLS_URL . 'assets/css/system-test.css',
+                array(),
+                PLS_PLS_VERSION
+            );
+
+            wp_enqueue_script(
+                'pls-system-test',
+                PLS_PLS_URL . 'assets/js/system-test.js',
+                array( 'jquery', 'wp-util' ),
+                PLS_PLS_VERSION,
+                true
+            );
+
+            wp_localize_script(
+                'pls-system-test',
+                'plsSystemTest',
+                array(
+                    'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+                    'nonce'   => wp_create_nonce( 'pls_system_test_nonce' ),
+                )
+            );
+        }
+
         wp_localize_script(
             'pls-admin',
             'PLS_Admin',
@@ -474,6 +512,10 @@ final class PLS_Admin_Menu {
 
     public static function render_settings() {
         require PLS_PLS_DIR . 'includes/admin/screens/settings.php';
+    }
+
+    public static function render_system_test() {
+        require PLS_PLS_DIR . 'includes/admin/screens/system-test.php';
     }
 
 }

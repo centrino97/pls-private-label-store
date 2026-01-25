@@ -52,6 +52,11 @@ final class PLS_Admin_Ajax {
         add_action( 'wp_ajax_pls_get_bi_chart_data', array( __CLASS__, 'get_bi_chart_data' ) );
         add_action( 'wp_ajax_pls_save_marketing_cost', array( __CLASS__, 'save_marketing_cost' ) );
         add_action( 'wp_ajax_pls_get_product_performance', array( __CLASS__, 'get_product_performance' ) );
+
+        // System Test AJAX handlers
+        add_action( 'wp_ajax_pls_run_test_category', array( __CLASS__, 'run_test_category' ) );
+        add_action( 'wp_ajax_pls_run_all_tests', array( __CLASS__, 'run_all_tests' ) );
+        add_action( 'wp_ajax_pls_fix_issue', array( __CLASS__, 'fix_issue' ) );
     }
 
     /**
@@ -3049,5 +3054,108 @@ final class PLS_Admin_Ajax {
         }
 
         wp_send_json_success( $performance );
+    }
+
+    // =========================================================================
+    // SYSTEM TEST AJAX HANDLERS
+    // =========================================================================
+
+    /**
+     * AJAX: Run a specific test category.
+     */
+    public static function run_test_category() {
+        check_ajax_referer( 'pls_system_test_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $category = isset( $_POST['category'] ) ? sanitize_text_field( wp_unslash( $_POST['category'] ) ) : '';
+
+        if ( empty( $category ) ) {
+            wp_send_json_error( array( 'message' => __( 'No test category specified.', 'pls-private-label-store' ) ), 400 );
+        }
+
+        // Ensure test class is loaded
+        if ( ! class_exists( 'PLS_System_Test' ) ) {
+            require_once PLS_PLS_DIR . 'includes/core/class-pls-system-test.php';
+        }
+
+        $results = PLS_System_Test::run_category( $category );
+
+        wp_send_json_success( $results );
+    }
+
+    /**
+     * AJAX: Run all tests.
+     */
+    public static function run_all_tests() {
+        check_ajax_referer( 'pls_system_test_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        // Ensure test class is loaded
+        if ( ! class_exists( 'PLS_System_Test' ) ) {
+            require_once PLS_PLS_DIR . 'includes/core/class-pls-system-test.php';
+        }
+
+        $results = PLS_System_Test::run_all_tests();
+
+        wp_send_json_success( $results );
+    }
+
+    /**
+     * AJAX: Fix an issue (resync, regenerate, etc.).
+     */
+    public static function fix_issue() {
+        check_ajax_referer( 'pls_system_test_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $action = isset( $_POST['fix_action'] ) ? sanitize_text_field( wp_unslash( $_POST['fix_action'] ) ) : '';
+
+        if ( empty( $action ) ) {
+            wp_send_json_error( array( 'message' => __( 'No action specified.', 'pls-private-label-store' ) ), 400 );
+        }
+
+        // Ensure test class is loaded
+        if ( ! class_exists( 'PLS_System_Test' ) ) {
+            require_once PLS_PLS_DIR . 'includes/core/class-pls-system-test.php';
+        }
+
+        $result = array(
+            'success' => false,
+            'message' => __( 'Unknown action.', 'pls-private-label-store' ),
+        );
+
+        switch ( $action ) {
+            case 'resync_products':
+                $result = PLS_System_Test::fix_resync_products();
+                break;
+
+            case 'resync_bundles':
+                $result = PLS_System_Test::fix_resync_bundles();
+                break;
+
+            case 'generate_sample_data':
+                $result = PLS_System_Test::fix_generate_sample_data();
+                break;
+
+            default:
+                $result = array(
+                    'success' => false,
+                    'message' => __( 'Unknown action: ', 'pls-private-label-store' ) . $action,
+                );
+        }
+
+        if ( $result['success'] ) {
+            wp_send_json_success( $result );
+        } else {
+            wp_send_json_error( $result );
+        }
     }
 }
