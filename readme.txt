@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 4.5.2
+Stable tag: 4.5.3
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,12 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 4.5.3 =
+* **REMOVED:** Frontend Display (Auto-Injection) settings section from Settings page
+* **REMOVED:** Frontend display settings save code - no longer needed with shortcodes only
+* **IMPROVED:** Settings page simplified - only commission rates and email settings remain
+* **CONFIRMED:** `[pls_single_product]` shortcode shows full product page with all data (configurator, description, ingredients, bundles) by default
+
 = 4.5.2 =
 * **REMOVED:** Sample data generation from Settings page - use System Test page instead
 * **REMOVED:** Frontend auto-injection - use shortcodes in Elementor templates instead

@@ -30,19 +30,6 @@ if ( isset( $_POST['pls_save_settings'] ) && check_admin_referer( 'pls_save_sett
 
     update_option( 'pls_commission_rates', $commission_rates );
 
-    // Save frontend display settings
-    $frontend_display_settings = array(
-        'auto_inject_enabled'  => isset( $_POST['auto_inject_enabled'] ) ? true : false,
-        'injection_position'   => isset( $_POST['injection_position'] ) ? sanitize_text_field( $_POST['injection_position'] ) : 'after_summary',
-        'show_configurator'    => isset( $_POST['show_configurator'] ) ? true : false,
-        'show_description'     => isset( $_POST['show_description'] ) ? true : false,
-        'show_ingredients'     => isset( $_POST['show_ingredients'] ) ? true : false,
-        'show_bundles'         => isset( $_POST['show_bundles'] ) ? true : false,
-        'show_tier_badges'     => isset( $_POST['show_tier_badges'] ) ? true : false,
-        'show_starting_price'  => isset( $_POST['show_starting_price'] ) ? true : false,
-    );
-    update_option( 'pls_frontend_display_settings', $frontend_display_settings );
-
     // Save label pricing
     $label_price = isset( $_POST['label_price_tier_1_2'] ) ? round( floatval( $_POST['label_price_tier_1_2'] ), 2 ) : 0.50;
     if ( $label_price < 0 ) {
@@ -328,97 +315,6 @@ if ( isset( $_GET['message'] ) && 'sample-data-generated' === $_GET['message'] )
                     </table>
                 </div>
             </div>
-
-            <!-- Frontend Display Settings -->
-            <div class="pls-accordion__item">
-                <button type="button" class="pls-accordion__header">
-                    <?php esc_html_e( 'Frontend Display (Auto-Injection)', 'pls-private-label-store' ); ?>
-                </button>
-                <div class="pls-accordion__content">
-                    <?php
-                    $frontend_settings = get_option( 'pls_frontend_display_settings', array() );
-                    $defaults = array(
-                        'auto_inject_enabled'  => true,
-                        'injection_position'   => 'after_summary',
-                        'show_configurator'    => true,
-                        'show_description'     => true,
-                        'show_ingredients'     => true,
-                        'show_bundles'         => true,
-                        'show_tier_badges'     => true,
-                        'show_starting_price'  => true,
-                    );
-                    $frontend_settings = wp_parse_args( $frontend_settings, $defaults );
-                    ?>
-                    <p class="description" style="margin-top: 0;"><?php esc_html_e( 'Control how PLS content is automatically displayed on WooCommerce product pages without needing Elementor or shortcodes.', 'pls-private-label-store' ); ?></p>
-                    
-                    <table class="form-table" style="margin-top: 16px;">
-                        <tr>
-                            <th scope="row"><?php esc_html_e( 'Auto-Inject on Product Pages', 'pls-private-label-store' ); ?></th>
-                            <td>
-                                <label>
-                                    <input type="checkbox" name="auto_inject_enabled" value="1" <?php checked( $frontend_settings['auto_inject_enabled'], true ); ?> />
-                                    <?php esc_html_e( 'Automatically display PLS content on WooCommerce single product pages', 'pls-private-label-store' ); ?>
-                                </label>
-                                <p class="description"><?php esc_html_e( 'When enabled, PLS content (configurator, ingredients, bundles) will be automatically added to product pages. Disable if you prefer to use Elementor widgets or shortcodes instead.', 'pls-private-label-store' ); ?></p>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th scope="row">
-                                <label for="injection_position"><?php esc_html_e( 'Injection Position', 'pls-private-label-store' ); ?></label>
-                            </th>
-                            <td>
-                                <select name="injection_position" id="injection_position" class="regular-text">
-                                    <option value="after_summary" <?php selected( $frontend_settings['injection_position'], 'after_summary' ); ?>><?php esc_html_e( 'After Product Summary', 'pls-private-label-store' ); ?></option>
-                                    <option value="after_add_to_cart" <?php selected( $frontend_settings['injection_position'], 'after_add_to_cart' ); ?>><?php esc_html_e( 'After Add to Cart Button', 'pls-private-label-store' ); ?></option>
-                                    <option value="before_tabs" <?php selected( $frontend_settings['injection_position'], 'before_tabs' ); ?>><?php esc_html_e( 'Before Product Tabs', 'pls-private-label-store' ); ?></option>
-                                    <option value="in_tabs" <?php selected( $frontend_settings['injection_position'], 'in_tabs' ); ?>><?php esc_html_e( 'As a Product Tab', 'pls-private-label-store' ); ?></option>
-                                </select>
-                                <p class="description"><?php esc_html_e( 'Choose where the PLS content appears on product pages.', 'pls-private-label-store' ); ?></p>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th scope="row"><?php esc_html_e( 'Content to Display', 'pls-private-label-store' ); ?></th>
-                            <td>
-                                <fieldset>
-                                    <label style="display: block; margin-bottom: 8px;">
-                                        <input type="checkbox" name="show_configurator" value="1" <?php checked( $frontend_settings['show_configurator'], true ); ?> />
-                                        <?php esc_html_e( 'Pack Tier Configurator (select pack size)', 'pls-private-label-store' ); ?>
-                                    </label>
-                                    <label style="display: block; margin-bottom: 8px;">
-                                        <input type="checkbox" name="show_description" value="1" <?php checked( $frontend_settings['show_description'], true ); ?> />
-                                        <?php esc_html_e( 'Product Description, Directions & Benefits', 'pls-private-label-store' ); ?>
-                                    </label>
-                                    <label style="display: block; margin-bottom: 8px;">
-                                        <input type="checkbox" name="show_ingredients" value="1" <?php checked( $frontend_settings['show_ingredients'], true ); ?> />
-                                        <?php esc_html_e( 'Ingredients List (with key ingredients highlighted)', 'pls-private-label-store' ); ?>
-                                    </label>
-                                    <label style="display: block; margin-bottom: 8px;">
-                                        <input type="checkbox" name="show_bundles" value="1" <?php checked( $frontend_settings['show_bundles'], true ); ?> />
-                                        <?php esc_html_e( 'Bundle Offers ("Bundle & Save" section)', 'pls-private-label-store' ); ?>
-                                    </label>
-                                </fieldset>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th scope="row"><?php esc_html_e( 'Shop/Category Page Badges', 'pls-private-label-store' ); ?></th>
-                            <td>
-                                <fieldset>
-                                    <label style="display: block; margin-bottom: 8px;">
-                                        <input type="checkbox" name="show_tier_badges" value="1" <?php checked( $frontend_settings['show_tier_badges'], true ); ?> />
-                                        <?php esc_html_e( 'Show "From X units" badge on product cards', 'pls-private-label-store' ); ?>
-                                    </label>
-                                    <label style="display: block; margin-bottom: 8px;">
-                                        <input type="checkbox" name="show_starting_price" value="1" <?php checked( $frontend_settings['show_starting_price'], true ); ?> />
-                                        <?php esc_html_e( 'Show "As low as $X/unit" price on product cards', 'pls-private-label-store' ); ?>
-                                    </label>
-                                </fieldset>
-                                <p class="description"><?php esc_html_e( 'These badges appear on shop and category archive pages to highlight pack tier availability.', 'pls-private-label-store' ); ?></p>
-                            </td>
-                        </tr>
-                    </table>
-                </div>
-            </div>
-
 
         </div>
 
