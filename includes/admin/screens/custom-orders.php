@@ -3,6 +3,36 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+$notice = '';
+$error = '';
+
+// Handle Create Custom Order
+if ( isset( $_POST['pls_create_custom_order'] ) && check_admin_referer( 'pls_create_custom_order' ) ) {
+    $data = array(
+        'status'          => 'new_lead',
+        'contact_name'    => isset( $_POST['contact_name'] ) ? sanitize_text_field( wp_unslash( $_POST['contact_name'] ) ) : '',
+        'contact_email'   => isset( $_POST['contact_email'] ) ? sanitize_email( wp_unslash( $_POST['contact_email'] ) ) : '',
+        'contact_phone'   => isset( $_POST['contact_phone'] ) ? sanitize_text_field( wp_unslash( $_POST['contact_phone'] ) ) : '',
+        'company_name'    => isset( $_POST['company_name'] ) ? sanitize_text_field( wp_unslash( $_POST['company_name'] ) ) : '',
+        'category_id'     => isset( $_POST['category_id'] ) && ! empty( $_POST['category_id'] ) ? absint( $_POST['category_id'] ) : null,
+        'message'         => isset( $_POST['message'] ) ? sanitize_textarea_field( wp_unslash( $_POST['message'] ) ) : '',
+        'quantity_needed' => isset( $_POST['quantity_needed'] ) && ! empty( $_POST['quantity_needed'] ) ? absint( $_POST['quantity_needed'] ) : null,
+        'budget'          => isset( $_POST['budget'] ) && ! empty( $_POST['budget'] ) ? floatval( $_POST['budget'] ) : null,
+        'timeline'        => isset( $_POST['timeline'] ) ? sanitize_text_field( wp_unslash( $_POST['timeline'] ) ) : '',
+    );
+
+    if ( ! empty( $data['contact_name'] ) && ! empty( $data['contact_email'] ) ) {
+        $order_id = PLS_Repo_Custom_Order::create( $data );
+        if ( $order_id ) {
+            $notice = __( 'Custom order created successfully.', 'pls-private-label-store' );
+        } else {
+            $error = __( 'Failed to create custom order.', 'pls-private-label-store' );
+        }
+    } else {
+        $error = __( 'Contact name and email are required.', 'pls-private-label-store' );
+    }
+}
+
 $stages = array(
     'new_lead'   => __( 'New Leads', 'pls-private-label-store' ),
     'sampling'   => __( 'Sampling', 'pls-private-label-store' ),
@@ -38,6 +68,12 @@ if ( empty( $custom_order_config ) && isset( $commission_rate['custom_order_perc
 $custom_order_threshold = isset( $custom_order_config['threshold'] ) ? floatval( $custom_order_config['threshold'] ) : 100000.00;
 $custom_order_rate_below = isset( $custom_order_config['rate_below'] ) ? floatval( $custom_order_config['rate_below'] ) : 3.00;
 $custom_order_rate_above = isset( $custom_order_config['rate_above'] ) ? floatval( $custom_order_config['rate_above'] ) : 5.00;
+
+// Get categories for dropdown
+$categories = get_terms( array( 'taxonomy' => 'product_cat', 'hide_empty' => false ) );
+if ( is_wp_error( $categories ) ) {
+    $categories = array();
+}
 ?>
 <div class="wrap pls-wrap pls-page-custom-orders">
     <div class="pls-page-head">
@@ -46,7 +82,17 @@ $custom_order_rate_above = isset( $custom_order_config['rate_above'] ) ? floatva
             <h1><?php esc_html_e( 'Custom Order Management', 'pls-private-label-store' ); ?></h1>
             <p class="description"><?php esc_html_e( 'Manage custom order leads through their lifecycle stages.', 'pls-private-label-store' ); ?></p>
         </div>
+        <div>
+            <button type="button" class="button button-primary pls-create-custom-order"><?php esc_html_e( 'Add Custom Order', 'pls-private-label-store' ); ?></button>
+        </div>
     </div>
+
+    <?php if ( $notice ) : ?>
+        <div class="notice notice-success is-dismissible"><p><?php echo esc_html( $notice ); ?></p></div>
+    <?php endif; ?>
+    <?php if ( $error ) : ?>
+        <div class="notice notice-error is-dismissible"><p><?php echo esc_html( $error ); ?></p></div>
+    <?php endif; ?>
 
     <div class="pls-kanban-board" id="pls-custom-orders-kanban">
         <?php foreach ( $stages as $stage_key => $stage_label ) : ?>
@@ -127,6 +173,80 @@ $custom_order_rate_above = isset( $custom_order_config['rate_above'] ) ? floatva
     </div>
 </div>
 
+<!-- Create Custom Order Modal -->
+<div class="pls-modal" id="pls-create-order-modal">
+    <div class="pls-modal__dialog" style="max-width: 600px;">
+        <div class="pls-modal__head">
+            <h2 style="margin: 0;"><?php esc_html_e( 'Create Custom Order', 'pls-private-label-store' ); ?></h2>
+            <button type="button" class="pls-modal__close pls-close-create-modal">&times;</button>
+        </div>
+        <div class="pls-modal__body" style="padding: 20px;">
+            <form method="post" id="pls-create-order-form">
+                <?php wp_nonce_field( 'pls_create_custom_order' ); ?>
+                <input type="hidden" name="pls_create_custom_order" value="1" />
+                
+                <div class="pls-field-grid" style="gap: 16px;">
+                    <div class="pls-input-group">
+                        <label for="contact_name"><?php esc_html_e( 'Contact Name', 'pls-private-label-store' ); ?> <span style="color: #b32d2e;">*</span></label>
+                        <input type="text" id="contact_name" name="contact_name" class="pls-input" required style="width: 100%;" />
+                    </div>
+                    <div class="pls-input-group">
+                        <label for="contact_email"><?php esc_html_e( 'Contact Email', 'pls-private-label-store' ); ?> <span style="color: #b32d2e;">*</span></label>
+                        <input type="email" id="contact_email" name="contact_email" class="pls-input" required style="width: 100%;" />
+                    </div>
+                </div>
+                
+                <div class="pls-field-grid" style="gap: 16px; margin-top: 16px;">
+                    <div class="pls-input-group">
+                        <label for="contact_phone"><?php esc_html_e( 'Phone', 'pls-private-label-store' ); ?></label>
+                        <input type="text" id="contact_phone" name="contact_phone" class="pls-input" style="width: 100%;" />
+                    </div>
+                    <div class="pls-input-group">
+                        <label for="company_name"><?php esc_html_e( 'Company Name', 'pls-private-label-store' ); ?></label>
+                        <input type="text" id="company_name" name="company_name" class="pls-input" style="width: 100%;" />
+                    </div>
+                </div>
+                
+                <div class="pls-input-group" style="margin-top: 16px;">
+                    <label for="category_id"><?php esc_html_e( 'Product Category', 'pls-private-label-store' ); ?></label>
+                    <select id="category_id" name="category_id" class="pls-input" style="width: 100%;">
+                        <option value=""><?php esc_html_e( 'Select category...', 'pls-private-label-store' ); ?></option>
+                        <?php foreach ( $categories as $cat ) : ?>
+                            <option value="<?php echo esc_attr( $cat->term_id ); ?>"><?php echo esc_html( $cat->name ); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                
+                <div class="pls-field-grid" style="gap: 16px; margin-top: 16px;">
+                    <div class="pls-input-group">
+                        <label for="quantity_needed"><?php esc_html_e( 'Quantity Needed', 'pls-private-label-store' ); ?></label>
+                        <input type="number" id="quantity_needed" name="quantity_needed" class="pls-input" min="1" style="width: 100%;" />
+                    </div>
+                    <div class="pls-input-group">
+                        <label for="budget"><?php esc_html_e( 'Budget ($)', 'pls-private-label-store' ); ?></label>
+                        <input type="number" id="budget" name="budget" class="pls-input" min="0" step="0.01" style="width: 100%;" />
+                    </div>
+                </div>
+                
+                <div class="pls-input-group" style="margin-top: 16px;">
+                    <label for="timeline"><?php esc_html_e( 'Timeline', 'pls-private-label-store' ); ?></label>
+                    <input type="text" id="timeline" name="timeline" class="pls-input" placeholder="e.g., 4-6 weeks" style="width: 100%;" />
+                </div>
+                
+                <div class="pls-input-group" style="margin-top: 16px;">
+                    <label for="message"><?php esc_html_e( 'Message / Notes', 'pls-private-label-store' ); ?></label>
+                    <textarea id="message" name="message" rows="4" class="pls-input" style="width: 100%;"></textarea>
+                </div>
+                
+                <div style="text-align: right; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--pls-gray-200);">
+                    <button type="button" class="button pls-close-create-modal" style="margin-right: 10px;"><?php esc_html_e( 'Cancel', 'pls-private-label-store' ); ?></button>
+                    <button type="submit" class="button button-primary"><?php esc_html_e( 'Create Order', 'pls-private-label-store' ); ?></button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
 var PLS_CustomOrders = {
     nonce: '<?php echo wp_create_nonce( 'pls_custom_orders_nonce' ); ?>',
@@ -135,4 +255,23 @@ var PLS_CustomOrders = {
     commission_rate_below: <?php echo floatval( $custom_order_rate_below ); ?>,
     commission_rate_above: <?php echo floatval( $custom_order_rate_above ); ?>
 };
+
+jQuery(document).ready(function($) {
+    // Open create modal
+    $('.pls-create-custom-order').on('click', function() {
+        $('#pls-create-order-modal').show();
+    });
+    
+    // Close modal
+    $('.pls-close-create-modal, #pls-create-order-modal').on('click', function(e) {
+        if (e.target === this) {
+            $('#pls-create-order-modal').hide();
+        }
+    });
+    
+    // Prevent modal content click from closing
+    $('#pls-create-order-modal .pls-modal__dialog').on('click', function(e) {
+        e.stopPropagation();
+    });
+});
 </script>

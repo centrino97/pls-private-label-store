@@ -99,7 +99,10 @@ final class PLS_Sample_Data {
         $action_log[] = array( 'message' => 'Step 2: Creating categories...', 'type' => 'info' );
         error_log( '[PLS Sample Data] Step 2: Adding categories...' );
         self::add_categories();
-        $categories = get_terms( array( 'taxonomy' => 'pls_category', 'hide_empty' => false ) );
+        $categories = get_terms( array( 'taxonomy' => 'product_cat', 'hide_empty' => false ) );
+        if ( is_wp_error( $categories ) ) {
+            $categories = array();
+        }
         $action_log[] = array( 'message' => '✓ Created ' . count( $categories ) . ' categories.', 'type' => 'success' );
         error_log( '[PLS Sample Data] ✓ Categories added.' );
 
@@ -108,6 +111,9 @@ final class PLS_Sample_Data {
         error_log( '[PLS Sample Data] Step 3: Adding ingredients...' );
         self::add_ingredients();
         $ingredients = get_terms( array( 'taxonomy' => 'pls_ingredient', 'hide_empty' => false ) );
+        if ( is_wp_error( $ingredients ) ) {
+            $ingredients = array();
+        }
         $action_log[] = array( 'message' => '✓ Created ' . count( $ingredients ) . ' ingredients.', 'type' => 'success' );
         error_log( '[PLS Sample Data] ✓ Ingredients added.' );
 

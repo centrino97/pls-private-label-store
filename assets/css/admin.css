@@ -2701,7 +2701,6 @@ body.pls-modal-open {
   justify-content: space-between;
   padding: var(--pls-space-sm) var(--pls-space-md);
   background: #fff;
-  min-width: 0; /* Allow flex items to shrink below content size */
   overflow: hidden; /* Prevent overflow */
   border-bottom: 1px solid var(--pls-gray-200);
   margin: 0 calc(-1 * var(--pls-space-md)) var(--pls-space-md);
@@ -2709,15 +2708,17 @@ body.pls-modal-open {
   top: 0;
   z-index: 100;
   box-shadow: var(--pls-shadow-sm);
-  gap: var(--pls-space-md);
-  min-width: 0; /* Allow flex children to shrink */
+  gap: var(--pls-space-sm);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .pls-admin-header__brand {
   display: flex;
   align-items: center;
   flex-shrink: 0; /* Prevent brand from shrinking */
-  min-width: 0;
+  min-width: 120px;
+  max-width: 160px;
 }
 
 .pls-admin-header__logo {
@@ -2730,7 +2731,7 @@ body.pls-modal-open {
 .pls-admin-nav {
   display: flex;
   align-items: center;
-  gap: var(--pls-space-md);
+  gap: var(--pls-space-sm);
   flex: 1;
   justify-content: center;
   overflow-x: auto;
@@ -2739,6 +2740,7 @@ body.pls-modal-open {
   scrollbar-color: var(--pls-gray-300) transparent;
   -webkit-overflow-scrolling: touch;
   min-width: 0; /* Allow flex item to shrink */
+  padding: 0 var(--pls-space-sm);
 }
 
 .pls-admin-nav::-webkit-scrollbar {
@@ -2783,12 +2785,12 @@ body.pls-modal-open {
 .pls-admin-header__user {
   display: flex;
   align-items: center;
-  gap: var(--pls-space-md);
+  gap: var(--pls-space-sm);
   font-size: var(--pls-font-size-sm);
   color: var(--pls-gray-600);
-  flex-shrink: 1; /* Allow user section to shrink */
-  min-width: 0; /* Allow flex item to shrink below content size */
-  max-width: 180px; /* Limit maximum width */
+  flex-shrink: 0; /* Don't shrink the user container */
+  min-width: 80px;
+  max-width: 140px;
   overflow: hidden; /* Prevent overflow */
 }
 

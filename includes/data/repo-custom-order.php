@@ -159,4 +159,57 @@ final class PLS_Repo_Custom_Order {
             $wpdb->prepare( "SELECT COUNT(*) FROM {$table} WHERE status = %s", $status )
         );
     }
+
+    /**
+     * Create a new custom order.
+     *
+     * @param array $data Order data.
+     * @return int|false Order ID or false on failure.
+     */
+    public static function create( $data ) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'pls_custom_order';
+
+        $defaults = array(
+            'status'          => 'new_lead',
+            'contact_name'    => '',
+            'contact_email'   => '',
+            'contact_phone'   => '',
+            'company_name'    => '',
+            'category_id'     => null,
+            'message'         => '',
+            'quantity_needed' => null,
+            'budget'          => null,
+            'timeline'        => '',
+            'created_at'      => current_time( 'mysql' ),
+            'updated_at'      => current_time( 'mysql' ),
+        );
+
+        $data = wp_parse_args( $data, $defaults );
+
+        $result = $wpdb->insert(
+            $table,
+            array(
+                'status'          => $data['status'],
+                'contact_name'    => $data['contact_name'],
+                'contact_email'   => $data['contact_email'],
+                'contact_phone'   => $data['contact_phone'],
+                'company_name'    => $data['company_name'],
+                'category_id'     => $data['category_id'],
+                'message'         => $data['message'],
+                'quantity_needed' => $data['quantity_needed'],
+                'budget'          => $data['budget'],
+                'timeline'        => $data['timeline'],
+                'created_at'      => $data['created_at'],
+                'updated_at'      => $data['updated_at'],
+            ),
+            array( '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%f', '%s', '%s', '%s' )
+        );
+
+        if ( false === $result ) {
+            return false;
+        }
+
+        return $wpdb->insert_id;
+    }
 }

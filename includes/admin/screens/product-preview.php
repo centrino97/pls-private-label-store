@@ -174,12 +174,31 @@ $product = $wc_product;
             <p class="description"><?php esc_html_e( 'This is how the PLS Configurator widget will render:', 'pls-private-label-store' ); ?></p>
             <?php
             // Render the configurator widget
-            if ( $wc_product->is_type( 'variable' ) ) {
-                require_once PLS_PLS_DIR . 'includes/elementor/widgets/class-pls-widget-configurator.php';
-                $widget = new \PLS_Widget_Configurator();
-                $widget->render();
-            } else {
+            if ( ! $wc_product || ! $wc_product->is_type( 'variable' ) ) {
                 echo '<div class="pls-note">' . esc_html__( 'Product must be synced as a variable product to show configurator.', 'pls-private-label-store' ) . '</div>';
+            } elseif ( ! did_action( 'elementor/loaded' ) ) {
+                // Elementor not active - show basic variation form
+                echo '<div class="pls-note">' . esc_html__( 'Elementor is not active. Install and activate Elementor to see the full PLS Configurator widget preview.', 'pls-private-label-store' ) . '</div>';
+                // Show basic WooCommerce variation form as fallback
+                woocommerce_variable_add_to_cart();
+            } else {
+                // Elementor is active - try to render the widget
+                try {
+                    $widget_file = PLS_PLS_DIR . 'includes/elementor/widgets/class-pls-widget-configurator.php';
+                    if ( file_exists( $widget_file ) ) {
+                        require_once $widget_file;
+                        if ( class_exists( 'PLS_Widget_Configurator' ) ) {
+                            $widget = new \PLS_Widget_Configurator();
+                            $widget->render();
+                        } else {
+                            echo '<div class="pls-note">' . esc_html__( 'Widget class not found. Please ensure Elementor integration is properly set up.', 'pls-private-label-store' ) . '</div>';
+                        }
+                    } else {
+                        echo '<div class="pls-note">' . esc_html__( 'Widget file not found.', 'pls-private-label-store' ) . '</div>';
+                    }
+                } catch ( Exception $e ) {
+                    echo '<div class="pls-note">' . esc_html__( 'Error rendering widget: ', 'pls-private-label-store' ) . esc_html( $e->getMessage() ) . '</div>';
+                }
             }
             ?>
         </div>
