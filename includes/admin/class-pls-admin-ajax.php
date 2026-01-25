@@ -3873,7 +3873,15 @@ final class PLS_Admin_Ajax {
      * AJAX: Generate WooCommerce orders only.
      */
     public static function generate_orders() {
-        check_ajax_referer( 'pls_admin_nonce', 'nonce' );
+        // Check nonce - try both system test nonce and admin nonce for compatibility
+        $nonce_valid = false;
+        if ( isset( $_POST['nonce'] ) ) {
+            $nonce_valid = wp_verify_nonce( $_POST['nonce'], 'pls_system_test_nonce' ) || wp_verify_nonce( $_POST['nonce'], 'pls_admin_nonce' );
+        }
+        
+        if ( ! $nonce_valid ) {
+            wp_send_json_error( array( 'message' => __( 'Security check failed. Please refresh the page and try again.', 'pls-private-label-store' ) ), 403 );
+        }
 
         if ( ! current_user_can( 'manage_options' ) ) {
             wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
@@ -3883,13 +3891,58 @@ final class PLS_Admin_Ajax {
         @set_time_limit( 300 );
         @ini_set( 'max_execution_time', 300 );
 
-        require_once PLS_PLS_DIR . 'includes/core/class-pls-system-test.php';
-        $result = PLS_System_Test::fix_generate_orders();
+        try {
+            require_once PLS_PLS_DIR . 'includes/core/class-pls-system-test.php';
+            $result = PLS_System_Test::fix_generate_orders();
 
-        if ( $result['success'] ) {
-            wp_send_json_success( $result );
-        } else {
-            wp_send_json_error( $result );
+            // Ensure result has required fields
+            if ( ! isset( $result['success'] ) ) {
+                $result['success'] = false;
+            }
+            if ( ! isset( $result['message'] ) ) {
+                $result['message'] = 'Unknown error occurred';
+            }
+            if ( ! isset( $result['action_log'] ) ) {
+                $result['action_log'] = array();
+            }
+
+            if ( $result['success'] ) {
+                wp_send_json_success( $result );
+            } else {
+                wp_send_json_error( $result );
+            }
+        } catch ( Exception $e ) {
+            // Save error to log file
+            $action_log = array(
+                array( 'message' => '❌ FATAL ERROR: ' . $e->getMessage(), 'type' => 'error' ),
+                array( 'message' => 'File: ' . $e->getFile() . ':' . $e->getLine(), 'type' => 'error' ),
+            );
+            
+            require_once PLS_PLS_DIR . 'includes/core/class-pls-sample-data.php';
+            $log_file_path = PLS_Sample_Data::save_log_file( 'generate_orders', $action_log );
+            
+            wp_send_json_error( array(
+                'success' => false,
+                'message' => 'WooCommerce orders generation failed: ' . $e->getMessage(),
+                'action_log' => $action_log,
+                'log_file_path' => $log_file_path,
+            ) );
+        } catch ( Error $e ) {
+            // Save fatal error to log file
+            $action_log = array(
+                array( 'message' => '❌ FATAL ERROR: ' . $e->getMessage(), 'type' => 'error' ),
+                array( 'message' => 'File: ' . $e->getFile() . ':' . $e->getLine(), 'type' => 'error' ),
+            );
+            
+            require_once PLS_PLS_DIR . 'includes/core/class-pls-sample-data.php';
+            $log_file_path = PLS_Sample_Data::save_log_file( 'generate_orders', $action_log );
+            
+            wp_send_json_error( array(
+                'success' => false,
+                'message' => 'WooCommerce orders generation failed: ' . $e->getMessage(),
+                'action_log' => $action_log,
+                'log_file_path' => $log_file_path,
+            ) );
         }
     }
 
@@ -3897,7 +3950,15 @@ final class PLS_Admin_Ajax {
      * AJAX: Get last generation log file content.
      */
     public static function get_last_log() {
-        check_ajax_referer( 'pls_admin_nonce', 'nonce' );
+        // Check nonce - try both system test nonce and admin nonce for compatibility
+        $nonce_valid = false;
+        if ( isset( $_POST['nonce'] ) ) {
+            $nonce_valid = wp_verify_nonce( $_POST['nonce'], 'pls_system_test_nonce' ) || wp_verify_nonce( $_POST['nonce'], 'pls_admin_nonce' );
+        }
+        
+        if ( ! $nonce_valid ) {
+            wp_send_json_error( array( 'message' => __( 'Security check failed. Please refresh the page and try again.', 'pls-private-label-store' ) ), 403 );
+        }
 
         if ( ! current_user_can( 'manage_options' ) ) {
             wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
@@ -3906,7 +3967,7 @@ final class PLS_Admin_Ajax {
         $log_file_path = get_option( 'pls_last_generation_log' );
 
         if ( ! $log_file_path || ! file_exists( $log_file_path ) ) {
-            wp_send_json_error( array( 'message' => __( 'No log file found.', 'pls-private-label-store' ) ), 404 );
+            wp_send_json_error( array( 'message' => __( 'No log file found. Generate some data first to create a log file.', 'pls-private-label-store' ) ), 404 );
         }
 
         $log_content = file_get_contents( $log_file_path );

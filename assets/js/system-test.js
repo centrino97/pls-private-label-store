@@ -279,13 +279,24 @@
                     this.updateModalStatus('error', 'Generation failed');
                     
                     if (response.data?.log_file_path) {
-                        this.addLogEntry('Use "View Last Log" to see detailed error information.', 'info');
+                        this.addLogEntry('Log file saved. Click "View Last Log" button below to see detailed error information.', 'info');
+                    } else {
+                        this.addLogEntry('Note: Log file may not have been created. Try "View Last Log" to check.', 'warning');
                     }
                     
                     $('#pls-modal-close').show();
                 }
             } catch (error) {
-                this.addLogEntry(error.message || 'Action failed', 'error');
+                const errorMsg = error.responseJSON?.data?.message || error.message || 'Action failed';
+                this.addLogEntry(errorMsg, 'error');
+                
+                // Try to show log file path if available
+                if (error.responseJSON?.data?.log_file_path) {
+                    this.addLogEntry('Log file saved. Click "View Last Log" button below to see detailed error information.', 'info');
+                } else {
+                    this.addLogEntry('Note: Try "View Last Log" to check if a log file was created.', 'warning');
+                }
+                
                 this.updateModalStatus('error', 'Generation failed');
                 $('#pls-modal-close').show();
             }

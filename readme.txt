@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 4.4.2
+Stable tag: 4.4.3
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,14 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 4.4.3 =
+* **FIXED:** Nonce mismatch in generate_orders AJAX handler - now accepts both pls_system_test_nonce and pls_admin_nonce
+* **FIXED:** Nonce mismatch in get_last_log AJAX handler - now accepts both nonces for compatibility
+* **FIXED:** Log file download now works even when generation fails - improved error handling
+* **IMPROVED:** Better error messages in modal when generation fails
+* **IMPROVED:** Log file is always saved even on fatal errors/exceptions
+* **IMPROVED:** Made save_log_file method public so it can be called from AJAX error handlers
+
 = 4.4.2 =
 * **FIXED:** JavaScript error - Changed const to let for button variable to allow reassignment
 
