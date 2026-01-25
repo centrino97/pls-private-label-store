@@ -3,34 +3,62 @@ name: Build plugin ZIP and attach to release
 on:
   push:
     tags:
-      - 'v*'   # runs when you push a tag like v0.1.1
+      - 'v*'   # runs when you push a tag like v2.3.0
 
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # needed to upload release asset
+      contents: write   # needed to create release and upload asset
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full history for release notes
+
+      - name: Extract version from tag
+        id: tag_version
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "version=${TAG_NAME#v}" >> $GITHUB_OUTPUT
+          echo "Tag: $TAG_NAME, Version: ${TAG_NAME#v}"
 
       - name: Build plugin ZIP
         run: |
           PLUGIN_SLUG="pls-private-label-store"
-
+          
           # Create build directory and copy only plugin files
           mkdir -p build/"$PLUGIN_SLUG"
           cp -R assets docs includes uupd pls-private-label-store.php readme.txt build/"$PLUGIN_SLUG"/
-
+          
+          # Verify files were copied
+          echo "Files in build directory:"
+          ls -la build/"$PLUGIN_SLUG"/
+          
           cd build
           zip -r "../${PLUGIN_SLUG}.zip" "$PLUGIN_SLUG"
+          
+          # Verify ZIP was created
+          ls -lh "../${PLUGIN_SLUG}.zip"
+          unzip -l "../${PLUGIN_SLUG}.zip" | head -20
 
-      - name: Upload ZIP to GitHub Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref_name }}
-          files: pls-private-label-store.zip
-          generate_release_notes: true
+          tag_name: ${{ steps.tag_version.outputs.tag_name }}
+          name: Release ${{ steps.tag_version.outputs.tag_name }}
+          body: |
+            ## Release ${{ steps.tag_version.outputs.tag_name }}
+            
+            See [changelog](https://raw.githubusercontent.com/${{ github.repository }}/main/uupd/index.json) for details.
+            
+            **Download:** [pls-private-label-store.zip](https://github.com/${{ github.repository }}/releases/download/${{ steps.tag_version.outputs.tag_name }}/pls-private-label-store.zip)
+          files: |
+            pls-private-label-store.zip
           draft: false
           prerelease: false
+          generate_release_notes: true
