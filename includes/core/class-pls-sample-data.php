@@ -168,61 +168,64 @@ final class PLS_Sample_Data {
         }
         error_log( '[PLS Sample Data] Cleanup: Deleted ' . $orders_deleted . ' sample WooCommerce orders.' );
 
-        // Step 2: Delete WooCommerce products and variations that were synced from PLS
-        error_log( '[PLS Sample Data] Cleanup: Deleting WooCommerce products and variations...' );
-        $pls_products = PLS_Repo_Base_Product::all();
+        // Step 2: Delete ALL WooCommerce products/variations that have PLS markers (read directly from WooCommerce for sync)
+        error_log( '[PLS Sample Data] Cleanup: Reading ALL WooCommerce products directly for sync...' );
+        
+        // Get all products with PLS meta markers (read directly from WooCommerce)
+        $all_wc_products = get_posts( array(
+            'post_type' => 'product',
+            'posts_per_page' => -1,
+            'post_status' => 'any',
+            'meta_query' => array(
+                'relation' => 'OR',
+                array(
+                    'key' => '_pls_base_product_id',
+                    'compare' => 'EXISTS',
+                ),
+                array(
+                    'key' => '_pls_bundle_id',
+                    'compare' => 'EXISTS',
+                ),
+            ),
+            'fields' => 'ids',
+        ) );
+        
         $wc_products_deleted = 0;
-        foreach ( $pls_products as $pls_product ) {
-            if ( $pls_product->wc_product_id ) {
-                $wc_product = wc_get_product( $pls_product->wc_product_id );
-                if ( $wc_product ) {
-                    // Delete variations first if it's a variable product
-                    if ( $wc_product->is_type( 'variable' ) ) {
-                        $variations = $wc_product->get_children();
-                        foreach ( $variations as $variation_id ) {
-                            wp_delete_post( $variation_id, true );
-                        }
-                    }
-                    wp_delete_post( $pls_product->wc_product_id, true );
-                    $wc_products_deleted++;
+        foreach ( $all_wc_products as $wc_product_id ) {
+            $wc_product = wc_get_product( $wc_product_id );
+            if ( ! $wc_product ) {
+                continue;
+            }
+            
+            // Delete variations first if it's a variable product
+            if ( $wc_product->is_type( 'variable' ) ) {
+                $variations = $wc_product->get_children();
+                foreach ( $variations as $variation_id ) {
+                    wp_delete_post( $variation_id, true );
                 }
             }
+            
+            wp_delete_post( $wc_product_id, true );
+            $wc_products_deleted++;
         }
-        error_log( '[PLS Sample Data] Cleanup: Deleted ' . $wc_products_deleted . ' WooCommerce products.' );
+        error_log( '[PLS Sample Data] Cleanup: Deleted ' . $wc_products_deleted . ' WooCommerce products (read directly from WC).' );
 
-        // Step 3: Delete WooCommerce bundles (grouped products)
-        error_log( '[PLS Sample Data] Cleanup: Deleting WooCommerce bundles...' );
-        $pls_bundles = PLS_Repo_Bundle::all();
-        $bundles_deleted = 0;
-        foreach ( $pls_bundles as $bundle ) {
-            if ( $bundle->wc_product_id ) {
-                wp_delete_post( $bundle->wc_product_id, true );
-                $bundles_deleted++;
-            }
-        }
-        error_log( '[PLS Sample Data] Cleanup: Deleted ' . $bundles_deleted . ' WooCommerce bundles.' );
-
-        // Step 4: Delete orphaned WooCommerce products/variations (products with PLS meta but no PLS record)
-        error_log( '[PLS Sample Data] Cleanup: Checking for orphaned WooCommerce products...' );
-        $orphaned_products = get_posts( array(
-            'post_type' => array( 'product', 'product_variation' ),
+        // Step 3: Delete ALL WooCommerce variations that have PLS markers (orphaned variations)
+        error_log( '[PLS Sample Data] Cleanup: Checking for orphaned WooCommerce variations...' );
+        $all_wc_variations = get_posts( array(
+            'post_type' => 'product_variation',
             'posts_per_page' => -1,
             'post_status' => 'any',
             'meta_key' => '_pls_base_product_id',
             'fields' => 'ids',
         ) );
         
-        $orphaned_deleted = 0;
-        foreach ( $orphaned_products as $orphan_id ) {
-            // Verify it's truly orphaned (no PLS product with this WC ID)
-            $pls_id = get_post_meta( $orphan_id, '_pls_base_product_id', true );
-            $pls_product = PLS_Repo_Base_Product::get( $pls_id );
-            if ( ! $pls_product || ! $pls_product->wc_product_id || $pls_product->wc_product_id != $orphan_id ) {
-                wp_delete_post( $orphan_id, true );
-                $orphaned_deleted++;
-            }
+        $variations_deleted = 0;
+        foreach ( $all_wc_variations as $variation_id ) {
+            wp_delete_post( $variation_id, true );
+            $variations_deleted++;
         }
-        error_log( '[PLS Sample Data] Cleanup: Deleted ' . $orphaned_deleted . ' orphaned WooCommerce products.' );
+        error_log( '[PLS Sample Data] Cleanup: Deleted ' . $variations_deleted . ' orphaned WooCommerce variations.' );
 
         // Delete all PLS products
         $products_table = $wpdb->prefix . 'pls_base_product';
