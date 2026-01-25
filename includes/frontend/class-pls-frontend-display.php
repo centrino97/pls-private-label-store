@@ -15,6 +15,7 @@ final class PLS_Frontend_Display {
 
     /**
      * Initialize frontend display hooks.
+     * NOTE: Auto-injection disabled - use shortcodes instead (pls_single_product, pls_single_category, pls_shop_page)
      */
     public static function init() {
         // Only load on frontend
@@ -22,15 +23,12 @@ final class PLS_Frontend_Display {
             return;
         }
 
-        // Register assets
+        // Register assets (for shortcodes)
         add_action( 'wp_enqueue_scripts', array( __CLASS__, 'register_assets' ) );
 
-        // Auto-inject on single product pages (check setting)
-        add_action( 'wp', array( __CLASS__, 'setup_product_hooks' ) );
-
-        // Tier badges on shop/category pages
-        add_action( 'woocommerce_before_shop_loop_item_title', array( __CLASS__, 'maybe_show_tier_badge' ), 15 );
-        add_action( 'woocommerce_after_shop_loop_item_title', array( __CLASS__, 'maybe_show_starting_price' ), 5 );
+        // Auto-injection disabled - use shortcodes instead
+        // Removed: add_action( 'wp', array( __CLASS__, 'setup_product_hooks' ) );
+        // Removed: Tier badges auto-injection hooks
     }
 
     /**

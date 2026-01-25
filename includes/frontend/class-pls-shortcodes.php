@@ -13,14 +13,13 @@ final class PLS_Shortcodes {
 
     /**
      * Initialize shortcodes.
+     * Only full-page shortcodes are enabled - use these in Elementor templates.
      */
     public static function init() {
-        add_shortcode( 'pls_product', array( __CLASS__, 'product_shortcode' ) );
-        add_shortcode( 'pls_configurator', array( __CLASS__, 'configurator_shortcode' ) );
-        add_shortcode( 'pls_bundle', array( __CLASS__, 'bundle_shortcode' ) );
-        add_shortcode( 'pls_product_page', array( __CLASS__, 'product_page_shortcode' ) );
+        // Old shortcodes removed - use full-page shortcodes instead
+        // Removed: pls_product, pls_configurator, pls_bundle, pls_product_page
         
-        // New simplified shortcodes for Elementor templates
+        // Full-page shortcodes for Elementor templates (these render complete pages)
         add_shortcode( 'pls_single_product', array( __CLASS__, 'single_product_shortcode' ) );
         add_shortcode( 'pls_single_category', array( __CLASS__, 'single_category_shortcode' ) );
         add_shortcode( 'pls_shop_page', array( __CLASS__, 'shop_page_shortcode' ) );

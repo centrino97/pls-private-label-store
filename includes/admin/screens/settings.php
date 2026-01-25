@@ -3,20 +3,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-// Handle sample data generation
-if ( isset( $_POST['pls_generate_sample_data'] ) && check_admin_referer( 'pls_generate_sample_data', 'pls_sample_data_nonce' ) ) {
-    if ( current_user_can( 'manage_options' ) ) {
-        require_once PLS_PLS_DIR . 'includes/core/class-pls-sample-data.php';
-        
-        // Generate sample data (logs to error_log)
-        PLS_Sample_Data::generate();
-        
-        // Show success message
-        $message = 'sample-data-generated';
-        wp_safe_redirect( add_query_arg( 'message', $message, admin_url( 'admin.php?page=pls-settings' ) ) );
-        exit;
-    }
-}
+// Sample data generation removed - use System Test page instead
 
 // Handle form submission
 if ( isset( $_POST['pls_save_settings'] ) && check_admin_referer( 'pls_save_settings', 'pls_settings_nonce' ) ) {
@@ -311,25 +298,7 @@ if ( isset( $_GET['message'] ) && 'sample-data-generated' === $_GET['message'] )
             </div>
 
 
-            <!-- Sample Data -->
-            <?php if ( current_user_can( 'manage_options' ) ) : ?>
-                <div class="pls-accordion__item is-collapsed">
-                    <button type="button" class="pls-accordion__header">
-                        <?php esc_html_e( 'Sample Data', 'pls-private-label-store' ); ?>
-                    </button>
-                    <div class="pls-accordion__content">
-                        <p class="description" style="margin-top: 0;"><?php esc_html_e( 'Generate comprehensive sample data including products, categories, ingredients, product options, bundles, WooCommerce orders, custom orders, and commission records. This will clean up existing data and add complete sample data for testing all features.', 'pls-private-label-store' ); ?></p>
-                        
-                        <form method="post" action="" style="margin-top: 16px;">
-                            <?php wp_nonce_field( 'pls_generate_sample_data', 'pls_sample_data_nonce' ); ?>
-                            <button type="submit" name="pls_generate_sample_data" value="1" class="button button-secondary pls-btn--danger" 
-                                    onclick="return confirm('<?php esc_attr_e( 'This will DELETE all existing products, orders, commissions, and attributes (except Pack Tiers). Are you sure?', 'pls-private-label-store' ); ?>');">
-                                <?php esc_html_e( 'Generate Complete Sample Data', 'pls-private-label-store' ); ?>
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            <?php endif; ?>
+            <!-- Sample Data section removed - use System Test page instead -->
 
             <!-- Custom Order Settings -->
             <div class="pls-accordion__item">
