@@ -24,9 +24,14 @@ final class PLS_Sample_Data {
      * Clean up existing data and add sample data.
      */
     public static function generate() {
+        // Increase execution time limit for long-running operation (sample data generation can take 1-3 minutes)
+        @set_time_limit( 300 ); // 5 minutes should be enough
+        @ini_set( 'max_execution_time', 300 );
+        
         // Log to error log (always works, even during redirects)
         error_log( '[PLS Sample Data] ==========================================' );
         error_log( '[PLS Sample Data] Starting sample data generation...' );
+        error_log( '[PLS Sample Data] Execution time limit set to 300 seconds' );
         error_log( '[PLS Sample Data] ==========================================' );
         
         // Step 1: Cleanup

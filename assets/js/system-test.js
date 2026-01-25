@@ -182,12 +182,22 @@
             $button.addClass('is-loading');
 
             this.showActionLog();
-            this.logAction('Starting ' + action.replace('_', ' ') + '...');
+            const actionName = action.replace('_', ' ');
+            this.logAction('Starting ' + actionName + '...');
+            
+            // Show longer timeout message for sample data generation
+            if (action === 'generate_sample_data') {
+                this.logAction('This may take 1-3 minutes. Please wait...', 'info');
+            }
 
             try {
+                // Increase timeout for sample data generation (can take 1-3 minutes)
+                const timeout = action === 'generate_sample_data' ? 300000 : 30000; // 5 minutes for sample data, 30s for others
+                
                 const response = await $.ajax({
                     url: plsSystemTest.ajaxUrl,
                     type: 'POST',
+                    timeout: timeout,
                     data: {
                         action: 'pls_fix_issue',
                         nonce: plsSystemTest.nonce,

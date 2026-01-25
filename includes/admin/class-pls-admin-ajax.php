@@ -3180,6 +3180,9 @@ final class PLS_Admin_Ajax {
                 break;
 
             case 'generate_sample_data':
+                // Increase timeout for sample data generation (can take 1-3 minutes)
+                @set_time_limit( 300 );
+                @ini_set( 'max_execution_time', 300 );
                 $result = PLS_System_Test::fix_generate_sample_data();
                 break;
 
