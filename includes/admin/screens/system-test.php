@@ -320,6 +320,50 @@ $test_categories = array(
 
 </div>
 
+<!-- Generation Progress Modal -->
+<div class="pls-modal" id="pls-generation-modal">
+    <div class="pls-modal__dialog" style="max-width: 600px;">
+        <div class="pls-modal__head">
+            <h2 style="margin: 0; font-size: 20px; font-weight: 600;" id="pls-modal-title">Generating Data...</h2>
+            <button type="button" class="pls-modal__close" id="pls-modal-close" style="display: none;">×</button>
+        </div>
+        <div class="pls-modal__section" style="margin-bottom: 0;">
+            <div style="text-align: center; padding: 20px 0;">
+                <div class="pls-spinner" style="width: 48px; height: 48px; margin: 0 auto 20px; border: 4px solid var(--pls-gray-200); border-top-color: var(--pls-accent); border-radius: 50%; animation: pls-spin 1s linear infinite;"></div>
+                <p style="margin: 0 0 8px; font-size: 16px; font-weight: 500;" id="pls-modal-status">Initializing...</p>
+                <p style="margin: 0; font-size: 14px; color: var(--pls-gray-500);" id="pls-modal-message">Please wait, this may take 1-3 minutes.</p>
+            </div>
+            <div id="pls-progress-log" style="max-height: 300px; overflow-y: auto; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--pls-gray-200); display: none;">
+                <div style="font-size: 12px; color: var(--pls-gray-600); font-family: monospace; line-height: 1.6;">
+                    <div id="pls-log-entries"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+@keyframes pls-spin {
+    to { transform: rotate(360deg); }
+}
+.pls-log-entry {
+    padding: 4px 0;
+    color: var(--pls-gray-700);
+}
+.pls-log-entry.pls-log-success {
+    color: var(--pls-success);
+}
+.pls-log-entry.pls-log-error {
+    color: var(--pls-error);
+}
+.pls-log-entry.pls-log-warning {
+    color: var(--pls-warning);
+}
+.pls-log-entry.pls-log-info {
+    color: var(--pls-gray-500);
+}
+</style>
+
 <script type="text/template" id="tmpl-test-result">
     <div class="test-result test-{{ data.status }}">
         <span class="result-icon">

@@ -67,6 +67,9 @@
             // Log viewing
             $('#pls-view-last-log').on('click', () => this.viewLastLog());
             $('#pls-copy-log').on('click', () => this.copyLog());
+            
+            // Modal close
+            $('#pls-modal-close').on('click', () => this.hideGenerationModal());
         },
 
         /**
@@ -203,16 +206,13 @@
             }
             
             $button.addClass('is-loading').prop('disabled', true);
+            this.isRunning = true;
 
-            // Show loading message
-            const actionName = action.replace('_', ' ');
-            const loadingMsg = action === 'generate_sample_data' || action === 'generate_orders' 
-                ? 'This may take 1-3 minutes. Please wait...' 
-                : 'Processing...';
+            // Show loading modal
+            const actionName = action.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+            const isLongOperation = action === 'generate_sample_data' || action === 'generate_orders';
             
-            // Show notice
-            const $notice = $('<div class="notice notice-info is-dismissible" style="margin: 20px 0;"><p>' + loadingMsg + '</p></div>');
-            $('.pls-control-group').first().before($notice);
+            this.showGenerationModal(actionName, isLongOperation);
 
             try {
                 // Determine AJAX action name
@@ -222,7 +222,7 @@
                 }
                 
                 // Increase timeout for sample data generation (can take 1-3 minutes)
-                const timeout = (action === 'generate_sample_data' || action === 'generate_orders') ? 300000 : 30000;
+                const timeout = isLongOperation ? 300000 : 30000;
                 
                 const response = await $.ajax({
                     url: plsSystemTest.ajaxUrl,
@@ -232,42 +232,146 @@
                         action: ajaxAction,
                         nonce: plsSystemTest.nonce,
                         fix_action: action
+                    },
+                    // Show progress updates if available
+                    xhr: function() {
+                        const xhr = new window.XMLHttpRequest();
+                        // Note: Server-sent events would be better, but for now we'll update on response
+                        return xhr;
                     }
                 });
 
-                $notice.remove();
-
+                // Update modal with final status
                 if (response.success) {
-                    // Show success notice with log file info
-                    let successMsg = response.data?.message || 'Action completed successfully';
-                    if (response.data?.log_file_path) {
-                        successMsg += ' Log file saved. Use "View Last Log" to see details.';
+                    // Display action log entries if available
+                    if (response.data?.action_log && Array.isArray(response.data.action_log)) {
+                        response.data.action_log.forEach(logEntry => {
+                            const message = logEntry.message || logEntry;
+                            const type = logEntry.type || 'info';
+                            this.addLogEntry(message, type);
+                        });
                     }
                     
-                    const $successNotice = $('<div class="notice notice-success is-dismissible" style="margin: 20px 0;"><p>' + successMsg + '</p></div>');
-                    $('.pls-control-group').first().before($successNotice);
+                    this.updateModalStatus('success', 'Generation completed successfully!');
                     
-                    // Refresh stats after action
-                    setTimeout(() => location.reload(), 2000);
+                    if (response.data?.log_file_path) {
+                        this.addLogEntry('Log file saved. Use "View Last Log" to see details.', 'info');
+                    }
+                    
+                    // Show close button and auto-close after 3 seconds
+                    $('#pls-modal-close').show();
+                    setTimeout(() => {
+                        this.hideGenerationModal();
+                        location.reload();
+                    }, 3000);
                 } else {
-                    // Show error notice
-                    const errorMsg = response.data?.message || 'Action failed';
-                    const $errorNotice = $('<div class="notice notice-error is-dismissible" style="margin: 20px 0;"><p>' + errorMsg + '</p></div>');
-                    $('.pls-control-group').first().before($errorNotice);
-                    
-                    // If log file exists, suggest viewing it
-                    if (response.data?.log_file_path) {
-                        $errorNotice.find('p').append('<br><strong>Use "View Last Log" to see detailed error information.</strong>');
+                    // Display error log entries
+                    if (response.data?.action_log && Array.isArray(response.data.action_log)) {
+                        response.data.action_log.forEach(logEntry => {
+                            const message = logEntry.message || logEntry;
+                            const type = logEntry.type || 'error';
+                            this.addLogEntry(message, type);
+                        });
+                    } else {
+                        this.addLogEntry(response.data?.message || 'Action failed', 'error');
                     }
+                    
+                    this.updateModalStatus('error', 'Generation failed');
+                    
+                    if (response.data?.log_file_path) {
+                        this.addLogEntry('Use "View Last Log" to see detailed error information.', 'info');
+                    }
+                    
+                    $('#pls-modal-close').show();
                 }
             } catch (error) {
-                $notice.remove();
-                const errorMsg = error.message || 'Action failed';
-                const $errorNotice = $('<div class="notice notice-error is-dismissible" style="margin: 20px 0;"><p>' + errorMsg + '</p></div>');
-                $('.pls-control-group').first().before($errorNotice);
+                this.addLogEntry(error.message || 'Action failed', 'error');
+                this.updateModalStatus('error', 'Generation failed');
+                $('#pls-modal-close').show();
             }
 
             $button.removeClass('is-loading').prop('disabled', false);
+            this.isRunning = false;
+        },
+
+        /**
+         * Show generation modal.
+         */
+        showGenerationModal: function(actionName, isLongOperation) {
+            $('#pls-modal-title').text(actionName);
+            $('#pls-modal-status').text('Starting...');
+            $('#pls-modal-message').text(isLongOperation 
+                ? 'This may take 1-3 minutes. Please wait...' 
+                : 'Processing...');
+            $('#pls-log-entries').empty();
+            $('#pls-progress-log').hide();
+            $('#pls-modal-close').hide();
+            $('#pls-generation-modal').addClass('is-active');
+        },
+
+        /**
+         * Hide generation modal.
+         */
+        hideGenerationModal: function() {
+            $('#pls-generation-modal').removeClass('is-active');
+        },
+
+        /**
+         * Update modal status.
+         */
+        updateModalStatus: function(status, message) {
+            const $status = $('#pls-modal-status');
+            const $spinner = $('.pls-spinner');
+            
+            $status.text(message);
+            
+            if (status === 'success') {
+                $status.css('color', 'var(--pls-success)');
+                $spinner.css('border-top-color', 'var(--pls-success)');
+            } else if (status === 'error') {
+                $status.css('color', 'var(--pls-error)');
+                $spinner.css('border-top-color', 'var(--pls-error)');
+            }
+        },
+
+        /**
+         * Add log entry to modal.
+         */
+        addLogEntry: function(message, type) {
+            const $log = $('#pls-progress-log');
+            const $entries = $('#pls-log-entries');
+            
+            // Show log area if hidden
+            if (!$log.is(':visible')) {
+                $log.show();
+            }
+            
+            // Update status with latest message
+            if (type === 'success' || type === 'error') {
+                $('#pls-modal-status').text(message);
+            }
+            
+            // Add log entry
+            const typeClass = 'pls-log-' + (type || 'info');
+            const $entry = $('<div class="pls-log-entry ' + typeClass + '">' + this.escapeHtml(message) + '</div>');
+            $entries.append($entry);
+            
+            // Auto-scroll to bottom
+            $log.scrollTop($log[0].scrollHeight);
+        },
+
+        /**
+         * Escape HTML to prevent XSS.
+         */
+        escapeHtml: function(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
         },
 
         /**
