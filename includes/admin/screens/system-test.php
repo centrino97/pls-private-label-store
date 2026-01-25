@@ -18,6 +18,9 @@ if ( ! class_exists( 'PLS_System_Test' ) ) {
 // Get quick stats
 $stats = PLS_System_Test::get_quick_stats();
 
+// Get sample data status
+$sample_data_status = PLS_System_Test::get_sample_data_status();
+
 // Get PLS version info
 $pls_version = PLS_PLS_VERSION;
 $uupd_file = PLS_PLS_DIR . 'uupd/index.json';
@@ -95,6 +98,11 @@ $test_categories = array(
         'label'       => 'Revenue',
         'description' => 'Verify revenue tracking and summary statistics.',
         'icon'        => 'chart-bar',
+    ),
+    'frontend_display' => array(
+        'label'       => 'Frontend Display',
+        'description' => 'Check auto-injection settings, CSS/JS files, and product page accessibility.',
+        'icon'        => 'visibility',
     ),
 );
 ?>
@@ -189,12 +197,54 @@ $test_categories = array(
                     <span class="dashicons dashicons-update"></span>
                     Re-sync Bundles
                 </button>
-                <button type="button" class="button button-secondary" id="pls-generate-sample-data">
-                    <span class="dashicons dashicons-database-add"></span>
-                    Generate Sample Data
-                </button>
             </div>
-            <p class="description">Use these actions to fix common issues.</p>
+            <p class="description">Use these actions to fix sync issues.</p>
+        </div>
+
+        <div class="pls-control-group pls-sample-data-control">
+            <h3>Sample Data</h3>
+            <div class="pls-sample-data-status" style="margin-bottom: 12px; padding: 12px; background: <?php echo $sample_data_status['has_data'] ? '#e7f5e9' : '#f0f0f1'; ?>; border-radius: 6px;">
+                <?php if ( $sample_data_status['has_data'] ) : ?>
+                    <span style="color: #00a32a; font-weight: 600;">
+                        <span class="dashicons dashicons-yes-alt" style="vertical-align: middle;"></span>
+                        <?php esc_html_e( 'Sample data exists', 'pls-private-label-store' ); ?>
+                    </span>
+                    <div style="margin-top: 8px; font-size: 12px; color: #666;">
+                        <?php
+                        $counts = $sample_data_status['counts'];
+                        $items = array();
+                        if ( $counts['products'] > 0 ) $items[] = $counts['products'] . ' products';
+                        if ( $counts['bundles'] > 0 ) $items[] = $counts['bundles'] . ' bundles';
+                        if ( $counts['wc_orders'] > 0 ) $items[] = $counts['wc_orders'] . ' WC orders';
+                        if ( $counts['custom_orders'] > 0 ) $items[] = $counts['custom_orders'] . ' custom orders';
+                        if ( $counts['commissions'] > 0 ) $items[] = $counts['commissions'] . ' commissions';
+                        if ( $counts['categories'] > 0 ) $items[] = $counts['categories'] . ' categories';
+                        if ( $counts['ingredients'] > 0 ) $items[] = $counts['ingredients'] . ' ingredients';
+                        echo esc_html( implode( ' • ', $items ) );
+                        ?>
+                    </div>
+                <?php else : ?>
+                    <span style="color: #666;">
+                        <span class="dashicons dashicons-minus" style="vertical-align: middle;"></span>
+                        <?php esc_html_e( 'No sample data - click Generate to create test data', 'pls-private-label-store' ); ?>
+                    </span>
+                <?php endif; ?>
+            </div>
+            <div class="pls-action-buttons">
+                <button type="button" class="button button-primary" id="pls-generate-sample-data">
+                    <span class="dashicons dashicons-database-add"></span>
+                    <?php echo $sample_data_status['has_data'] ? esc_html__( 'Regenerate Sample Data', 'pls-private-label-store' ) : esc_html__( 'Generate Sample Data', 'pls-private-label-store' ); ?>
+                </button>
+                <?php if ( $sample_data_status['has_data'] ) : ?>
+                    <button type="button" class="button button-link-delete" id="pls-delete-sample-data" style="color: #d63638;">
+                        <span class="dashicons dashicons-trash"></span>
+                        <?php esc_html_e( 'Delete All Sample Data', 'pls-private-label-store' ); ?>
+                    </button>
+                <?php endif; ?>
+            </div>
+            <p class="description">
+                <?php esc_html_e( 'Generate creates: 10 products, 4 bundles, 50+ WC orders (12 months history), 15 custom orders, categories, ingredients, and commissions.', 'pls-private-label-store' ); ?>
+            </p>
         </div>
     </div>
 

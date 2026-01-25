@@ -287,6 +287,95 @@ final class PLS_Sample_Data {
     }
 
     /**
+     * Public method to delete all sample data.
+     * Returns action log with details.
+     *
+     * @return array Array with 'success', 'message', and 'action_log'.
+     */
+    public static function delete() {
+        $action_log = array();
+        
+        $action_log[] = array( 'message' => 'Starting sample data deletion...', 'type' => 'info' );
+        error_log( '[PLS Sample Data] ==========================================' );
+        error_log( '[PLS Sample Data] Starting sample data DELETION...' );
+        
+        try {
+            self::cleanup();
+            $action_log[] = array( 'message' => '✓ All sample data deleted successfully.', 'type' => 'success' );
+            error_log( '[PLS Sample Data] ✓ Sample data deletion completed.' );
+            
+            return array(
+                'success'    => true,
+                'message'    => 'Sample data deleted successfully.',
+                'action_log' => $action_log,
+            );
+        } catch ( Exception $e ) {
+            $action_log[] = array( 'message' => '✗ Error: ' . $e->getMessage(), 'type' => 'error' );
+            error_log( '[PLS Sample Data] ERROR: ' . $e->getMessage() );
+            
+            return array(
+                'success'    => false,
+                'message'    => 'Error deleting sample data: ' . $e->getMessage(),
+                'action_log' => $action_log,
+            );
+        }
+    }
+
+    /**
+     * Check if sample data currently exists.
+     *
+     * @return array Array with 'has_data' bool and 'counts' array.
+     */
+    public static function get_sample_data_status() {
+        global $wpdb;
+        
+        $counts = array(
+            'products'      => 0,
+            'bundles'       => 0,
+            'custom_orders' => 0,
+            'commissions'   => 0,
+            'wc_orders'     => 0,
+            'categories'    => 0,
+            'ingredients'   => 0,
+        );
+        
+        // Count PLS products
+        $counts['products'] = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}pls_base_product" );
+        
+        // Count bundles
+        $counts['bundles'] = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}pls_bundle" );
+        
+        // Count custom orders
+        $counts['custom_orders'] = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}pls_custom_order" );
+        
+        // Count commissions
+        $counts['commissions'] = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}pls_order_commission" );
+        
+        // Count sample WooCommerce orders
+        if ( class_exists( 'WooCommerce' ) ) {
+            $counts['wc_orders'] = (int) $wpdb->get_var(
+                "SELECT COUNT(*) FROM {$wpdb->postmeta} WHERE meta_key = '_pls_sample_order' AND meta_value = '1'"
+            );
+        }
+        
+        // Count product categories (excluding 'uncategorized')
+        $categories = get_terms( array( 'taxonomy' => 'product_cat', 'hide_empty' => false, 'exclude' => array( get_option( 'default_product_cat', 0 ) ) ) );
+        $counts['categories'] = is_wp_error( $categories ) ? 0 : count( $categories );
+        
+        // Count ingredients
+        $ingredients = get_terms( array( 'taxonomy' => 'pls_ingredient', 'hide_empty' => false ) );
+        $counts['ingredients'] = is_wp_error( $ingredients ) ? 0 : count( $ingredients );
+        
+        $has_data = ( $counts['products'] > 0 || $counts['bundles'] > 0 || $counts['custom_orders'] > 0 || 
+                     $counts['commissions'] > 0 || $counts['wc_orders'] > 0 );
+        
+        return array(
+            'has_data' => $has_data,
+            'counts'   => $counts,
+        );
+    }
+
+    /**
      * Clean up existing data - deletes everything that sample data can create.
      */
     private static function cleanup() {

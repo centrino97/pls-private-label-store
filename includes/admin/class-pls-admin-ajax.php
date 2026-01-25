@@ -3656,6 +3656,13 @@ final class PLS_Admin_Ajax {
                 $result = PLS_System_Test::fix_generate_sample_data();
                 break;
 
+            case 'delete_sample_data':
+                // Increase timeout for cleanup
+                @set_time_limit( 120 );
+                @ini_set( 'max_execution_time', 120 );
+                $result = PLS_System_Test::fix_delete_sample_data();
+                break;
+
             default:
                 $result = array(
                     'success' => false,

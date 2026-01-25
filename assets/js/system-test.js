@@ -9,6 +9,10 @@
     const SystemTest = {
         // Test categories in order
         categories: [
+            'pls_info',
+            'server_config',
+            'wc_settings',
+            'user_roles',
             'database',
             'product_options',
             'products_sync',
@@ -17,7 +21,8 @@
             'wc_orders',
             'custom_orders',
             'commissions',
-            'revenue'
+            'revenue',
+            'frontend_display'
         ],
 
         // Current test state
@@ -58,6 +63,7 @@
             $('#pls-resync-products').on('click', () => this.runAction('resync_products'));
             $('#pls-resync-bundles').on('click', () => this.runAction('resync_bundles'));
             $('#pls-generate-sample-data').on('click', () => this.runAction('generate_sample_data'));
+            $('#pls-delete-sample-data').on('click', () => this.confirmAndDelete());
         },
 
         /**
@@ -170,6 +176,15 @@
                     }
                 });
             });
+        },
+
+        /**
+         * Confirm and delete sample data.
+         */
+        confirmAndDelete: function() {
+            if (confirm('Are you sure you want to delete ALL sample data?\n\nThis will remove:\n• All products and variations\n• All bundles\n• All sample WooCommerce orders\n• All custom orders\n• All commission records\n• All categories and ingredients\n\nThis action cannot be undone.')) {
+                this.runAction('delete_sample_data');
+            }
         },
 
         /**

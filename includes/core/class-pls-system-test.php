@@ -1922,4 +1922,37 @@ final class PLS_System_Test {
         
         return $result;
     }
+
+    /**
+     * Delete all sample data.
+     *
+     * @return array Result.
+     */
+    public static function fix_delete_sample_data() {
+        if ( ! class_exists( 'PLS_Sample_Data' ) ) {
+            require_once PLS_PLS_DIR . 'includes/core/class-pls-sample-data.php';
+        }
+
+        $result = PLS_Sample_Data::delete();
+        
+        // Ensure action_log is included in the result
+        if ( ! isset( $result['action_log'] ) ) {
+            $result['action_log'] = array();
+        }
+        
+        return $result;
+    }
+
+    /**
+     * Get sample data status.
+     *
+     * @return array Status with has_data and counts.
+     */
+    public static function get_sample_data_status() {
+        if ( ! class_exists( 'PLS_Sample_Data' ) ) {
+            require_once PLS_PLS_DIR . 'includes/core/class-pls-sample-data.php';
+        }
+
+        return PLS_Sample_Data::get_sample_data_status();
+    }
 }
