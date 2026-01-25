@@ -34,10 +34,11 @@ final class PLS_Sample_Data {
         error_log( '[PLS Sample Data] Execution time limit set to 300 seconds' );
         error_log( '[PLS Sample Data] ==========================================' );
         
-        // Step 1: Cleanup
-        error_log( '[PLS Sample Data] Step 1: Cleaning up existing data...' );
-        self::cleanup();
-        error_log( '[PLS Sample Data] ✓ Cleanup completed.' );
+        try {
+            // Step 1: Cleanup
+            error_log( '[PLS Sample Data] Step 1: Cleaning up existing data...' );
+            self::cleanup();
+            error_log( '[PLS Sample Data] ✓ Cleanup completed.' );
 
         // Step 2: Categories
         error_log( '[PLS Sample Data] Step 2: Adding categories...' );
@@ -142,9 +143,26 @@ final class PLS_Sample_Data {
             update_option( 'pls_commission_email_recipients', array( 'n.nikolic97@gmail.com' ) );
         }
 
-        error_log( '[PLS Sample Data] ==========================================' );
-        error_log( '[PLS Sample Data] ✓ Sample data generation completed successfully!' );
-        error_log( '[PLS Sample Data] ==========================================' );
+            error_log( '[PLS Sample Data] ==========================================' );
+            error_log( '[PLS Sample Data] ✓ Sample data generation completed successfully!' );
+            error_log( '[PLS Sample Data] ==========================================' );
+        } catch ( Exception $e ) {
+            error_log( '[PLS Sample Data] ==========================================' );
+            error_log( '[PLS Sample Data] ❌ ERROR: Sample data generation failed!' );
+            error_log( '[PLS Sample Data] Error: ' . $e->getMessage() );
+            error_log( '[PLS Sample Data] File: ' . $e->getFile() . ':' . $e->getLine() );
+            error_log( '[PLS Sample Data] Stack trace: ' . $e->getTraceAsString() );
+            error_log( '[PLS Sample Data] ==========================================' );
+            throw $e; // Re-throw to be caught by AJAX handler
+        } catch ( Error $e ) {
+            error_log( '[PLS Sample Data] ==========================================' );
+            error_log( '[PLS Sample Data] ❌ FATAL ERROR: Sample data generation failed!' );
+            error_log( '[PLS Sample Data] Error: ' . $e->getMessage() );
+            error_log( '[PLS Sample Data] File: ' . $e->getFile() . ':' . $e->getLine() );
+            error_log( '[PLS Sample Data] Stack trace: ' . $e->getTraceAsString() );
+            error_log( '[PLS Sample Data] ==========================================' );
+            throw $e; // Re-throw to be caught by AJAX handler
+        }
     }
 
     /**
@@ -2306,15 +2324,65 @@ final class PLS_Sample_Data {
                 // Mark as sample order for cleanup
                 $order->update_meta_data( '_pls_sample_order', '1' );
                 
-                // Save order
-                $order->save();
-                $orders_created++;
-                error_log( '[PLS Sample Data] Order: Created order #' . $order->get_id() . ' with ' . $products_added . ' product(s), status: ' . $order_data['status'] );
+                // Save order - wrap in try-catch to handle save errors
+                try {
+                    $order->save();
+                    $orders_created++;
+                    error_log( '[PLS Sample Data] Order: Created order #' . $order->get_id() . ' with ' . $products_added . ' product(s), status: ' . $order_data['status'] );
+                } catch ( Exception $e ) {
+                    error_log( '[PLS Sample Data] Order: Exception saving order: ' . $e->getMessage() );
+                    // Try to delete the order if save failed
+                    try {
+                        $order->delete( true );
+                    } catch ( Exception $delete_error ) {
+                        error_log( '[PLS Sample Data] Order: Could not delete failed order: ' . $delete_error->getMessage() );
+                    }
+                    $orders_skipped++;
+                } catch ( Error $e ) {
+                    error_log( '[PLS Sample Data] Order: Fatal error saving order: ' . $e->getMessage() );
+                    // Try to delete the order if save failed
+                    try {
+                        $order->delete( true );
+                    } catch ( Exception $delete_error ) {
+                        error_log( '[PLS Sample Data] Order: Could not delete failed order: ' . $delete_error->getMessage() );
+                    }
+                    $orders_skipped++;
+                }
             } else {
                 // Delete the empty order
+                try {
+                    $order->delete( true );
+                    $orders_skipped++;
+                    error_log( '[PLS Sample Data] Order: Deleting empty order #' . $order->get_id() . ' (no products could be added)' );
+                } catch ( Exception $e ) {
+                    error_log( '[PLS Sample Data] Order: Exception deleting empty order: ' . $e->getMessage() );
+                    $orders_skipped++;
+                }
+            }
+            } catch ( Exception $e ) {
+                error_log( '[PLS Sample Data] Order #' . ( $order_index + 1 ) . ': Exception processing order: ' . $e->getMessage() );
+                // Try to delete order if it was created
+                if ( isset( $order ) && $order instanceof WC_Order ) {
+                    try {
+                        $order->delete( true );
+                    } catch ( Exception $delete_error ) {
+                        // Ignore delete errors
+                    }
+                }
                 $orders_skipped++;
-                error_log( '[PLS Sample Data] Order: Deleting empty order #' . $order->get_id() . ' (no products could be added)' );
-                $order->delete( true );
+                continue;
+            } catch ( Error $e ) {
+                error_log( '[PLS Sample Data] Order #' . ( $order_index + 1 ) . ': Fatal error processing order: ' . $e->getMessage() );
+                // Try to delete order if it was created
+                if ( isset( $order ) && $order instanceof WC_Order ) {
+                    try {
+                        $order->delete( true );
+                    } catch ( Exception $delete_error ) {
+                        // Ignore delete errors
+                    }
+                }
+                $orders_skipped++;
+                continue;
             }
         }
 
