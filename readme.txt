@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 2.4.1
+Stable tag: 2.4.2
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,14 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 2.4.2 =
+* **MAJOR:** Complete backend sync - Entire plugin now reads from WooCommerce directly as source of truth
+* **IMPROVED:** Product reconciliation - Reads ALL WooCommerce products with PLS markers and syncs to PLS records
+* **IMPROVED:** Sync verification - All sync operations verify products exist in WooCommerce before proceeding
+* **IMPROVED:** Auto-recovery - Creates PLS records for WooCommerce products that exist but have no PLS record
+* **IMPROVED:** Mismatch detection - Detects and fixes mismatches between PLS records and WooCommerce meta
+* **FIXED:** Stale references - Automatically clears PLS wc_product_id references when WooCommerce products don't exist
+
 = 2.4.1 =
 * **FIXED:** Sample data cleanup now reads ALL WooCommerce products directly (not just PLS records) to ensure sync
 * **IMPROVED:** Cleanup checks WooCommerce directly for products with PLS meta markers for complete sync guarantee
