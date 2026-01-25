@@ -118,6 +118,7 @@ final class PLS_Admin_Menu {
             'pls-revenue',
             'pls-product-preview',
             'pls-settings',
+            'pls-data-import', // Data import page (admin only)
             'pls-system-test', // System test page (admin only)
         );
 
@@ -326,6 +327,16 @@ final class PLS_Admin_Menu {
             array( __CLASS__, 'render_settings' )
         );
 
+        // Data Import page (admin only)
+        add_submenu_page(
+            'pls-dashboard',
+            __( 'PLS – Data Import', 'pls-private-label-store' ),
+            __( 'Data Import', 'pls-private-label-store' ),
+            'manage_options',
+            'pls-data-import',
+            array( __CLASS__, 'render_data_import' )
+        );
+
         // System Test page (admin only)
         add_submenu_page(
             'pls-dashboard',
@@ -522,6 +533,10 @@ final class PLS_Admin_Menu {
 
     public static function render_settings() {
         require PLS_PLS_DIR . 'includes/admin/screens/settings.php';
+    }
+
+    public static function render_data_import() {
+        require PLS_PLS_DIR . 'includes/admin/screens/data-import.php';
     }
 
     public static function render_system_test() {

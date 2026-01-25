@@ -80,7 +80,10 @@ if ( is_wp_error( $categories ) ) {
         <div>
             <p class="pls-label"><?php esc_html_e( 'Custom Orders', 'pls-private-label-store' ); ?></p>
             <h1><?php esc_html_e( 'Custom Order Management', 'pls-private-label-store' ); ?></h1>
-            <p class="description"><?php esc_html_e( 'Manage custom order leads through their lifecycle stages.', 'pls-private-label-store' ); ?></p>
+            <p class="description">
+                <?php esc_html_e( 'Manage custom order leads through their lifecycle stages. Drag cards between stages or use the stage navigation buttons.', 'pls-private-label-store' ); ?>
+                <span class="pls-help-icon" title="<?php esc_attr_e( 'Workflow: New Lead → Sampling → Production → On Hold → Done. Convert to WooCommerce order when ready to process.', 'pls-private-label-store' ); ?>" style="cursor: help; margin-left: 4px;">ⓘ</span>
+            </p>
         </div>
         <div>
             <button type="button" class="button button-primary pls-create-custom-order"><?php esc_html_e( 'Add Custom Order', 'pls-private-label-store' ); ?></button>
@@ -96,7 +99,17 @@ if ( is_wp_error( $categories ) ) {
 
     <div class="pls-kanban-board" id="pls-custom-orders-kanban">
         <?php foreach ( $stages as $stage_key => $stage_label ) : ?>
-            <div class="pls-kanban-column" data-stage="<?php echo esc_attr( $stage_key ); ?>">
+            <div class="pls-kanban-column" data-stage="<?php echo esc_attr( $stage_key ); ?>" 
+                 title="<?php 
+                    $stage_descriptions = array(
+                        'new_lead' => esc_attr__( 'New custom order requests. Review and move to Sampling when samples are sent.', 'pls-private-label-store' ),
+                        'sampling' => esc_attr__( 'Orders in sampling phase. Track sample status, cost, and feedback.', 'pls-private-label-store' ),
+                        'production' => esc_attr__( 'Orders approved and in production. Track production costs and timeline.', 'pls-private-label-store' ),
+                        'on_hold' => esc_attr__( 'Orders temporarily paused. May need customer approval or have issues.', 'pls-private-label-store' ),
+                        'done' => esc_attr__( 'Completed orders. Set financial data (total value, commission) when moving here.', 'pls-private-label-store' ),
+                    );
+                    echo isset( $stage_descriptions[ $stage_key ] ) ? $stage_descriptions[ $stage_key ] : '';
+                 ?>">
                 <div class="pls-kanban-column__header">
                     <h3><?php echo esc_html( $stage_label ); ?></h3>
                     <span class="pls-kanban-count"><?php echo count( $orders_by_stage[ $stage_key ] ); ?></span>

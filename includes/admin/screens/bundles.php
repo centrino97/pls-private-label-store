@@ -11,7 +11,10 @@ $bundles = PLS_Repo_Bundle::all();
         <div>
             <p class="pls-label"><?php esc_html_e( 'Bundles', 'pls-private-label-store' ); ?></p>
             <h1><?php esc_html_e( 'Bundles & Deals', 'pls-private-label-store' ); ?></h1>
-            <p class="description"><?php esc_html_e( 'Create product bundles and special offers that combine multiple products or pack tiers.', 'pls-private-label-store' ); ?></p>
+            <p class="description">
+                <?php esc_html_e( 'Create product bundles and special offers that combine multiple products or pack tiers. Bundles automatically appear in cart when customers qualify.', 'pls-private-label-store' ); ?>
+                <span class="pls-help-icon" title="<?php esc_attr_e( 'Bundle types: Mini Line (2 SKUs), Starter Line (3 SKUs), Growth Line (4 SKUs), Premium Line (6 SKUs). Customers qualify when cart matches bundle requirements.', 'pls-private-label-store' ); ?>" style="cursor: help; margin-left: 4px;">ⓘ</span>
+            </p>
         </div>
         <div>
             <button type="button" class="button button-primary button-hero" id="pls-create-bundle">
@@ -70,18 +73,30 @@ $bundles = PLS_Repo_Bundle::all();
                         <?php endif; ?>
                     </div>
                     <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--pls-gray-200);">
-                        <button type="button" class="button button-small pls-btn--primary pls-edit-bundle" data-bundle-id="<?php echo esc_attr( $bundle->id ); ?>">
+                        <button type="button" 
+                                class="button button-small pls-btn--primary pls-edit-bundle" 
+                                data-bundle-id="<?php echo esc_attr( $bundle->id ); ?>"
+                                title="<?php esc_attr_e( 'Edit bundle details, pricing, and commission rates', 'pls-private-label-store' ); ?>">
                             <?php esc_html_e( 'Edit', 'pls-private-label-store' ); ?>
                         </button>
                         <?php if ( ! empty( $bundle->wc_product_id ) ) : ?>
-                            <a href="<?php echo esc_url( admin_url( 'post.php?post=' . $bundle->wc_product_id . '&action=edit' ) ); ?>" class="button button-small pls-btn--ghost" target="_blank">
+                            <a href="<?php echo esc_url( admin_url( 'post.php?post=' . $bundle->wc_product_id . '&action=edit' ) ); ?>" 
+                               class="button button-small pls-btn--ghost" 
+                               target="_blank"
+                               title="<?php esc_attr_e( 'Open bundle product in WooCommerce admin', 'pls-private-label-store' ); ?>">
                                 <?php esc_html_e( 'View in WC', 'pls-private-label-store' ); ?>
                             </a>
                         <?php endif; ?>
-                        <button type="button" class="button button-small pls-btn--ghost pls-sync-bundle" data-bundle-id="<?php echo esc_attr( $bundle->id ); ?>">
+                        <button type="button" 
+                                class="button button-small pls-btn--ghost pls-sync-bundle" 
+                                data-bundle-id="<?php echo esc_attr( $bundle->id ); ?>"
+                                title="<?php esc_attr_e( 'Sync bundle to WooCommerce. Creates or updates the grouped product.', 'pls-private-label-store' ); ?>">
                             <?php esc_html_e( 'Sync', 'pls-private-label-store' ); ?>
                         </button>
-                        <button type="button" class="button button-small pls-btn--ghost pls-btn--danger pls-delete-bundle" data-bundle-id="<?php echo esc_attr( $bundle->id ); ?>">
+                        <button type="button" 
+                                class="button button-small pls-btn--ghost pls-btn--danger pls-delete-bundle" 
+                                data-bundle-id="<?php echo esc_attr( $bundle->id ); ?>"
+                                title="<?php esc_attr_e( 'Delete bundle permanently. This will also delete the WooCommerce product if synced.', 'pls-private-label-store' ); ?>">
                             <?php esc_html_e( 'Delete', 'pls-private-label-store' ); ?>
                         </button>
                     </div>
@@ -127,14 +142,20 @@ $bundles = PLS_Repo_Bundle::all();
                     </div>
                     <div class="pls-field-grid">
                         <div class="pls-input-group">
-                            <label for="sku_count"><?php esc_html_e( 'SKU Count', 'pls-private-label-store' ); ?> <span class="required">*</span></label>
+                            <label for="sku_count">
+                                <?php esc_html_e( 'SKU Count', 'pls-private-label-store' ); ?> <span class="required">*</span>
+                                <span class="pls-help-icon" title="<?php esc_attr_e( 'Number of different products (SKUs) included in this bundle. Example: Mini Line = 2 different products.', 'pls-private-label-store' ); ?>" style="cursor: help; margin-left: 4px; font-size: 12px;">ⓘ</span>
+                            </label>
                             <input type="number" id="sku_count" name="sku_count" class="pls-input" min="2" max="10" placeholder="2" required />
-                            <p class="description"><?php esc_html_e( 'Number of different products in bundle.', 'pls-private-label-store' ); ?></p>
+                            <p class="description"><?php esc_html_e( 'Number of different products in bundle. Example: Mini Line = 2 SKUs, Starter Line = 3 SKUs.', 'pls-private-label-store' ); ?></p>
                         </div>
                         <div class="pls-input-group">
-                            <label for="units_per_sku"><?php esc_html_e( 'Units per SKU', 'pls-private-label-store' ); ?> <span class="required">*</span></label>
+                            <label for="units_per_sku">
+                                <?php esc_html_e( 'Units per SKU', 'pls-private-label-store' ); ?> <span class="required">*</span>
+                                <span class="pls-help-icon" title="<?php esc_attr_e( 'How many units of each product are included. Example: If SKU Count = 2 and Units per SKU = 250, customer gets 2 products × 250 units each = 500 total units.', 'pls-private-label-store' ); ?>" style="cursor: help; margin-left: 4px; font-size: 12px;">ⓘ</span>
+                            </label>
                             <input type="number" id="units_per_sku" name="units_per_sku" class="pls-input" min="1" placeholder="250" required />
-                            <p class="description"><?php esc_html_e( 'Units for each product in bundle.', 'pls-private-label-store' ); ?></p>
+                            <p class="description"><?php esc_html_e( 'Units for each product in bundle. Total units = SKU Count × Units per SKU.', 'pls-private-label-store' ); ?></p>
                         </div>
                     </div>
                     <div class="pls-field-grid">

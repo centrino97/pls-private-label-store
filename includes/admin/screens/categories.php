@@ -94,7 +94,10 @@ $categories = array_filter(
         <div>
             <p class="pls-label"><?php esc_html_e( 'Categories', 'pls-private-label-store' ); ?></p>
             <h1><?php esc_html_e( 'Product Categories', 'pls-private-label-store' ); ?></h1>
-            <p class="description"><?php esc_html_e( 'Manage product categories with SEO meta fields.', 'pls-private-label-store' ); ?></p>
+            <p class="description">
+                <?php esc_html_e( 'Manage product categories with SEO meta fields. Categories help organize products and improve search visibility.', 'pls-private-label-store' ); ?>
+                <span class="pls-help-icon" title="<?php esc_attr_e( 'Meta Title and Meta Description are used for SEO. They appear in search results and help improve visibility.', 'pls-private-label-store' ); ?>" style="cursor: help; margin-left: 4px;">ⓘ</span>
+            </p>
         </div>
     </div>
 

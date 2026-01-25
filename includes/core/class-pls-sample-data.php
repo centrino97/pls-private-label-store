@@ -378,7 +378,7 @@ final class PLS_Sample_Data {
     /**
      * Clean up existing data - deletes everything that sample data can create.
      */
-    private static function cleanup() {
+    public static function cleanup() {
         error_log( '[PLS Sample Data] Cleanup: Starting comprehensive data cleanup...' );
         global $wpdb;
 
@@ -576,7 +576,7 @@ final class PLS_Sample_Data {
     /**
      * Add sample categories.
      */
-    private static function add_categories() {
+    public static function add_categories() {
         // Create or get Face parent category
         $face_term = term_exists( 'Face', 'product_cat' );
         if ( ! $face_term ) {
@@ -621,7 +621,7 @@ final class PLS_Sample_Data {
     /**
      * Add sample ingredients.
      */
-    private static function add_ingredients() {
+    public static function add_ingredients() {
         $ingredients = array(
             // Tier 3+ ingredients
             'Emu Apple' => array( 'description' => 'Wild-harvested Australian ingredient with anti-inflammatory properties', 'min_tier' => 3 ),
@@ -689,7 +689,7 @@ final class PLS_Sample_Data {
     /**
      * Add product options with values.
      */
-    private static function add_product_options() {
+    public static function add_product_options() {
         global $wpdb;
         $attributes_table = $wpdb->prefix . 'pls_attribute';
         $values_table = $wpdb->prefix . 'pls_attribute_value';
@@ -1075,7 +1075,7 @@ final class PLS_Sample_Data {
     /**
      * Add sample products.
      */
-    private static function add_products() {
+    public static function add_products() {
         $categories = get_terms( array(
             'taxonomy' => 'product_cat',
             'hide_empty' => false,
@@ -1672,7 +1672,7 @@ final class PLS_Sample_Data {
     /**
      * Add sample bundles.
      */
-    private static function add_bundles() {
+    public static function add_bundles() {
         $bundles = array(
             array(
                 'name' => 'Mini Line Bundle',
@@ -1760,7 +1760,7 @@ final class PLS_Sample_Data {
     /**
      * Sync products and bundles to WooCommerce.
      */
-    private static function sync_to_woocommerce() {
+    public static function sync_to_woocommerce() {
         if ( ! self::is_woocommerce_active() ) {
             if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
                 PLS_Debug::error( 'WooCommerce not active - sync skipped', array() );
@@ -1966,7 +1966,7 @@ final class PLS_Sample_Data {
     /**
      * Add sample WooCommerce orders with PLS products.
      */
-    private static function add_woocommerce_orders() {
+    public static function add_woocommerce_orders() {
         if ( ! class_exists( 'WooCommerce' ) || ! function_exists( 'wc_create_order' ) ) {
             return array( 'orders_created' => 0, 'orders_skipped' => 0, 'message' => 'WooCommerce not active' );
         }
@@ -2660,7 +2660,7 @@ final class PLS_Sample_Data {
     /**
      * Add sample custom orders.
      */
-    private static function add_custom_orders() {
+    public static function add_custom_orders() {
         global $wpdb;
         $table = $wpdb->prefix . 'pls_custom_order';
 
@@ -2881,7 +2881,7 @@ final class PLS_Sample_Data {
     /**
      * Add sample commission records.
      */
-    private static function add_commissions() {
+    public static function add_commissions() {
         if ( ! self::is_woocommerce_active() ) {
             return;
         }

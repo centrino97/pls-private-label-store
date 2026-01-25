@@ -108,7 +108,10 @@ if ( is_wp_error( $ingredients ) ) {
 ?>
 <div class="wrap pls-wrap">
   <h1><?php esc_html_e( 'PLS – Ingredients Base', 'pls-private-label-store' ); ?></h1>
-  <p class="description"><?php esc_html_e( 'Maintain a clean library of ingredients (with optional icons) to reuse across products.', 'pls-private-label-store' ); ?></p>
+  <p class="description">
+      <?php esc_html_e( 'Maintain a clean library of ingredients (with optional icons) to reuse across products.', 'pls-private-label-store' ); ?>
+      <span class="pls-help-icon" title="<?php esc_attr_e( 'Base/INCI ingredients are the foundation. Active ingredients (Tier 3+) become selectable options for customers. Key ingredients appear prominently on product pages.', 'pls-private-label-store' ); ?>" style="cursor: help; margin-left: 4px;">ⓘ</span>
+  </p>
 
   <?php if ( $notice ) : ?>
       <div class="notice notice-success is-dismissible"><p><?php echo esc_html( $notice ); ?></p></div>
@@ -134,6 +137,7 @@ if ( is_wp_error( $ingredients ) ) {
         <label>
           <input type="checkbox" name="ingredient_is_active" value="1" />
           <?php esc_html_e( 'Active Ingredient (customer selectable at Tier 3+)', 'pls-private-label-store' ); ?>
+          <span class="pls-help-icon" title="<?php esc_attr_e( 'When checked, this ingredient becomes a selectable option for Tier 3+ customers in the product configurator. Base ingredients are always included.', 'pls-private-label-store' ); ?>" style="cursor: help; margin-left: 4px; font-size: 12px;">ⓘ</span>
         </label>
         <p class="description" style="margin-top: 4px;"><?php esc_html_e( 'Uncheck for base/INCI ingredients that are not customer-selectable.', 'pls-private-label-store' ); ?></p>
       </div>

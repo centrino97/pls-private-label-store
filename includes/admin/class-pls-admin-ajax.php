@@ -60,6 +60,10 @@ final class PLS_Admin_Ajax {
         add_action( 'wp_ajax_pls_run_test_category', array( __CLASS__, 'run_test_category' ) );
         add_action( 'wp_ajax_pls_run_all_tests', array( __CLASS__, 'run_all_tests' ) );
         add_action( 'wp_ajax_pls_fix_issue', array( __CLASS__, 'fix_issue' ) );
+        
+        // Data Import AJAX handlers
+        add_action( 'wp_ajax_pls_check_prerequisites', array( __CLASS__, 'check_prerequisites' ) );
+        add_action( 'wp_ajax_pls_import_action', array( __CLASS__, 'import_action' ) );
     }
 
     /**
@@ -3675,5 +3679,181 @@ final class PLS_Admin_Ajax {
         } else {
             wp_send_json_error( $result );
         }
+    }
+
+    /**
+     * AJAX: Check prerequisites for data import.
+     */
+    public static function check_prerequisites() {
+        check_ajax_referer( 'pls_data_import', 'nonce' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $checks = array();
+        $all_passed = true;
+
+        // Check WooCommerce
+        $woocommerce_active = class_exists( 'WooCommerce' ) && function_exists( 'wc_create_order' );
+        $checks['woocommerce'] = array(
+            'pass' => $woocommerce_active,
+            'message' => $woocommerce_active ? __( 'WooCommerce is active', 'pls-private-label-store' ) : __( 'WooCommerce is not active', 'pls-private-label-store' ),
+        );
+        if ( ! $woocommerce_active ) {
+            $all_passed = false;
+        }
+
+        // Check database tables
+        global $wpdb;
+        $required_tables = array(
+            'pls_base_product',
+            'pls_pack_tier',
+            'pls_product_profile',
+            'pls_attribute',
+            'pls_bundle',
+            'pls_custom_order',
+        );
+        $tables_exist = true;
+        foreach ( $required_tables as $table ) {
+            $table_name = $wpdb->prefix . $table;
+            $exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_name ) ) === $table_name;
+            if ( ! $exists ) {
+                $tables_exist = false;
+                break;
+            }
+        }
+        $checks['database'] = array(
+            'pass' => $tables_exist,
+            'message' => $tables_exist ? __( 'All required database tables exist', 'pls-private-label-store' ) : __( 'Some database tables are missing', 'pls-private-label-store' ),
+        );
+        if ( ! $tables_exist ) {
+            $all_passed = false;
+        }
+
+        // Check PHP memory
+        $memory_limit = ini_get( 'memory_limit' );
+        $memory_bytes = wp_convert_hr_to_bytes( $memory_limit );
+        $min_memory = 256 * 1024 * 1024; // 256MB
+        $memory_ok = $memory_bytes >= $min_memory;
+        $checks['memory'] = array(
+            'pass' => $memory_ok,
+            'message' => $memory_ok ? sprintf( __( 'Memory limit: %s (sufficient)', 'pls-private-label-store' ), $memory_limit ) : sprintf( __( 'Memory limit: %s (recommend at least 256MB)', 'pls-private-label-store' ), $memory_limit ),
+        );
+        if ( ! $memory_ok ) {
+            $all_passed = false;
+        }
+
+        wp_send_json_success( array(
+            'checks' => $checks,
+            'all_passed' => $all_passed,
+        ) );
+    }
+
+    /**
+     * AJAX: Handle multistep data import actions.
+     */
+    public static function import_action() {
+        check_ajax_referer( 'pls_data_import', 'nonce' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $step = isset( $_POST['step'] ) ? sanitize_text_field( wp_unslash( $_POST['step'] ) ) : '';
+        
+        // Increase timeout for import operations
+        @set_time_limit( 300 );
+        @ini_set( 'max_execution_time', 300 );
+
+        require_once PLS_PLS_DIR . 'includes/core/class-pls-sample-data.php';
+        $action_log = array();
+
+        switch ( $step ) {
+            case 'cleanup':
+                PLS_Sample_Data::cleanup();
+                $action_log[] = array( 'message' => __( 'All existing data cleaned up successfully.', 'pls-private-label-store' ), 'type' => 'success' );
+                break;
+
+            case 'categories_ingredients':
+                PLS_Sample_Data::add_categories();
+                PLS_Sample_Data::add_ingredients();
+                $categories = get_terms( array( 'taxonomy' => 'product_cat', 'hide_empty' => false ) );
+                $ingredients = get_terms( array( 'taxonomy' => 'pls_ingredient', 'hide_empty' => false ) );
+                $action_log[] = array( 'message' => sprintf( __( 'Created %d categories and %d ingredients.', 'pls-private-label-store' ), count( $categories ), count( $ingredients ) ), 'type' => 'success' );
+                break;
+
+            case 'attributes':
+                PLS_Sample_Data::add_product_options();
+                $product_options = PLS_Repo_Attributes::get_product_options();
+                $action_log[] = array( 'message' => sprintf( __( 'Created %d product options.', 'pls-private-label-store' ), count( $product_options ) ), 'type' => 'success' );
+                break;
+
+            case 'products':
+                PLS_Sample_Data::add_products();
+                if ( isset( $_POST['sync_to_wc'] ) && $_POST['sync_to_wc'] === '1' ) {
+                    $sync_result = PLS_Sample_Data::sync_to_woocommerce();
+                    if ( is_array( $sync_result ) ) {
+                        $products_synced = $sync_result['products_synced'] ?? 0;
+                        $action_log[] = array( 'message' => sprintf( __( 'Synced %d products to WooCommerce.', 'pls-private-label-store' ), $products_synced ), 'type' => 'success' );
+                    }
+                }
+                $products = PLS_Repo_Base_Product::all();
+                $action_log[] = array( 'message' => sprintf( __( 'Created %d products.', 'pls-private-label-store' ), count( $products ) ), 'type' => 'success' );
+                break;
+
+            case 'bundles':
+                PLS_Sample_Data::add_bundles();
+                require_once PLS_PLS_DIR . 'includes/data/repo-bundle.php';
+                $bundles = PLS_Repo_Bundle::all();
+                $action_log[] = array( 'message' => sprintf( __( 'Created %d bundles.', 'pls-private-label-store' ), count( $bundles ) ), 'type' => 'success' );
+                break;
+
+            case 'wc_orders':
+                $orders_result = PLS_Sample_Data::add_woocommerce_orders();
+                if ( is_array( $orders_result ) ) {
+                    $orders_created = $orders_result['orders_created'] ?? 0;
+                    $orders_skipped = $orders_result['orders_skipped'] ?? 0;
+                    $action_log[] = array( 'message' => sprintf( __( 'Created %d WooCommerce orders (%d skipped).', 'pls-private-label-store' ), $orders_created, $orders_skipped ), 'type' => 'success' );
+                } else {
+                    $action_log[] = array( 'message' => __( 'WooCommerce orders created.', 'pls-private-label-store' ), 'type' => 'success' );
+                }
+                break;
+
+            case 'custom_orders':
+                $custom_orders_result = PLS_Sample_Data::add_custom_orders();
+                if ( is_array( $custom_orders_result ) ) {
+                    $custom_orders_created = $custom_orders_result['orders_created'] ?? 0;
+                    $action_log[] = array( 'message' => sprintf( __( 'Created %d custom orders.', 'pls-private-label-store' ), $custom_orders_created ), 'type' => 'success' );
+                } else {
+                    $action_log[] = array( 'message' => __( 'Custom orders created.', 'pls-private-label-store' ), 'type' => 'success' );
+                }
+                break;
+
+            case 'commissions':
+                PLS_Sample_Data::add_commissions();
+                require_once PLS_PLS_DIR . 'includes/data/repo-commission.php';
+                $commissions = PLS_Repo_Commission::all();
+                $action_log[] = array( 'message' => sprintf( __( 'Created %d commission records.', 'pls-private-label-store' ), count( $commissions ) ), 'type' => 'success' );
+                break;
+
+            case 'all':
+                // Import everything at once (quick import)
+                $result = PLS_Sample_Data::generate();
+                if ( isset( $result['action_log'] ) ) {
+                    $action_log = $result['action_log'];
+                } else {
+                    $action_log[] = array( 'message' => __( 'All data imported successfully.', 'pls-private-label-store' ), 'type' => 'success' );
+                }
+                break;
+
+            default:
+                wp_send_json_error( array( 'message' => __( 'Unknown import step.', 'pls-private-label-store' ) ), 400 );
+        }
+
+        wp_send_json_success( array(
+            'action_log' => $action_log,
+            'message' => __( 'Import completed successfully.', 'pls-private-label-store' ),
+        ) );
     }
 }

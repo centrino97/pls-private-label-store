@@ -3304,3 +3304,74 @@ body.pls-modal-open {
   background: var(--pls-warning-light);
   color: #92400e;
 }
+
+/* ============================================
+   Help Icons & Tooltips
+   ============================================ */
+
+.pls-help-icon {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  line-height: 16px;
+  text-align: center;
+  border-radius: 50%;
+  background: var(--pls-accent-light);
+  color: var(--pls-accent);
+  font-size: 11px;
+  font-weight: 600;
+  font-style: normal;
+  cursor: help;
+  vertical-align: middle;
+  margin-left: 4px;
+  transition: all 0.2s ease;
+}
+
+.pls-help-icon:hover {
+  background: var(--pls-accent);
+  color: #fff;
+  transform: scale(1.1);
+}
+
+/* Tooltip enhancement for buttons */
+button[title],
+a[title],
+.pls-summary-card[title] {
+  position: relative;
+}
+
+button[title]:hover::after,
+a[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 10px;
+  background: var(--pls-gray-900);
+  color: #fff;
+  font-size: 12px;
+  white-space: nowrap;
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 1000;
+  margin-bottom: 4px;
+  box-shadow: var(--pls-shadow-lg);
+  max-width: 300px;
+  white-space: normal;
+  text-align: left;
+}
+
+button[title]:hover::before,
+a[title]:hover::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--pls-gray-900);
+  pointer-events: none;
+  z-index: 1001;
+  margin-bottom: -5px;
+}

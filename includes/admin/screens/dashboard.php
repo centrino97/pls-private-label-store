@@ -84,7 +84,13 @@ $pending_commission = PLS_Repo_Commission::get_total(
         <div>
             <p class="pls-label"><?php esc_html_e( 'Dashboard', 'pls-private-label-store' ); ?></p>
             <h1><?php esc_html_e( 'PLS Overview', 'pls-private-label-store' ); ?></h1>
-            <p class="description"><?php esc_html_e( 'Quick overview of your PLS operations. Click the help button (?) for detailed guides on any page.', 'pls-private-label-store' ); ?></p>
+            <p class="description">
+                <?php esc_html_e( 'Quick overview of your PLS operations. Click the help button (?) for detailed guides on any page.', 'pls-private-label-store' ); ?>
+                <br>
+                <small style="color: var(--pls-gray-500);">
+                    <?php esc_html_e( '💡 Tip: Start by creating Product Options, then Products, then Bundles. Orders and Commissions are tracked automatically.', 'pls-private-label-store' ); ?>
+                </small>
+            </p>
         </div>
     </div>
 
@@ -103,7 +109,7 @@ $pending_commission = PLS_Repo_Commission::get_total(
             </div>
         </div>
 
-        <div class="pls-summary-card">
+        <div class="pls-summary-card" title="<?php esc_attr_e( 'WooCommerce orders containing PLS products from the last 30 days. Includes completed, processing, and on-hold orders.', 'pls-private-label-store' ); ?>">
             <div class="pls-summary-card__icon">
                 <span class="dashicons dashicons-cart"></span>
             </div>
@@ -117,13 +123,14 @@ $pending_commission = PLS_Repo_Commission::get_total(
             </div>
         </div>
 
-        <div class="pls-summary-card">
+        <div class="pls-summary-card" title="<?php esc_attr_e( 'Custom order leads in New Lead or Sampling stages. These are private label requests that need attention.', 'pls-private-label-store' ); ?>">
             <div class="pls-summary-card__icon">
                 <span class="dashicons dashicons-email-alt"></span>
             </div>
             <div class="pls-summary-card__content">
                 <h3><?php esc_html_e( 'Pending Custom Orders', 'pls-private-label-store' ); ?></h3>
                 <div class="pls-summary-card__value"><?php echo esc_html( $pending_custom_orders ); ?></div>
+                <p class="pls-summary-card__description"><?php esc_html_e( 'New Leads + Sampling', 'pls-private-label-store' ); ?></p>
                 <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-custom-orders' ) ); ?>" class="pls-summary-card__link">
                     <?php esc_html_e( 'Manage Custom Orders', 'pls-private-label-store' ); ?>
                 </a>
@@ -144,7 +151,7 @@ $pending_commission = PLS_Repo_Commission::get_total(
             </div>
         </div>
 
-        <div class="pls-summary-card">
+        <div class="pls-summary-card" title="<?php esc_attr_e( 'Commission earned this month that has not been invoiced yet. Commission is calculated automatically when orders are completed.', 'pls-private-label-store' ); ?>">
             <div class="pls-summary-card__icon">
                 <span class="dashicons dashicons-clock"></span>
             </div>
@@ -152,7 +159,7 @@ $pending_commission = PLS_Repo_Commission::get_total(
                 <h3><?php esc_html_e( 'Pending Commission', 'pls-private-label-store' ); ?></h3>
                 <div class="pls-summary-card__value"><?php echo wc_price( $pending_commission ); ?></div>
                 <p class="pls-summary-card__description"><?php esc_html_e( 'Not yet invoiced', 'pls-private-label-store' ); ?></p>
-                <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-revenue' ) ); ?>" class="pls-summary-card__link">
+                <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-commission' ) ); ?>" class="pls-summary-card__link">
                     <?php esc_html_e( 'View Details', 'pls-private-label-store' ); ?>
                 </a>
             </div>

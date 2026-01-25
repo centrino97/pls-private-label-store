@@ -59,7 +59,10 @@ $bundle_rates     = isset( $commission_rates['bundles'] ) ? $commission_rates['b
         <div>
             <p class="pls-label"><?php esc_html_e( 'Orders', 'pls-private-label-store' ); ?></p>
             <h1><?php esc_html_e( 'Orders', 'pls-private-label-store' ); ?></h1>
-            <p class="description"><?php esc_html_e( 'All WooCommerce orders with commission tracking.', 'pls-private-label-store' ); ?></p>
+            <p class="description">
+                <?php esc_html_e( 'All WooCommerce orders with commission tracking. Commission is automatically calculated for PLS products based on pack tier or bundle type.', 'pls-private-label-store' ); ?>
+                <span class="pls-help-icon" title="<?php esc_attr_e( 'Commission rates are configured in Settings. Pack tier commissions are per unit, bundle commissions are per bundle unit.', 'pls-private-label-store' ); ?>" style="cursor: help; margin-left: 4px;">ⓘ</span>
+            </p>
         </div>
     </div>
 
@@ -81,13 +84,16 @@ $bundle_rates     = isset( $commission_rates['bundles'] ) ? $commission_rates['b
             <table>
                 <thead>
                     <tr>
-                        <th><?php esc_html_e( 'Order #', 'pls-private-label-store' ); ?></th>
-                        <th><?php esc_html_e( 'Date', 'pls-private-label-store' ); ?></th>
-                        <th><?php esc_html_e( 'Customer', 'pls-private-label-store' ); ?></th>
-                        <th><?php esc_html_e( 'Products', 'pls-private-label-store' ); ?></th>
-                        <th><?php esc_html_e( 'Total', 'pls-private-label-store' ); ?></th>
-                        <th><?php esc_html_e( 'Commission', 'pls-private-label-store' ); ?></th>
-                        <th><?php esc_html_e( 'Status', 'pls-private-label-store' ); ?></th>
+                        <th title="<?php esc_attr_e( 'Click order number to view full details', 'pls-private-label-store' ); ?>"><?php esc_html_e( 'Order #', 'pls-private-label-store' ); ?></th>
+                        <th title="<?php esc_attr_e( 'Date the order was placed', 'pls-private-label-store' ); ?>"><?php esc_html_e( 'Date', 'pls-private-label-store' ); ?></th>
+                        <th title="<?php esc_attr_e( 'Customer billing name', 'pls-private-label-store' ); ?>"><?php esc_html_e( 'Customer', 'pls-private-label-store' ); ?></th>
+                        <th title="<?php esc_attr_e( 'Products in this order (shows first 3)', 'pls-private-label-store' ); ?>"><?php esc_html_e( 'Products', 'pls-private-label-store' ); ?></th>
+                        <th title="<?php esc_attr_e( 'Total order value including tax and shipping', 'pls-private-label-store' ); ?>"><?php esc_html_e( 'Total', 'pls-private-label-store' ); ?></th>
+                        <th title="<?php esc_attr_e( 'Commission calculated for PLS products in this order. Based on pack tier or bundle commission rates.', 'pls-private-label-store' ); ?>">
+                            <?php esc_html_e( 'Commission', 'pls-private-label-store' ); ?>
+                            <span class="pls-help-icon" title="<?php esc_attr_e( 'Commission rates are set in Settings → Commission Rates', 'pls-private-label-store' ); ?>" style="cursor: help; margin-left: 4px; font-size: 12px;">ⓘ</span>
+                        </th>
+                        <th title="<?php esc_attr_e( 'Current order status: Completed, Processing, On Hold, Pending, Cancelled, Refunded, or Failed', 'pls-private-label-store' ); ?>"><?php esc_html_e( 'Status', 'pls-private-label-store' ); ?></th>
                         <th><?php esc_html_e( 'Actions', 'pls-private-label-store' ); ?></th>
                     </tr>
                 </thead>
@@ -224,7 +230,9 @@ $bundle_rates     = isset( $commission_rates['bundles'] ) ? $commission_rates['b
                             <?php echo esc_html( wc_get_order_status_name( $order_status ) ); ?>
                         </span></td>
                         <td>
-                            <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-order-detail&order_id=' . $order_id ) ); ?>" class="button button-small pls-btn--ghost">
+                            <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-order-detail&order_id=' . $order_id ) ); ?>" 
+                               class="button button-small pls-btn--ghost"
+                               title="<?php esc_attr_e( 'View full order details including items, commission breakdown, and customer information', 'pls-private-label-store' ); ?>">
                                 <?php esc_html_e( 'View', 'pls-private-label-store' ); ?>
                             </a>
                         </td>

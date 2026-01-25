@@ -199,9 +199,15 @@ wp_localize_script(
               <div class="pls-card__heading">
                 <strong style="font-size: 16px; font-weight: 600;"><?php echo esc_html( $product['name'] ); ?></strong>
                 <div style="display: flex; gap: 8px; align-items: center;">
-                  <span class="pls-badge pls-badge--<?php echo esc_attr( $product['status'] === 'live' ? 'success' : 'info' ); ?>"><?php echo esc_html( $product['status'] === 'live' ? __( 'Live', 'pls-private-label-store' ) : __( 'Draft', 'pls-private-label-store' ) ); ?></span>
+                  <span class="pls-badge pls-badge--<?php echo esc_attr( $product['status'] === 'live' ? 'success' : 'info' ); ?>" 
+                        title="<?php echo esc_attr( $product['status'] === 'live' ? __( 'Product is published and visible in shop', 'pls-private-label-store' ) : __( 'Product is draft and hidden from shop', 'pls-private-label-store' ) ); ?>">
+                      <?php echo esc_html( $product['status'] === 'live' ? __( 'Live', 'pls-private-label-store' ) : __( 'Draft', 'pls-private-label-store' ) ); ?>
+                  </span>
                   <?php if ( 'not_synced' === $sync_state ) : ?>
-                    <span class="pls-badge pls-badge--warning"><?php esc_html_e( 'Not Synced', 'pls-private-label-store' ); ?></span>
+                    <span class="pls-badge pls-badge--warning" 
+                          title="<?php esc_attr_e( 'Product not yet synced to WooCommerce. Click Activate to sync.', 'pls-private-label-store' ); ?>">
+                        <?php esc_html_e( 'Not Synced', 'pls-private-label-store' ); ?>
+                    </span>
                   <?php endif; ?>
                 </div>
               </div>
@@ -212,11 +218,24 @@ wp_localize_script(
                   <p class="description" style="margin: 8px 0; color: var(--pls-gray-600);"><?php echo esc_html( $product['short_description'] ); ?></p>
               <?php endif; ?>
               <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--pls-gray-200);">
-                <button class="button button-small pls-btn--primary pls-edit-product" data-product-id="<?php echo esc_attr( $product['id'] ); ?>"><?php esc_html_e( 'Edit', 'pls-private-label-store' ); ?></button>
+                <button class="button button-small pls-btn--primary pls-edit-product" 
+                        data-product-id="<?php echo esc_attr( $product['id'] ); ?>"
+                        title="<?php esc_attr_e( 'Edit product details, pack tiers, options, and descriptions', 'pls-private-label-store' ); ?>">
+                    <?php esc_html_e( 'Edit', 'pls-private-label-store' ); ?>
+                </button>
                 <?php if ( ! empty( $product['wc_product_id'] ) ) : ?>
-                  <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-product-preview&product_id=' . $product['id'] . '&wc_id=' . $product['wc_product_id'] ) ); ?>" class="button button-small pls-btn--ghost" target="_blank"><?php esc_html_e( 'Preview', 'pls-private-label-store' ); ?></a>
+                  <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-product-preview&product_id=' . $product['id'] . '&wc_id=' . $product['wc_product_id'] ) ); ?>" 
+                     class="button button-small pls-btn--ghost" 
+                     target="_blank"
+                     title="<?php esc_attr_e( 'Preview how this product appears on the frontend', 'pls-private-label-store' ); ?>">
+                      <?php esc_html_e( 'Preview', 'pls-private-label-store' ); ?>
+                  </a>
                 <?php else : ?>
-                  <button class="button button-small pls-btn--ghost" disabled title="<?php esc_attr_e( 'Sync product first to preview', 'pls-private-label-store' ); ?>"><?php esc_html_e( 'Preview', 'pls-private-label-store' ); ?></button>
+                  <button class="button button-small pls-btn--ghost" 
+                          disabled 
+                          title="<?php esc_attr_e( 'Sync product first to preview. Click Activate to sync.', 'pls-private-label-store' ); ?>">
+                      <?php esc_html_e( 'Preview', 'pls-private-label-store' ); ?>
+                  </button>
                 <?php endif; ?>
                 
                 <?php
@@ -224,16 +243,32 @@ wp_localize_script(
                 if ( 'not_synced' === $sync_state ) :
                     // Not synced: Show Activate button (will sync and publish)
                     ?>
-                    <button class="button button-small pls-btn--primary pls-activate-product" data-product-id="<?php echo esc_attr( $product['id'] ); ?>"><?php esc_html_e( 'Activate', 'pls-private-label-store' ); ?></button>
+                    <button class="button button-small pls-btn--primary pls-activate-product" 
+                            data-product-id="<?php echo esc_attr( $product['id'] ); ?>"
+                            title="<?php esc_attr_e( 'Sync to WooCommerce and publish. Creates variable product with pack tier variations.', 'pls-private-label-store' ); ?>">
+                        <?php esc_html_e( 'Activate', 'pls-private-label-store' ); ?>
+                    </button>
                 <?php elseif ( 'synced_active' === $sync_state ) : ?>
                     <!-- Synced & Active: Show Deactivate button -->
-                    <button class="button button-small pls-btn--ghost pls-deactivate-product" data-product-id="<?php echo esc_attr( $product['id'] ); ?>"><?php esc_html_e( 'Deactivate', 'pls-private-label-store' ); ?></button>
+                    <button class="button button-small pls-btn--ghost pls-deactivate-product" 
+                            data-product-id="<?php echo esc_attr( $product['id'] ); ?>"
+                            title="<?php esc_attr_e( 'Set WooCommerce product to draft. Product stays synced but hidden from shop.', 'pls-private-label-store' ); ?>">
+                        <?php esc_html_e( 'Deactivate', 'pls-private-label-store' ); ?>
+                    </button>
                 <?php elseif ( 'synced_inactive' === $sync_state ) : ?>
                     <!-- Synced & Inactive: Show Activate button -->
-                    <button class="button button-small pls-btn--primary pls-activate-product" data-product-id="<?php echo esc_attr( $product['id'] ); ?>"><?php esc_html_e( 'Activate', 'pls-private-label-store' ); ?></button>
+                    <button class="button button-small pls-btn--primary pls-activate-product" 
+                            data-product-id="<?php echo esc_attr( $product['id'] ); ?>"
+                            title="<?php esc_attr_e( 'Publish WooCommerce product. Product is already synced.', 'pls-private-label-store' ); ?>">
+                        <?php esc_html_e( 'Activate', 'pls-private-label-store' ); ?>
+                    </button>
                 <?php endif; ?>
                 
-                <button class="button button-small pls-btn--ghost pls-btn--danger pls-delete-product" data-product-id="<?php echo esc_attr( $product['id'] ); ?>"><?php esc_html_e( 'Delete', 'pls-private-label-store' ); ?></button>
+                <button class="button button-small pls-btn--ghost pls-btn--danger pls-delete-product" 
+                        data-product-id="<?php echo esc_attr( $product['id'] ); ?>"
+                        title="<?php esc_attr_e( 'Delete product permanently. This will also delete the WooCommerce product if synced.', 'pls-private-label-store' ); ?>">
+                    <?php esc_html_e( 'Delete', 'pls-private-label-store' ); ?>
+                </button>
               </div>
             </div>
         <?php endforeach; ?>

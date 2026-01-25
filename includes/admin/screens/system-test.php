@@ -245,6 +245,12 @@ $test_categories = array(
             <p class="description">
                 <?php esc_html_e( 'Generate creates: 10 products, 4 bundles, 50+ WC orders (12 months history), 15 custom orders, categories, ingredients, and commissions.', 'pls-private-label-store' ); ?>
             </p>
+            <p style="margin-top: 12px;">
+                <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-data-import' ) ); ?>" class="button button-secondary">
+                    <?php esc_html_e( 'Use Multistep Import Wizard', 'pls-private-label-store' ); ?>
+                </a>
+                <span class="pls-help-icon" title="<?php esc_attr_e( 'The multistep wizard provides step-by-step import with validation at each stage. Use this for better control and troubleshooting.', 'pls-private-label-store' ); ?>" style="cursor: help; margin-left: 4px;">ⓘ</span>
+            </p>
         </div>
     </div>
 
