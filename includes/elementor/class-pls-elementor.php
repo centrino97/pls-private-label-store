@@ -12,24 +12,16 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class PLS_Elementor {
 
     public static function init() {
-        add_action( 'elementor/widgets/register', array( __CLASS__, 'register_widgets' ) );
+        // Elementor widgets disabled - use shortcodes instead (pls_single_product, pls_single_category, pls_shop_page)
+        // Removed: add_action( 'elementor/widgets/register', array( __CLASS__, 'register_widgets' ) );
         add_action( 'elementor/dynamic_tags/register', array( __CLASS__, 'register_dynamic_tags' ) );
 
         add_action( 'wp_enqueue_scripts', array( __CLASS__, 'frontend_assets' ) );
     }
 
     public static function register_widgets( $widgets_manager ) {
-        if ( ! did_action( 'elementor/loaded' ) ) {
-            return;
-        }
-
-        // Register comprehensive product page widget (replaces individual widgets)
-        require_once PLS_PLS_DIR . 'includes/elementor/widgets/class-pls-widget-product-page.php';
-        $widgets_manager->register( new \PLS_Widget_Product_Page() );
-
-        // Individual widgets are deprecated - use PLS Product Page widget instead
-        // Keeping files for backward compatibility but not registering them
-        // This ensures users only see the comprehensive widget
+        // Widgets disabled - use shortcodes instead
+        // Removed widget registration
     }
 
     public static function register_dynamic_tags( $dynamic_tags ) {
