@@ -149,7 +149,20 @@ require_once PLS_PLS_DIR . 'includes/core/class-pls-tier-rules.php';
         </div>
         </div>
 
-    <!-- Label Application Pricing Section -->
+    <?php
+    // v2.7.1: Only show Label Application Pricing when Label Application tab is active
+    $label_app_option_id = null;
+    foreach ( $product_options as $opt ) {
+        if ( stripos( $opt->label, 'label application' ) !== false ) {
+            $label_app_option_id = $opt->id;
+            break;
+        }
+    }
+    $is_label_app_tab = $label_app_option_id && $active_tab === 'option-' . $label_app_option_id;
+    
+    if ( $is_label_app_tab ) :
+    ?>
+    <!-- Label Application Pricing Section - Only shows on Label Application tab -->
     <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-top: 24px;">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
             <div>
@@ -187,6 +200,7 @@ require_once PLS_PLS_DIR . 'includes/core/class-pls-tier-rules.php';
             </div>
         </form>
     </div>
+    <?php endif; ?>
 
     <!-- Add/Edit Option Modal -->
     <div id="pls-option-modal" class="pls-modal" style="display: none;">

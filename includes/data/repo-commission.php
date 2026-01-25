@@ -12,6 +12,17 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class PLS_Repo_Commission {
 
     /**
+     * Get count of all commission records.
+     *
+     * @return int
+     */
+    public static function count() {
+        global $wpdb;
+        $table = $wpdb->prefix . 'pls_order_commission';
+        return (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" );
+    }
+
+    /**
      * Get commissions for a WooCommerce order.
      *
      * @param int $wc_order_id WooCommerce order ID.

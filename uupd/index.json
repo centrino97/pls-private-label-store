@@ -1,7 +1,7 @@
 {
   "slug": "pls-private-label-store",
   "name": "PLS – Private Label Store Manager (Woo + Elementor)",
-  "version": "2.7.0",
+  "version": "2.7.1",
   "author": "Z2HB team",
   "author_homepage": "https://zerotoherobusiness.com",
   "requires_php": "7.4",
@@ -10,10 +10,10 @@
   "sections": {
     "description": "Private label store manager for WooCommerce + Elementor.",
     "installation": "Upload the plugin ZIP via Plugins > Add New and activate.",
-    "changelog": "#### 2.7.0\n\n* **CRITICAL FIX:** Product Options now display correctly - Fixed option_type mismatch (product_option -> product-option)\n* **AUTO-REPAIR:** Migration automatically fixes existing broken option_type data on version change\n* **IMPROVED:** Hot-reload capability - No deactivate/reactivate needed, fixes apply on page load\n* **IMPROVED:** Pack Tier verification during migration ensures primary attribute is set correctly\n* **IMPROVED:** Attributes automatically re-synced to WooCommerce during migration\n* **FIXED:** Commission calculation helper functions now available globally (not just in admin screens)\n\n#### 2.6.0\n\n* **MAJOR:** Architectural Simplification - ALL WooCommerce products are now PLS products (no PLS filtering needed)\n* **MAJOR:** Automatic Product Sync - Products automatically sync to WooCommerce on save, no user intervention required\n* **SIMPLIFIED:** Revenue page - Tracks ALL orders without PLS filtering, cleaner implementation\n* **SIMPLIFIED:** Commission page - Includes ALL orders in commission calculations, removed complex filtering\n* **NEW:** Auto-sync hooks - `pls_product_saved` and `pls_pack_tier_updated` hooks for programmatic extensibility\n* **NEW:** Pack tier update triggers full sync - When pack tier defaults change, all products automatically resync\n* **IMPROVED:** Commission tracking - ALL WooCommerce orders generate commissions automatically\n* **IMPROVED:** Order links - All orders now link to PLS Order Detail page instead of WooCommerce\n* **IMPROVED:** Simplified codebase - Removed redundant PLS product ID checks throughout the plugin\n* **FIXED:** Data loss issues - Improved sync verification prevents data inconsistencies"
+    "changelog": "#### 2.7.1\n\n* **CRITICAL FIX:** Sample data generation now works - Added missing count() methods to repository classes\n* **IMPROVED:** Force regenerate mode - Sample data always cleans and regenerates (no empty database check)\n* **IMPROVED:** Simplified product badges - Removed redundant 'Update Available' badge, sync is automatic\n* **IMPROVED:** Products now show only Live/Draft status + 'Not Synced' warning when applicable\n* **IMPROVED:** Label Application Pricing section only shows on Label Application tab (not all tabs)\n* **CLEANUP:** Removed manual Update button - use Activate/Deactivate only\n\n#### 2.7.0\n\n* **CRITICAL FIX:** Product Options now display correctly - Fixed option_type mismatch (product_option -> product-option)\n* **AUTO-REPAIR:** Migration automatically fixes existing broken option_type data on version change\n* **IMPROVED:** Hot-reload capability - No deactivate/reactivate needed, fixes apply on page load\n* **IMPROVED:** Pack Tier verification during migration ensures primary attribute is set correctly\n* **IMPROVED:** Attributes automatically re-synced to WooCommerce during migration\n* **FIXED:** Commission calculation helper functions now available globally (not just in admin screens)"
   },
-  "last_updated": "2026-01-25 22:00:00",
-  "download_url": "https://github.com/centrino97/pls-private-label-store/releases/download/v2.7.0/pls-private-label-store.zip",
+  "last_updated": "2026-01-25 23:45:00",
+  "download_url": "https://github.com/centrino97/pls-private-label-store/releases/download/v2.7.1/pls-private-label-store.zip",
   "banners": {},
   "icons": {}
 }

@@ -5,6 +5,17 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 final class PLS_Repo_Bundle {
 
+    /**
+     * Get count of all bundles.
+     *
+     * @return int
+     */
+    public static function count() {
+        global $wpdb;
+        $table = PLS_Repositories::table( 'bundle' );
+        return (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" );
+    }
+
     public static function all() {
         global $wpdb;
         $table = PLS_Repositories::table( 'bundle' );

@@ -5,6 +5,17 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 final class PLS_Repo_Base_Product {
 
+    /**
+     * Get count of all base products.
+     *
+     * @return int
+     */
+    public static function count() {
+        global $wpdb;
+        $table = PLS_Repositories::table( 'base_product' );
+        return (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" );
+    }
+
     public static function all() {
         global $wpdb;
         $table = PLS_Repositories::table( 'base_product' );

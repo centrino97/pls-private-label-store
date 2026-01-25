@@ -12,6 +12,17 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class PLS_Repo_Custom_Order {
 
     /**
+     * Get count of all custom orders.
+     *
+     * @return int
+     */
+    public static function count() {
+        global $wpdb;
+        $table = $wpdb->prefix . 'pls_custom_order';
+        return (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" );
+    }
+
+    /**
      * Get all custom orders, optionally filtered by status.
      *
      * @param string|null $status Status filter.

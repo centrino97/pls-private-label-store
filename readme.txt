@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 2.7.0
+Stable tag: 2.7.1
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,14 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 2.7.1 =
+* **CRITICAL FIX:** Sample data generation now works - Added missing count() methods to repository classes
+* **IMPROVED:** Force regenerate mode - Sample data always cleans and regenerates (no empty database check)
+* **IMPROVED:** Simplified product badges - Removed redundant "Update Available" badge, sync is automatic
+* **IMPROVED:** Products now show only Live/Draft status + "Not Synced" warning when applicable
+* **IMPROVED:** Label Application Pricing section only shows on Label Application tab (not all tabs)
+* **CLEANUP:** Removed manual Update button - use Activate/Deactivate only
+
 = 2.7.0 =
 * **CRITICAL FIX:** Product Options now display correctly - Fixed option_type mismatch (product_option -> product-option)
 * **AUTO-REPAIR:** Migration automatically fixes existing broken option_type data on version change

@@ -140,22 +140,19 @@ wp_localize_script(
             $sync_badge_class = 'pls-badge--not-synced';
             $sync_badge_label = __( 'Not Synced', 'pls-private-label-store' );
             
+            // v2.7.1: Simplified sync states - no 'update_available', sync is automatic
             switch ( $sync_state ) {
                 case 'synced_active':
-                    $sync_badge_class = 'pls-badge--synced-active';
-                    $sync_badge_label = __( 'Active', 'pls-private-label-store' );
+                    $sync_badge_class = 'pls-badge--success';
+                    $sync_badge_label = __( 'Live', 'pls-private-label-store' );
                     break;
                 case 'synced_inactive':
-                    $sync_badge_class = 'pls-badge--synced-inactive';
+                    $sync_badge_class = 'pls-badge--info';
                     $sync_badge_label = __( 'Inactive', 'pls-private-label-store' );
-                    break;
-                case 'update_available':
-                    $sync_badge_class = 'pls-badge--update-available';
-                    $sync_badge_label = __( 'Update Available', 'pls-private-label-store' );
                     break;
                 case 'not_synced':
                 default:
-                    $sync_badge_class = 'pls-badge--not-synced';
+                    $sync_badge_class = 'pls-badge--warning';
                     $sync_badge_label = __( 'Not Synced', 'pls-private-label-store' );
                     break;
             }
@@ -164,8 +161,10 @@ wp_localize_script(
               <div class="pls-card__heading">
                 <strong style="font-size: 16px; font-weight: 600;"><?php echo esc_html( $product['name'] ); ?></strong>
                 <div style="display: flex; gap: 8px; align-items: center;">
-                  <span class="pls-badge pls-badge--<?php echo esc_attr( $product['status'] === 'live' ? 'success' : 'info' ); ?>"><?php echo esc_html( ucfirst( $product['status'] ) ); ?></span>
-                  <span class="pls-badge <?php echo esc_attr( $sync_badge_class ); ?>"><?php echo esc_html( $sync_badge_label ); ?></span>
+                  <span class="pls-badge pls-badge--<?php echo esc_attr( $product['status'] === 'live' ? 'success' : 'info' ); ?>"><?php echo esc_html( $product['status'] === 'live' ? __( 'Live', 'pls-private-label-store' ) : __( 'Draft', 'pls-private-label-store' ) ); ?></span>
+                  <?php if ( 'not_synced' === $sync_state ) : ?>
+                    <span class="pls-badge pls-badge--warning"><?php esc_html_e( 'Not Synced', 'pls-private-label-store' ); ?></span>
+                  <?php endif; ?>
                 </div>
               </div>
               <?php if ( $cat_labels ) : ?>
@@ -183,17 +182,11 @@ wp_localize_script(
                 <?php endif; ?>
                 
                 <?php
-                // Conditional buttons based on sync state
+                // v2.7.1: Simplified buttons - only Activate/Deactivate, sync is automatic
                 if ( 'not_synced' === $sync_state ) :
-                    // Not synced: Show Sync button
+                    // Not synced: Show Activate button (will sync and publish)
                     ?>
-                    <button class="button button-small pls-btn--primary pls-sync-product" data-product-id="<?php echo esc_attr( $product['id'] ); ?>" data-wc-product-id="<?php echo esc_attr( isset( $product['wc_product_id'] ) ? $product['wc_product_id'] : 0 ); ?>"><?php esc_html_e( 'Sync', 'pls-private-label-store' ); ?></button>
-                <?php elseif ( 'update_available' === $sync_state ) : ?>
-                    <!-- Update available: Show Update button (primary) and Deactivate button (ghost) -->
-                    <button class="button button-small pls-btn--primary pls-sync-product pls-update-product" data-product-id="<?php echo esc_attr( $product['id'] ); ?>" data-wc-product-id="<?php echo esc_attr( isset( $product['wc_product_id'] ) ? $product['wc_product_id'] : 0 ); ?>"><?php esc_html_e( 'Update', 'pls-private-label-store' ); ?></button>
-                    <?php if ( $product['status'] === 'live' ) : ?>
-                        <button class="button button-small pls-btn--ghost pls-deactivate-product" data-product-id="<?php echo esc_attr( $product['id'] ); ?>"><?php esc_html_e( 'Deactivate', 'pls-private-label-store' ); ?></button>
-                    <?php endif; ?>
+                    <button class="button button-small pls-btn--primary pls-activate-product" data-product-id="<?php echo esc_attr( $product['id'] ); ?>"><?php esc_html_e( 'Activate', 'pls-private-label-store' ); ?></button>
                 <?php elseif ( 'synced_active' === $sync_state ) : ?>
                     <!-- Synced & Active: Show Deactivate button -->
                     <button class="button button-small pls-btn--ghost pls-deactivate-product" data-product-id="<?php echo esc_attr( $product['id'] ); ?>"><?php esc_html_e( 'Deactivate', 'pls-private-label-store' ); ?></button>

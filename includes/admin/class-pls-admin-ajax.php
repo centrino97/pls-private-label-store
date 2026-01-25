@@ -759,16 +759,9 @@ final class PLS_Admin_Ajax {
         $data_matches = $name_matches && $slug_matches && $categories_match && $tier_count_matches && $tiers_match;
 
         // Determine sync state
-        if ( $data_matches && $status_matches ) {
-            // Data matches and status matches
-            return ( 'publish' === $wc_status ) ? 'synced_active' : 'synced_inactive';
-        } elseif ( $data_matches && ! $status_matches ) {
-            // Data matches but status differs - still consider synced but inactive/active mismatch
-            return ( 'publish' === $wc_status ) ? 'synced_active' : 'synced_inactive';
-        } else {
-            // Data differs - update available
-            return 'update_available';
-        }
+        // v2.7.1: Never return 'update_available' - sync is always automatic
+        // Just return synced state based on WooCommerce product status
+        return ( 'publish' === $wc_status ) ? 'synced_active' : 'synced_inactive';
     }
 
     /**

@@ -77,38 +77,22 @@ final class PLS_Sample_Data {
         
         $action_log = array();
         
-        // Check if database is empty first
-        $empty_check = self::check_if_empty();
-        if ( ! $empty_check['is_empty'] ) {
-            $details_str = array();
-            foreach ( $empty_check['details'] as $key => $count ) {
-                if ( $count > 0 ) {
-                    $details_str[] = ucfirst( str_replace( '_', ' ', $key ) ) . ': ' . $count;
-                }
-            }
-            $message = 'Database is not empty. Found: ' . implode( ', ', $details_str ) . '. Please clean up first or use cleanup option.';
-            $action_log[] = array( 'message' => $message, 'type' => 'warning' );
-            return array(
-                'success' => false,
-                'message' => $message,
-                'action_log' => $action_log,
-            );
-        }
-        
-        $action_log[] = array( 'message' => '✓ Database is empty. Proceeding with sample data generation...', 'type' => 'success' );
+        // v2.7.1: Always clean and regenerate (force mode)
+        // No empty check - always proceed with cleanup first
+        $action_log[] = array( 'message' => 'Starting sample data generation (force mode)...', 'type' => 'info' );
         
         // Log to error log (always works, even during redirects)
         error_log( '[PLS Sample Data] ==========================================' );
-        error_log( '[PLS Sample Data] Starting sample data generation...' );
+        error_log( '[PLS Sample Data] Starting sample data generation (FORCE MODE)...' );
         error_log( '[PLS Sample Data] Execution time limit set to 300 seconds' );
         error_log( '[PLS Sample Data] ==========================================' );
         
         try {
-            // Step 1: Cleanup
-            $action_log[] = array( 'message' => 'Step 1: Cleaning up existing data...', 'type' => 'info' );
-            error_log( '[PLS Sample Data] Step 1: Cleaning up existing data...' );
+            // Step 1: Cleanup all existing data first
+            $action_log[] = array( 'message' => 'Step 1: Cleaning up ALL existing data...', 'type' => 'info' );
+            error_log( '[PLS Sample Data] Step 1: Cleaning up ALL existing data...' );
             self::cleanup();
-            $action_log[] = array( 'message' => '✓ Cleanup completed.', 'type' => 'success' );
+            $action_log[] = array( 'message' => '✓ Cleanup completed - database is now clean.', 'type' => 'success' );
             error_log( '[PLS Sample Data] ✓ Cleanup completed.' );
 
         // Step 2: Categories
