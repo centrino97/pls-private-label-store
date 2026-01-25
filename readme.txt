@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 2.3.2
+Stable tag: 2.3.3
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,12 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 2.3.3 =
+* **IMPROVED:** WooCommerce standards compliance - Orders now create/link customers, set payment methods, and track created_via
+* **IMPROVED:** Customer management - Sample orders now create WooCommerce customers or link to existing ones for better data integrity
+* **IMPROVED:** Payment tracking - Completed/processing orders now have payment methods and payment dates set properly
+* **IMPROVED:** Order tracking - Added created_via meta to track sample data orders
+
 = 2.3.2 =
 * **FIXED:** Sample data order generation - Products now properly synced before creating orders, cache cleared to ensure fresh wc_product_id values
 * **FIXED:** Empty WooCommerce orders - Auto-sync products if none are synced, filter to only synced products before order creation
