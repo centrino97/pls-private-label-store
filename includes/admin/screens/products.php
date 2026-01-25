@@ -402,8 +402,8 @@ wp_localize_script(
                   </div>
                   <div class="pls-ingredient-columns">
                     <div class="pls-ingredient-panel">
-                      <p class="pls-micro"><?php esc_html_e( 'All Ingredients', 'pls-private-label-store' ); ?></p>
-                      <p class="pls-subtle" style="font-size: 11px; margin-top: 4px; margin-bottom: 8px;"><?php esc_html_e( 'Select all ingredients used in this product. All selected ingredients will be displayed on the frontend.', 'pls-private-label-store' ); ?></p>
+                      <p class="pls-micro"><?php esc_html_e( 'All Ingredients (INCI base)', 'pls-private-label-store' ); ?></p>
+                      <p class="pls-subtle" style="font-size: 11px; margin-top: 4px; margin-bottom: 8px;"><?php esc_html_e( 'Select all ingredients used in this product. These form the base formula and will be displayed on the product page.', 'pls-private-label-store' ); ?></p>
                       <div class="pls-chip-group pls-ingredient-list" id="pls-ingredient-chips" data-default-icon="<?php echo esc_attr( PLS_Taxonomies::default_icon() ); ?>"></div>
                     </div>
                     <div class="pls-ingredient-panel">
@@ -414,7 +414,10 @@ wp_localize_script(
                 </div>
                 <div class="pls-modal__section">
                   <div class="pls-section-heading">
-                    <p class="pls-label"><?php esc_html_e( 'Spotlight picks', 'pls-private-label-store' ); ?></p>
+                    <p class="pls-label" style="display: flex; align-items: center; gap: 8px;">
+                      <?php esc_html_e( 'Spotlight picks', 'pls-private-label-store' ); ?>
+                      <span class="pls-tier-badge" style="background: #6366f1; color: #fff; padding: 2px 6px; border-radius: 2px; font-size: 9px;">T3+</span>
+                    </p>
                     <h3><?php esc_html_e( 'Key ingredients', 'pls-private-label-store' ); ?></h3>
                     <p class="pls-subtle" id="pls-key-ingredients-hint" data-ready-text="<?php esc_attr_e( 'Choose which ingredients to spotlight with icons (up to 5).', 'pls-private-label-store' ); ?>"><?php esc_html_e( 'Select ingredients on the left to spotlight them here.', 'pls-private-label-store' ); ?></p>
                   </div>
@@ -423,6 +426,10 @@ wp_localize_script(
                     <span class="pls-key-limit-message" id="pls-key-limit-message" aria-live="polite"></span>
                   </div>
                   <p class="pls-subtle"><?php esc_html_e( 'Pick your hero ingredients and keep their icons aligned with the base list.', 'pls-private-label-store' ); ?></p>
+                  <div style="background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 6px; padding: 10px 12px; margin-bottom: 12px; font-size: 12px;">
+                    <strong style="color: #0369a1;"><?php esc_html_e( 'Active ingredients (Tier 3+):', 'pls-private-label-store' ); ?></strong>
+                    <span style="color: #0c4a6e;"><?php esc_html_e( 'Key ingredients become selectable options for Tier 3+ customers who want to customize their active ingredients.', 'pls-private-label-store' ); ?></span>
+                  </div>
                   <div class="pls-chip-group pls-key-ingredients-list" id="pls-key-ingredients"></div>
                 </div>
               </div>

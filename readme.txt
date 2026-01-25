@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 2.8.0
+Stable tag: 2.9.0
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,18 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 2.9.0 =
+* **CRITICAL FIX:** Pack Tier WooCommerce term linking - Fixed circular dependency that prevented variations from being created
+* **CRITICAL FIX:** Sample data now creates WooCommerce orders successfully (was skipping 43 orders due to missing variations)
+* **NEW:** Custom Orders - Full edit functionality for all order fields
+* **NEW:** Custom Orders - Quick stage navigation buttons (← Prev Stage / Next Stage →)
+* **NEW:** Custom Orders - Drag-and-drop already supported (verified working)
+* **IMPROVED:** Tier badges now show consistently on all tier-restricted options in Product Options tabs (Fragrances T3+, Custom Bottles T4+, etc.)
+* **IMPROVED:** Sample data sets default_min_tier properly for Fragrances (T3+), Custom Bottles (T4+), External Box (T4+)
+* **IMPROVED:** Key Ingredients UX - Clear explanation that these become selectable active ingredients for Tier 3+ customers
+* **IMPROVED:** Ingredients panel labels now specify "INCI base" for clarity
+* **IMPROVED:** WC Sync uses fallback tier-level-to-units mapping when term_id is not yet set
+
 = 2.8.0 =
 * **NEW:** Database migration v2.8.0 - Added default_min_tier to attributes table
 * **NEW:** Package Type WooCommerce attribute auto-created for frontend selection

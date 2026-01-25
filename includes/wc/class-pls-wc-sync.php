@@ -213,6 +213,15 @@ final class PLS_WC_Sync {
         $taxonomy = wc_attribute_taxonomy_name( $slug );
         $term_ids = array();
 
+        // Fallback tier level to units mapping (always available)
+        $tier_level_to_units = array(
+            1 => 50,
+            2 => 100,
+            3 => 250,
+            4 => 500,
+            5 => 1000,
+        );
+
         // Get pack tier values dynamically
         $pack_tier_values = self::get_pack_tier_values();
         require_once PLS_PLS_DIR . 'includes/core/class-pls-tier-rules.php';
@@ -246,10 +255,33 @@ final class PLS_WC_Sync {
                 }
             }
         } else {
-            // Use attribute system values
+            // Use attribute system values with fallback for units
             foreach ( $pack_tier_values as $tier_value ) {
+                // Try to get units from term meta first
                 $units = PLS_Tier_Rules::get_default_units_for_tier( $tier_value->id );
+                
+                // Fallback: get tier level and use mapping
                 if ( ! $units ) {
+                    $tier_level = PLS_Tier_Rules::get_tier_level_from_value( $tier_value->id );
+                    if ( ! $tier_level ) {
+                        // Try to infer tier level from value_key (e.g., 'tier-1' -> 1)
+                        if ( preg_match( '/tier-?(\d+)/i', $tier_value->value_key, $matches ) ) {
+                            $tier_level = (int) $matches[1];
+                        } elseif ( preg_match( '/(\d+)/', $tier_value->label, $matches ) ) {
+                            // Try to get tier number from label (e.g., 'Tier 1' -> 1)
+                            $tier_level = (int) $matches[1];
+                        }
+                    }
+                    
+                    // Use fallback mapping
+                    if ( $tier_level && isset( $tier_level_to_units[ $tier_level ] ) ) {
+                        $units = $tier_level_to_units[ $tier_level ];
+                    }
+                }
+                
+                // Skip if we still can't determine units
+                if ( ! $units ) {
+                    error_log( '[PLS WC Sync] Skipping tier value ID ' . $tier_value->id . ' - could not determine units' );
                     continue;
                 }
 
@@ -262,17 +294,30 @@ final class PLS_WC_Sync {
                     if ( ! is_wp_error( $inserted ) ) {
                         $term_ids[ $key ] = $inserted['term_id'];
                         // Store tier level and units in term meta
-                        update_term_meta( $inserted['term_id'], '_pls_tier_level', PLS_Tier_Rules::get_tier_level_from_value( $tier_value->id ) );
+                        $tier_level = PLS_Tier_Rules::get_tier_level_from_value( $tier_value->id );
+                        if ( ! $tier_level && preg_match( '/(\d+)/', $tier_value->label, $matches ) ) {
+                            $tier_level = (int) $matches[1];
+                        }
+                        update_term_meta( $inserted['term_id'], '_pls_tier_level', $tier_level ?: 1 );
                         update_term_meta( $inserted['term_id'], '_pls_default_units', $units );
+                        
+                        // Update PLS attribute value with term_id for future lookups
+                        PLS_Repo_Attributes::set_term_id_for_value( $tier_value->id, $inserted['term_id'] );
                     }
                 } else {
                     $term_ids[ $key ] = $term->term_id;
                     // Ensure metadata is set
                     $tier_level = PLS_Tier_Rules::get_tier_level_from_value( $tier_value->id );
+                    if ( ! $tier_level && preg_match( '/(\d+)/', $tier_value->label, $matches ) ) {
+                        $tier_level = (int) $matches[1];
+                    }
                     if ( $tier_level ) {
                         update_term_meta( $term->term_id, '_pls_tier_level', $tier_level );
                     }
                     update_term_meta( $term->term_id, '_pls_default_units', $units );
+                    
+                    // Update PLS attribute value with term_id for future lookups
+                    PLS_Repo_Attributes::set_term_id_for_value( $tier_value->id, $term->term_id );
                 }
             }
         }
@@ -577,11 +622,45 @@ final class PLS_WC_Sync {
         $updated_variations = 0;
         $variation_errors = array();
 
+        // Fallback tier level to units mapping
+        $tier_level_to_units_map = array(
+            1 => 50,
+            2 => 100,
+            3 => 250,
+            4 => 500,
+            5 => 1000,
+        );
+
         if ( $pack_tier_attr_id ) {
             // New system: Use pack tier attribute values
             require_once PLS_PLS_DIR . 'includes/core/class-pls-tier-rules.php';
             $pack_tier_values = self::get_pack_tier_values();
             $tiers = PLS_Repo_Pack_Tier::for_base( $base_product_id );
+
+            // Build a units-to-attribute-value map for faster lookup
+            $units_to_attr_value = array();
+            foreach ( $pack_tier_values as $tier_value ) {
+                // Try to get units from term meta first
+                $attr_units = PLS_Tier_Rules::get_default_units_for_tier( $tier_value->id );
+                
+                // Fallback: infer from value_key or label
+                if ( ! $attr_units ) {
+                    $tier_level = null;
+                    if ( preg_match( '/tier-?(\d+)/i', $tier_value->value_key, $matches ) ) {
+                        $tier_level = (int) $matches[1];
+                    } elseif ( preg_match( '/(\d+)/', $tier_value->label, $matches ) ) {
+                        $tier_level = (int) $matches[1];
+                    }
+                    
+                    if ( $tier_level && isset( $tier_level_to_units_map[ $tier_level ] ) ) {
+                        $attr_units = $tier_level_to_units_map[ $tier_level ];
+                    }
+                }
+                
+                if ( $attr_units ) {
+                    $units_to_attr_value[ $attr_units ] = $tier_value;
+                }
+            }
 
             // Map old tier_key to new attribute values
             $tier_map = array();
@@ -591,17 +670,18 @@ final class PLS_WC_Sync {
                 }
 
                 // Find corresponding attribute value by units
-                foreach ( $pack_tier_values as $tier_value ) {
-                    $units = PLS_Tier_Rules::get_default_units_for_tier( $tier_value->id );
-                    if ( $units && $units === (int) $tier->units ) {
-                        $tier_map[ $tier->tier_key ] = array(
-                            'value' => $tier_value,
-                            'price' => $tier->price,
-                            'units' => $tier->units,
-                            'wc_variation_id' => $tier->wc_variation_id,
-                        );
-                        break;
-                    }
+                $tier_units = (int) $tier->units;
+                if ( isset( $units_to_attr_value[ $tier_units ] ) ) {
+                    $tier_value = $units_to_attr_value[ $tier_units ];
+                    $tier_map[ $tier->tier_key ] = array(
+                        'value' => $tier_value,
+                        'price' => $tier->price,
+                        'units' => $tier->units,
+                        'wc_variation_id' => $tier->wc_variation_id,
+                    );
+                } else {
+                    // Log missing mapping but continue
+                    error_log( '[PLS WC Sync] No attribute value found for tier ' . $tier->tier_key . ' with ' . $tier_units . ' units' );
                 }
             }
 

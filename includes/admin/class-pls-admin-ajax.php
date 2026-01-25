@@ -35,6 +35,7 @@ final class PLS_Admin_Ajax {
         add_action( 'wp_ajax_pls_preview_product', array( __CLASS__, 'preview_product' ) );
         add_action( 'wp_ajax_pls_custom_product_request', array( __CLASS__, 'custom_product_request' ) );
         add_action( 'wp_ajax_pls_update_custom_order_status', array( __CLASS__, 'update_custom_order_status' ) );
+        add_action( 'wp_ajax_pls_update_custom_order', array( __CLASS__, 'update_custom_order' ) );
         add_action( 'wp_ajax_pls_get_custom_order_details', array( __CLASS__, 'get_custom_order_details' ) );
         add_action( 'wp_ajax_pls_update_custom_order_financials', array( __CLASS__, 'update_custom_order_financials' ) );
         add_action( 'wp_ajax_pls_mark_custom_order_invoiced', array( __CLASS__, 'mark_custom_order_invoiced' ) );
@@ -2220,32 +2221,72 @@ final class PLS_Admin_Ajax {
         $custom_order_rate_below = isset( $custom_order_config['rate_below'] ) ? floatval( $custom_order_config['rate_below'] ) : 3.00;
         $custom_order_rate_above = isset( $custom_order_config['rate_above'] ) ? floatval( $custom_order_config['rate_above'] ) : 5.00;
 
+        // Define stages for navigation
+        $stages = array( 'new_lead', 'sampling', 'production', 'on_hold', 'done' );
+        $stage_labels = array(
+            'new_lead'   => __( 'New Lead', 'pls-private-label-store' ),
+            'sampling'   => __( 'Sampling', 'pls-private-label-store' ),
+            'production' => __( 'Production', 'pls-private-label-store' ),
+            'on_hold'    => __( 'On-hold', 'pls-private-label-store' ),
+            'done'       => __( 'Done', 'pls-private-label-store' ),
+        );
+        $current_stage_index = array_search( $order->status, $stages, true );
+        $prev_stage = ( $current_stage_index > 0 ) ? $stages[ $current_stage_index - 1 ] : null;
+        $next_stage = ( $current_stage_index < count( $stages ) - 1 ) ? $stages[ $current_stage_index + 1 ] : null;
+
+        // Get categories for dropdown
+        $categories = get_terms( array( 'taxonomy' => 'product_cat', 'hide_empty' => false ) );
+        if ( is_wp_error( $categories ) ) {
+            $categories = array();
+        }
+
         ob_start();
         ?>
-        <div class="pls-order-detail">
+        <div class="pls-order-detail" data-order-id="<?php echo esc_attr( $order->id ); ?>">
+            <!-- Quick Stage Navigation -->
+            <div class="pls-stage-nav" style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--pls-gray-100); border-radius: 8px; margin-bottom: 20px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <?php if ( $prev_stage ) : ?>
+                        <button type="button" class="button pls-stage-change" data-order-id="<?php echo esc_attr( $order->id ); ?>" data-stage="<?php echo esc_attr( $prev_stage ); ?>">
+                            ← <?php echo esc_html( $stage_labels[ $prev_stage ] ); ?>
+                        </button>
+                    <?php else : ?>
+                        <button type="button" class="button" disabled>← <?php esc_html_e( 'Start', 'pls-private-label-store' ); ?></button>
+                    <?php endif; ?>
+                </div>
+                <div style="font-weight: 600; color: var(--pls-accent);">
+                    <?php echo esc_html( $stage_labels[ $order->status ] ); ?>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <?php if ( $next_stage ) : ?>
+                        <button type="button" class="button button-primary pls-stage-change" data-order-id="<?php echo esc_attr( $order->id ); ?>" data-stage="<?php echo esc_attr( $next_stage ); ?>">
+                            <?php echo esc_html( $stage_labels[ $next_stage ] ); ?> →
+                        </button>
+                    <?php else : ?>
+                        <button type="button" class="button button-primary" disabled><?php esc_html_e( 'Complete', 'pls-private-label-store' ); ?> ✓</button>
+                    <?php endif; ?>
+                </div>
+            </div>
+
             <div class="pls-order-detail__section">
                 <h3><?php esc_html_e( 'Contact Information', 'pls-private-label-store' ); ?></h3>
                 <table class="form-table">
                     <tr>
-                        <th><?php esc_html_e( 'Name', 'pls-private-label-store' ); ?></th>
-                        <td><?php echo esc_html( $order->contact_name ); ?></td>
+                        <th><label for="pls-edit-contact-name"><?php esc_html_e( 'Name', 'pls-private-label-store' ); ?></label></th>
+                        <td><input type="text" id="pls-edit-contact-name" class="regular-text" value="<?php echo esc_attr( $order->contact_name ); ?>" /></td>
                     </tr>
                     <tr>
-                        <th><?php esc_html_e( 'Email', 'pls-private-label-store' ); ?></th>
-                        <td><a href="mailto:<?php echo esc_attr( $order->contact_email ); ?>"><?php echo esc_html( $order->contact_email ); ?></a></td>
+                        <th><label for="pls-edit-contact-email"><?php esc_html_e( 'Email', 'pls-private-label-store' ); ?></label></th>
+                        <td><input type="email" id="pls-edit-contact-email" class="regular-text" value="<?php echo esc_attr( $order->contact_email ); ?>" /></td>
                     </tr>
-                    <?php if ( $order->contact_phone ) : ?>
-                        <tr>
-                            <th><?php esc_html_e( 'Phone', 'pls-private-label-store' ); ?></th>
-                            <td><?php echo esc_html( $order->contact_phone ); ?></td>
-                        </tr>
-                    <?php endif; ?>
-                    <?php if ( $order->company_name ) : ?>
-                        <tr>
-                            <th><?php esc_html_e( 'Company', 'pls-private-label-store' ); ?></th>
-                            <td><?php echo esc_html( $order->company_name ); ?></td>
-                        </tr>
-                    <?php endif; ?>
+                    <tr>
+                        <th><label for="pls-edit-contact-phone"><?php esc_html_e( 'Phone', 'pls-private-label-store' ); ?></label></th>
+                        <td><input type="text" id="pls-edit-contact-phone" class="regular-text" value="<?php echo esc_attr( $order->contact_phone ); ?>" /></td>
+                    </tr>
+                    <tr>
+                        <th><label for="pls-edit-company-name"><?php esc_html_e( 'Company', 'pls-private-label-store' ); ?></label></th>
+                        <td><input type="text" id="pls-edit-company-name" class="regular-text" value="<?php echo esc_attr( $order->company_name ); ?>" /></td>
+                    </tr>
                 </table>
             </div>
 
@@ -2253,36 +2294,35 @@ final class PLS_Admin_Ajax {
                 <h3><?php esc_html_e( 'Order Details', 'pls-private-label-store' ); ?></h3>
                 <table class="form-table">
                     <tr>
-                        <th><?php esc_html_e( 'Category', 'pls-private-label-store' ); ?></th>
-                        <td><?php echo esc_html( $category_name ?: __( 'Other', 'pls-private-label-store' ) ); ?></td>
+                        <th><label for="pls-edit-category"><?php esc_html_e( 'Category', 'pls-private-label-store' ); ?></label></th>
+                        <td>
+                            <select id="pls-edit-category" class="regular-text">
+                                <option value=""><?php esc_html_e( 'Select category...', 'pls-private-label-store' ); ?></option>
+                                <?php foreach ( $categories as $cat ) : ?>
+                                    <option value="<?php echo esc_attr( $cat->term_id ); ?>" <?php selected( $order->category_id, $cat->term_id ); ?>><?php echo esc_html( $cat->name ); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </td>
                     </tr>
-                    <?php if ( $order->quantity_needed ) : ?>
-                        <tr>
-                            <th><?php esc_html_e( 'Quantity Needed', 'pls-private-label-store' ); ?></th>
-                            <td><?php echo esc_html( number_format( $order->quantity_needed ) ); ?></td>
-                        </tr>
-                    <?php endif; ?>
-                    <?php if ( $order->budget ) : ?>
-                        <tr>
-                            <th><?php esc_html_e( 'Budget', 'pls-private-label-store' ); ?></th>
-                            <td><?php echo wc_price( $order->budget ); ?></td>
-                        </tr>
-                    <?php endif; ?>
-                    <?php if ( $order->timeline ) : ?>
-                        <tr>
-                            <th><?php esc_html_e( 'Timeline', 'pls-private-label-store' ); ?></th>
-                            <td><?php echo esc_html( $order->timeline ); ?></td>
-                        </tr>
-                    <?php endif; ?>
                     <tr>
-                        <th><?php esc_html_e( 'Status', 'pls-private-label-store' ); ?></th>
+                        <th><label for="pls-edit-quantity"><?php esc_html_e( 'Quantity Needed', 'pls-private-label-store' ); ?></label></th>
+                        <td><input type="number" id="pls-edit-quantity" class="regular-text" min="1" value="<?php echo esc_attr( $order->quantity_needed ); ?>" /></td>
+                    </tr>
+                    <tr>
+                        <th><label for="pls-edit-budget"><?php esc_html_e( 'Budget ($)', 'pls-private-label-store' ); ?></label></th>
+                        <td><input type="number" id="pls-edit-budget" class="regular-text" min="0" step="0.01" value="<?php echo esc_attr( $order->budget ); ?>" /></td>
+                    </tr>
+                    <tr>
+                        <th><label for="pls-edit-timeline"><?php esc_html_e( 'Timeline', 'pls-private-label-store' ); ?></label></th>
+                        <td><input type="text" id="pls-edit-timeline" class="regular-text" value="<?php echo esc_attr( $order->timeline ); ?>" /></td>
+                    </tr>
+                    <tr>
+                        <th><label for="pls-order-status"><?php esc_html_e( 'Status', 'pls-private-label-store' ); ?></label></th>
                         <td>
                             <select id="pls-order-status" class="regular-text">
-                                <option value="new_lead" <?php selected( $order->status, 'new_lead' ); ?>><?php esc_html_e( 'New Lead', 'pls-private-label-store' ); ?></option>
-                                <option value="sampling" <?php selected( $order->status, 'sampling' ); ?>><?php esc_html_e( 'Sampling', 'pls-private-label-store' ); ?></option>
-                                <option value="production" <?php selected( $order->status, 'production' ); ?>><?php esc_html_e( 'Production', 'pls-private-label-store' ); ?></option>
-                                <option value="on_hold" <?php selected( $order->status, 'on_hold' ); ?>><?php esc_html_e( 'On-hold', 'pls-private-label-store' ); ?></option>
-                                <option value="done" <?php selected( $order->status, 'done' ); ?>><?php esc_html_e( 'Done', 'pls-private-label-store' ); ?></option>
+                                <?php foreach ( $stage_labels as $stage_key => $stage_label ) : ?>
+                                    <option value="<?php echo esc_attr( $stage_key ); ?>" <?php selected( $order->status, $stage_key ); ?>><?php echo esc_html( $stage_label ); ?></option>
+                                <?php endforeach; ?>
                             </select>
                         </td>
                     </tr>
@@ -2298,8 +2338,8 @@ final class PLS_Admin_Ajax {
                         </tr>
                     <?php endif; ?>
                     <tr>
-                        <th><?php esc_html_e( 'Message', 'pls-private-label-store' ); ?></th>
-                        <td><?php echo nl2br( esc_html( $order->message ) ); ?></td>
+                        <th><label for="pls-edit-message"><?php esc_html_e( 'Message / Notes', 'pls-private-label-store' ); ?></label></th>
+                        <td><textarea id="pls-edit-message" rows="4" class="large-text"><?php echo esc_textarea( $order->message ); ?></textarea></td>
                     </tr>
                 </table>
             </div>
@@ -2379,16 +2419,106 @@ final class PLS_Admin_Ajax {
                         </td>
                     </tr>
                 </table>
-                <p>
-                    <button type="button" class="button button-primary" id="pls-save-order-financials" data-order-id="<?php echo esc_attr( $order->id ); ?>">
-                        <?php esc_html_e( 'Save Financials', 'pls-private-label-store' ); ?>
-                    </button>
-                </p>
+            </div>
+
+            <!-- Save All Changes Button -->
+            <div class="pls-order-detail__actions" style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--pls-gray-200); display: flex; justify-content: space-between; align-items: center;">
+                <span class="description"><?php printf( esc_html__( 'Created: %s', 'pls-private-label-store' ), date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $order->created_at ) ) ); ?></span>
+                <button type="button" class="button button-primary button-large" id="pls-save-order-all" data-order-id="<?php echo esc_attr( $order->id ); ?>">
+                    <?php esc_html_e( 'Save All Changes', 'pls-private-label-store' ); ?>
+                </button>
             </div>
         </div>
         <?php
         $html = ob_get_clean();
         wp_send_json_success( array( 'html' => $html ) );
+    }
+
+    /**
+     * Update custom order (full edit).
+     */
+    public static function update_custom_order() {
+        check_ajax_referer( 'pls_custom_orders_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $order_id = isset( $_POST['order_id'] ) ? absint( $_POST['order_id'] ) : 0;
+        if ( ! $order_id ) {
+            wp_send_json_error( array( 'message' => __( 'Invalid order ID.', 'pls-private-label-store' ) ) );
+        }
+
+        $order = PLS_Repo_Custom_Order::get( $order_id );
+        if ( ! $order ) {
+            wp_send_json_error( array( 'message' => __( 'Order not found.', 'pls-private-label-store' ) ) );
+        }
+
+        // Build update data
+        $data = array();
+
+        // Contact info
+        if ( isset( $_POST['contact_name'] ) ) {
+            $data['contact_name'] = sanitize_text_field( wp_unslash( $_POST['contact_name'] ) );
+        }
+        if ( isset( $_POST['contact_email'] ) ) {
+            $data['contact_email'] = sanitize_email( wp_unslash( $_POST['contact_email'] ) );
+        }
+        if ( isset( $_POST['contact_phone'] ) ) {
+            $data['contact_phone'] = sanitize_text_field( wp_unslash( $_POST['contact_phone'] ) );
+        }
+        if ( isset( $_POST['company_name'] ) ) {
+            $data['company_name'] = sanitize_text_field( wp_unslash( $_POST['company_name'] ) );
+        }
+
+        // Order details
+        if ( isset( $_POST['status'] ) ) {
+            $data['status'] = sanitize_text_field( wp_unslash( $_POST['status'] ) );
+        }
+        if ( isset( $_POST['category_id'] ) ) {
+            $data['category_id'] = absint( $_POST['category_id'] ) ?: null;
+        }
+        if ( isset( $_POST['quantity_needed'] ) ) {
+            $data['quantity_needed'] = absint( $_POST['quantity_needed'] ) ?: null;
+        }
+        if ( isset( $_POST['budget'] ) ) {
+            $data['budget'] = ! empty( $_POST['budget'] ) ? floatval( $_POST['budget'] ) : null;
+        }
+        if ( isset( $_POST['timeline'] ) ) {
+            $data['timeline'] = sanitize_text_field( wp_unslash( $_POST['timeline'] ) );
+        }
+        if ( isset( $_POST['message'] ) ) {
+            $data['message'] = sanitize_textarea_field( wp_unslash( $_POST['message'] ) );
+        }
+
+        // Financial info
+        if ( isset( $_POST['production_cost'] ) ) {
+            $data['production_cost'] = ! empty( $_POST['production_cost'] ) ? floatval( $_POST['production_cost'] ) : null;
+        }
+        if ( isset( $_POST['total_value'] ) ) {
+            $data['total_value'] = ! empty( $_POST['total_value'] ) ? floatval( $_POST['total_value'] ) : null;
+        }
+
+        // Calculate commission if we have total_value
+        if ( isset( $data['total_value'] ) && $data['total_value'] > 0 ) {
+            $commission_rate = get_option( 'pls_commission_rates', array() );
+            $custom_order_config = isset( $commission_rate['custom_order'] ) ? $commission_rate['custom_order'] : array();
+            $threshold = isset( $custom_order_config['threshold'] ) ? floatval( $custom_order_config['threshold'] ) : 100000.00;
+            $rate_below = isset( $custom_order_config['rate_below'] ) ? floatval( $custom_order_config['rate_below'] ) : 3.00;
+            $rate_above = isset( $custom_order_config['rate_above'] ) ? floatval( $custom_order_config['rate_above'] ) : 5.00;
+
+            $rate_to_use = ( $data['total_value'] >= $threshold ) ? $rate_above : $rate_below;
+            $data['nikola_commission_rate'] = $rate_to_use;
+            $data['nikola_commission_amount'] = $data['total_value'] * ( $rate_to_use / 100 );
+        }
+
+        $result = PLS_Repo_Custom_Order::update( $order_id, $data );
+
+        if ( $result ) {
+            wp_send_json_success( array( 'message' => __( 'Order updated successfully.', 'pls-private-label-store' ) ) );
+        } else {
+            wp_send_json_error( array( 'message' => __( 'Failed to update order.', 'pls-private-label-store' ) ) );
+        }
     }
 
     /**

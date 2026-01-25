@@ -28,11 +28,16 @@ require_once PLS_PLS_DIR . 'includes/core/class-pls-tier-rules.php';
 
     <!-- Tabs Navigation -->
     <nav class="nav-tab-wrapper pls-options-tabs" style="margin: 20px 0 0; border-bottom: 2px solid var(--pls-accent);">
-        <?php foreach ( $product_options as $option ) : ?>
+        <?php foreach ( $product_options as $option ) : 
+            $option_min_tier = isset( $option->default_min_tier ) ? intval( $option->default_min_tier ) : 1;
+        ?>
             <a href="<?php echo esc_url( add_query_arg( 'tab', 'option-' . $option->id, admin_url( 'admin.php?page=pls-attributes' ) ) ); ?>" 
                class="nav-tab pls-option-tab <?php echo $active_tab === 'option-' . $option->id ? 'nav-tab-active' : ''; ?>"
                data-option-id="<?php echo esc_attr( $option->id ); ?>"
                style="border-bottom: 2px solid transparent; margin-bottom: -2px; transition: none;">
+                <?php if ( $option_min_tier > 1 ) : ?>
+                    <span class="pls-tier-badge" style="background: <?php echo $option_min_tier >= 4 ? '#ef4444' : '#6366f1'; ?>; color: #fff; padding: 2px 6px; border-radius: 2px; font-size: 9px; margin-right: 6px;">T<?php echo esc_html( $option_min_tier ); ?>+</span>
+                <?php endif; ?>
                 <?php echo esc_html( $option->label ); ?>
             </a>
         <?php endforeach; ?>

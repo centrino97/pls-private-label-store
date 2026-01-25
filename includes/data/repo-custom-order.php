@@ -212,4 +212,60 @@ final class PLS_Repo_Custom_Order {
 
         return $wpdb->insert_id;
     }
+
+    /**
+     * Update a custom order.
+     *
+     * @param int   $id   Order ID.
+     * @param array $data Fields to update.
+     * @return bool
+     */
+    public static function update( $id, $data ) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'pls_custom_order';
+
+        // Define allowed fields and their format specifiers
+        $allowed_fields = array(
+            'status'                  => '%s',
+            'contact_name'            => '%s',
+            'contact_email'           => '%s',
+            'contact_phone'           => '%s',
+            'company_name'            => '%s',
+            'category_id'             => '%d',
+            'message'                 => '%s',
+            'quantity_needed'         => '%d',
+            'budget'                  => '%f',
+            'timeline'                => '%s',
+            'production_cost'         => '%f',
+            'total_value'             => '%f',
+            'nikola_commission_rate'  => '%f',
+            'nikola_commission_amount' => '%f',
+        );
+
+        $update_data = array();
+        $update_format = array();
+
+        foreach ( $data as $field => $value ) {
+            if ( isset( $allowed_fields[ $field ] ) ) {
+                $update_data[ $field ] = $value;
+                $update_format[] = $allowed_fields[ $field ];
+            }
+        }
+
+        if ( empty( $update_data ) ) {
+            return false;
+        }
+
+        // Always update the updated_at timestamp
+        $update_data['updated_at'] = current_time( 'mysql' );
+        $update_format[] = '%s';
+
+        return (bool) $wpdb->update(
+            $table,
+            $update_data,
+            array( 'id' => $id ),
+            $update_format,
+            array( '%d' )
+        );
+    }
 }

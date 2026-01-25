@@ -804,12 +804,21 @@ final class PLS_Sample_Data {
         
         if ( $existing_fragrance ) {
             $fragrance_id = $existing_fragrance->id;
+            // Ensure default_min_tier is set to 3
+            $wpdb->update(
+                $attr_table,
+                array( 'default_min_tier' => 3 ),
+                array( 'id' => $fragrance_id ),
+                array( '%d' ),
+                array( '%d' )
+            );
         } else {
             $fragrance_id = PLS_Repo_Attributes::insert_attr( array(
                 'label' => 'Fragrance',
                 'attr_key' => 'fragrance',
                 'option_type' => 'product-option',
                 'is_variation' => 0,
+                'default_min_tier' => 3,
             ) );
         }
 
@@ -844,12 +853,21 @@ final class PLS_Sample_Data {
         
         if ( $existing_custom_bottle ) {
             $custom_bottle_id = $existing_custom_bottle->id;
+            // Ensure default_min_tier is set to 4
+            $wpdb->update(
+                $attr_table,
+                array( 'default_min_tier' => 4 ),
+                array( 'id' => $custom_bottle_id ),
+                array( '%d' ),
+                array( '%d' )
+            );
         } else {
             $custom_bottle_id = PLS_Repo_Attributes::insert_attr( array(
                 'label' => 'Custom Printed Bottles',
                 'attr_key' => 'custom-bottles',
                 'option_type' => 'product-option',
                 'is_variation' => 0,
+                'default_min_tier' => 4,
             ) );
         }
 
@@ -873,12 +891,21 @@ final class PLS_Sample_Data {
         
         if ( $existing_box_packaging ) {
             $box_packaging_id = $existing_box_packaging->id;
+            // Ensure default_min_tier is set to 4
+            $wpdb->update(
+                $attr_table,
+                array( 'default_min_tier' => 4 ),
+                array( 'id' => $box_packaging_id ),
+                array( '%d' ),
+                array( '%d' )
+            );
         } else {
             $box_packaging_id = PLS_Repo_Attributes::insert_attr( array(
                 'label' => 'External Box Packaging',
                 'attr_key' => 'box-packaging',
                 'option_type' => 'product-option',
                 'is_variation' => 0,
+                'default_min_tier' => 4,
             ) );
         }
 

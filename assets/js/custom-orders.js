@@ -76,7 +76,86 @@
             }
         });
 
-        // Save order financials
+        // Save all order changes
+        $(document).on('click', '#pls-save-order-all', function() {
+            const orderId = $(this).data('order-id');
+            const $btn = $(this);
+            $btn.prop('disabled', true).text('Saving...');
+
+            $.ajax({
+                url: PLS_CustomOrders.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'pls_update_custom_order',
+                    nonce: PLS_CustomOrders.nonce,
+                    order_id: orderId,
+                    // Contact info
+                    contact_name: $('#pls-edit-contact-name').val(),
+                    contact_email: $('#pls-edit-contact-email').val(),
+                    contact_phone: $('#pls-edit-contact-phone').val(),
+                    company_name: $('#pls-edit-company-name').val(),
+                    // Order details
+                    category_id: $('#pls-edit-category').val(),
+                    quantity_needed: $('#pls-edit-quantity').val(),
+                    budget: $('#pls-edit-budget').val(),
+                    timeline: $('#pls-edit-timeline').val(),
+                    status: $('#pls-order-status').val(),
+                    message: $('#pls-edit-message').val(),
+                    // Financial info
+                    production_cost: $('#pls-order-production-cost').val(),
+                    total_value: $('#pls-order-total-value').val()
+                },
+                success: function(response) {
+                    if ( response.success ) {
+                        $('#pls-order-detail-modal').hide();
+                        location.reload();
+                    } else {
+                        alert( response.data.message || 'Failed to update.' );
+                        $btn.prop('disabled', false).text('Save All Changes');
+                    }
+                },
+                error: function() {
+                    alert( 'Network error. Please try again.' );
+                    $btn.prop('disabled', false).text('Save All Changes');
+                }
+            });
+        });
+
+        // Quick stage change buttons
+        $(document).on('click', '.pls-stage-change', function() {
+            const orderId = $(this).data('order-id');
+            const newStage = $(this).data('stage');
+            const $btn = $(this);
+            $btn.prop('disabled', true);
+
+            $.ajax({
+                url: PLS_CustomOrders.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'pls_update_custom_order_status',
+                    nonce: PLS_CustomOrders.nonce,
+                    order_id: orderId,
+                    status: newStage
+                },
+                success: function(response) {
+                    if ( response.success ) {
+                        // Reload the order details to show new stage
+                        loadOrderDetails(orderId);
+                        // Update the kanban board
+                        updateColumnCounts();
+                    } else {
+                        alert( response.data.message || 'Failed to update status.' );
+                        $btn.prop('disabled', false);
+                    }
+                },
+                error: function() {
+                    alert( 'Network error. Please try again.' );
+                    $btn.prop('disabled', false);
+                }
+            });
+        });
+
+        // Save order financials (legacy - kept for compatibility)
         $(document).on('click', '#pls-save-order-financials', function() {
             const orderId = $(this).data('order-id');
             const productionCost = parseFloat($('#pls-order-production-cost').val()) || 0;
