@@ -380,6 +380,10 @@ final class PLS_Sample_Data {
         $values_table = $wpdb->prefix . 'pls_attribute_value';
         $attr_table = $wpdb->prefix . 'pls_attribute';
 
+        // Ensure Pack Tier attribute exists first (required for variations)
+        require_once PLS_PLS_DIR . 'includes/core/class-pls-default-attributes.php';
+        PLS_Default_Attributes::create_defaults();
+        
         // Ensure ingredient sync class is loaded
         require_once PLS_PLS_DIR . 'includes/core/class-pls-ingredient-sync.php';
 
