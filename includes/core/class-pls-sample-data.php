@@ -1401,6 +1401,13 @@ final class PLS_Sample_Data {
             $slug = sanitize_title( $bundle_name );
             $bundle_key = $bundle_data['bundle_type'] . '_' . $bundle_data['sku_count'] . 'x' . $bundle_data['units_per_sku'];
             
+            // Check for duplicate bundle by bundle_key (prevent stale duplicates)
+            $existing_bundle = PLS_Repo_Bundle::get_by_bundle_key( $bundle_key );
+            if ( $existing_bundle ) {
+                error_log( '[PLS Sample Data] Skipping duplicate bundle: ' . $bundle_name . ' (key: ' . $bundle_key . ')' );
+                continue; // Skip duplicate
+            }
+            
             // Calculate totals
             $total_units = $bundle_data['sku_count'] * $bundle_data['units_per_sku'];
             $total_price = $total_units * $bundle_data['price_per_unit'];
