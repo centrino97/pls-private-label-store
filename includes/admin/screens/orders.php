@@ -224,7 +224,7 @@ $bundle_rates     = isset( $commission_rates['bundles'] ) ? $commission_rates['b
                     ?>
                     <tr>
                         <td>
-                            <a href="<?php echo esc_url( admin_url( 'post.php?post=' . $order_id . '&action=edit' ) ); ?>">
+                            <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-order-detail&order_id=' . $order_id ) ); ?>">
                                 #<?php echo esc_html( $order_id ); ?>
                             </a>
                         </td>
@@ -237,7 +237,7 @@ $bundle_rates     = isset( $commission_rates['bundles'] ) ? $commission_rates['b
                             <?php echo esc_html( wc_get_order_status_name( $order_status ) ); ?>
                         </span></td>
                         <td>
-                            <a href="<?php echo esc_url( admin_url( 'post.php?post=' . $order_id . '&action=edit' ) ); ?>" class="button button-small pls-btn--ghost">
+                            <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-order-detail&order_id=' . $order_id ) ); ?>" class="button button-small pls-btn--ghost">
                                 <?php esc_html_e( 'View', 'pls-private-label-store' ); ?>
                             </a>
                         </td>

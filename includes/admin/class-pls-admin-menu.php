@@ -345,6 +345,16 @@ final class PLS_Admin_Menu {
             'pls-product-preview',
             array( __CLASS__, 'render_product_preview' )
         );
+
+        // Hidden order detail page (accessed via direct link)
+        add_submenu_page(
+            null, // Hidden from menu
+            __( 'Order Details', 'pls-private-label-store' ),
+            __( 'Order Details', 'pls-private-label-store' ),
+            'manage_woocommerce',
+            'pls-order-detail',
+            array( __CLASS__, 'render_order_detail' )
+        );
     }
 
     public static function assets( $hook ) {
@@ -516,6 +526,10 @@ final class PLS_Admin_Menu {
 
     public static function render_system_test() {
         require PLS_PLS_DIR . 'includes/admin/screens/system-test.php';
+    }
+
+    public static function render_order_detail() {
+        require PLS_PLS_DIR . 'includes/admin/screens/order-detail.php';
     }
 
 }

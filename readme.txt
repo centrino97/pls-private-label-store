@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 2.5.0
+Stable tag: 2.5.1
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,13 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 2.5.1 =
+* **FIXED:** Custom order view modal now displays correctly using proper CSS classes
+* **FIXED:** Regular orders now stay in PLS interface instead of redirecting to WooCommerce
+* **NEW:** PLS Order Detail page - comprehensive order view with commission breakdown within PLS
+* **IMPROVED:** Modal closing - added background click to close and proper body scroll lock
+* **IMPROVED:** Order management - all order operations now happen within PLS interface
+
 = 2.5.0 =
 * **MAJOR:** Pack Tier as Primary Attribute - Pack Tier is now guaranteed to be created and marked as primary during sample data generation
 * **MAJOR:** Predefined Product Options - All product options are now created as predefined attributes for fast domain user setup

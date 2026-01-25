@@ -66,7 +66,14 @@
 
         // Close modal
         $(document).on('click', '.pls-modal__close', function() {
-            $('#pls-order-detail-modal').hide();
+            $('#pls-order-detail-modal').removeClass('is-active');
+        });
+        
+        // Close modal on background click
+        $(document).on('click', '#pls-order-detail-modal', function(e) {
+            if ($(e.target).is('#pls-order-detail-modal')) {
+                $(this).removeClass('is-active');
+            }
         });
 
         // Save order financials
@@ -93,6 +100,8 @@
                 },
                 success: function(response) {
                     if ( response.success ) {
+                        $('#pls-order-detail-modal').removeClass('is-active');
+                        $('body').removeClass('pls-modal-open');
                         alert( 'Financials updated successfully.' );
                         location.reload();
                     } else {
@@ -139,6 +148,8 @@
                 },
                 success: function(response) {
                     if ( response.success ) {
+                        $('#pls-order-detail-modal').removeClass('is-active');
+                        $('body').removeClass('pls-modal-open');
                         loadOrderDetails(orderId);
                     } else {
                         alert( response.data.message || 'Failed to update.' );
