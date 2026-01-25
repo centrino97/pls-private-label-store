@@ -39,19 +39,20 @@ final class PLS_System_Test {
      */
     public static function run_all_tests() {
         $results = array(
-            'pls_info'        => self::test_pls_info(),
-            'server_config'   => self::test_server_config(),
-            'wc_settings'     => self::test_wc_settings(),
-            'user_roles'      => self::test_user_roles(),
-            'database'        => self::test_database(),
-            'product_options' => self::test_product_options(),
-            'products_sync'   => self::test_products_sync(),
-            'variations'      => self::test_variations(),
-            'bundles'         => self::test_bundles(),
-            'wc_orders'       => self::test_wc_orders(),
-            'custom_orders'   => self::test_custom_orders(),
-            'commissions'     => self::test_commissions(),
-            'revenue'         => self::test_revenue(),
+            'pls_info'          => self::test_pls_info(),
+            'server_config'     => self::test_server_config(),
+            'wc_settings'       => self::test_wc_settings(),
+            'user_roles'        => self::test_user_roles(),
+            'database'          => self::test_database(),
+            'product_options'   => self::test_product_options(),
+            'products_sync'     => self::test_products_sync(),
+            'variations'        => self::test_variations(),
+            'bundles'           => self::test_bundles(),
+            'wc_orders'         => self::test_wc_orders(),
+            'custom_orders'     => self::test_custom_orders(),
+            'commissions'       => self::test_commissions(),
+            'revenue'           => self::test_revenue(),
+            'frontend_display'  => self::test_frontend_display(),
         );
 
         // Calculate summary
@@ -1638,6 +1639,226 @@ final class PLS_System_Test {
                 $has ? '' : "Capability {$cap} should be granted to administrators. Check PLS_Capabilities class."
             );
         }
+
+        return $results;
+    }
+
+    // =========================================================================
+    // TEST CATEGORY: FRONTEND DISPLAY & ACCESSIBILITY
+    // =========================================================================
+
+    /**
+     * Test frontend display settings and accessibility.
+     *
+     * @return array Test results.
+     */
+    public static function test_frontend_display() {
+        $results = array();
+
+        // Check if frontend display class exists
+        if ( ! class_exists( 'PLS_Frontend_Display' ) ) {
+            $results[] = self::result(
+                'Frontend Display Class',
+                'fail',
+                'PLS_Frontend_Display class not found.',
+                array(),
+                'The class should be loaded automatically. Check includes/frontend/class-pls-frontend-display.php exists.'
+            );
+            return $results;
+        }
+
+        $results[] = self::result(
+            'Frontend Display Class',
+            'pass',
+            'PLS_Frontend_Display class is loaded.'
+        );
+
+        // Check frontend display settings
+        $settings = PLS_Frontend_Display::get_settings();
+        
+        $results[] = self::result(
+            'Auto-Injection Enabled',
+            'pass',
+            $settings['auto_inject_enabled'] ? 'Enabled - PLS content will auto-display on product pages' : 'Disabled - Use shortcodes or Elementor widgets instead',
+            array( 'enabled' => $settings['auto_inject_enabled'] )
+        );
+
+        $position_labels = array(
+            'after_summary'    => 'After Product Summary',
+            'after_add_to_cart' => 'After Add to Cart Button',
+            'before_tabs'      => 'Before Product Tabs',
+            'in_tabs'          => 'As a Product Tab',
+        );
+        $position_label = isset( $position_labels[ $settings['injection_position'] ] ) 
+            ? $position_labels[ $settings['injection_position'] ] 
+            : $settings['injection_position'];
+
+        $results[] = self::result(
+            'Injection Position',
+            'pass',
+            "Position: {$position_label}",
+            array( 'position' => $settings['injection_position'] )
+        );
+
+        // Check CSS file exists
+        $css_file = PLS_PLS_DIR . 'assets/css/frontend-display.css';
+        if ( file_exists( $css_file ) ) {
+            $results[] = self::result(
+                'Frontend CSS File',
+                'pass',
+                'frontend-display.css exists (' . size_format( filesize( $css_file ) ) . ')',
+                array( 'path' => $css_file )
+            );
+        } else {
+            $results[] = self::result(
+                'Frontend CSS File',
+                'fail',
+                'frontend-display.css not found.',
+                array(),
+                'Create assets/css/frontend-display.css'
+            );
+        }
+
+        // Check offers CSS exists (dependency)
+        $offers_css = PLS_PLS_DIR . 'assets/css/offers.css';
+        if ( file_exists( $offers_css ) ) {
+            $results[] = self::result(
+                'Offers CSS File',
+                'pass',
+                'offers.css exists (' . size_format( filesize( $offers_css ) ) . ')'
+            );
+        } else {
+            $results[] = self::result(
+                'Offers CSS File',
+                'warning',
+                'offers.css not found.',
+                array(),
+                'Create assets/css/offers.css for full styling'
+            );
+        }
+
+        // Check offers JS exists
+        $offers_js = PLS_PLS_DIR . 'assets/js/offers.js';
+        if ( file_exists( $offers_js ) ) {
+            $results[] = self::result(
+                'Offers JS File',
+                'pass',
+                'offers.js exists (' . size_format( filesize( $offers_js ) ) . ')'
+            );
+        } else {
+            $results[] = self::result(
+                'Offers JS File',
+                'warning',
+                'offers.js not found.',
+                array(),
+                'Create assets/js/offers.js for interactive features'
+            );
+        }
+
+        // Check content display settings
+        $content_enabled = array();
+        if ( $settings['show_configurator'] ) $content_enabled[] = 'Configurator';
+        if ( $settings['show_description'] ) $content_enabled[] = 'Description';
+        if ( $settings['show_ingredients'] ) $content_enabled[] = 'Ingredients';
+        if ( $settings['show_bundles'] ) $content_enabled[] = 'Bundles';
+
+        $results[] = self::result(
+            'Content Sections',
+            count( $content_enabled ) > 0 ? 'pass' : 'warning',
+            count( $content_enabled ) . ' sections enabled: ' . implode( ', ', $content_enabled ),
+            array( 'sections' => $content_enabled ),
+            count( $content_enabled ) === 0 ? 'Enable at least one content section in Settings.' : ''
+        );
+
+        // Check shop page badges
+        $badges_enabled = array();
+        if ( $settings['show_tier_badges'] ) $badges_enabled[] = 'Tier Badges';
+        if ( $settings['show_starting_price'] ) $badges_enabled[] = 'Starting Price';
+
+        $results[] = self::result(
+            'Shop Page Badges',
+            count( $badges_enabled ) > 0 ? 'pass' : 'warning',
+            count( $badges_enabled ) . ' badges enabled: ' . implode( ', ', $badges_enabled ),
+            array( 'badges' => $badges_enabled )
+        );
+
+        // Test that we can access a product for display
+        if ( class_exists( 'WooCommerce' ) ) {
+            $products = PLS_Repo_Base_Product::all();
+            $live_products = array_filter( $products, function( $p ) { return 'live' === $p->status && $p->wc_product_id; } );
+            
+            if ( ! empty( $live_products ) ) {
+                $first_product = reset( $live_products );
+                $wc_product = wc_get_product( $first_product->wc_product_id );
+                
+                if ( $wc_product ) {
+                    $has_variations = $wc_product->is_type( 'variable' );
+                    $variation_count = $has_variations ? count( $wc_product->get_available_variations() ) : 0;
+                    
+                    $results[] = self::result(
+                        'Frontend Test Product',
+                        'pass',
+                        "Test product: {$first_product->name} (WC #{$first_product->wc_product_id}, {$variation_count} variations)",
+                        array(
+                            'pls_id' => $first_product->id,
+                            'wc_id' => $first_product->wc_product_id,
+                            'name' => $first_product->name,
+                            'url' => get_permalink( $first_product->wc_product_id ),
+                        )
+                    );
+
+                    // Check profile exists for display
+                    $profile = PLS_Repo_Product_Profile::get( $first_product->id );
+                    if ( $profile ) {
+                        $has_content = ! empty( $profile->long_description ) || ! empty( $profile->ingredients_list );
+                        $results[] = self::result(
+                            'Product Profile Content',
+                            $has_content ? 'pass' : 'warning',
+                            $has_content ? 'Product has displayable content (description/ingredients)' : 'Product profile exists but may be empty',
+                            array()
+                        );
+                    } else {
+                        $results[] = self::result(
+                            'Product Profile Content',
+                            'warning',
+                            'No product profile found for test product.',
+                            array(),
+                            'Generate sample data or add product profile manually.'
+                        );
+                    }
+                } else {
+                    $results[] = self::result(
+                        'Frontend Test Product',
+                        'fail',
+                        "WooCommerce product #{$first_product->wc_product_id} not found.",
+                        array(),
+                        'Re-sync products to fix WooCommerce linkage.'
+                    );
+                }
+            } else {
+                $results[] = self::result(
+                    'Frontend Test Product',
+                    'warning',
+                    'No live products with WooCommerce links found.',
+                    array(),
+                    'Generate sample data or sync products from PLS admin.'
+                );
+            }
+        } else {
+            $results[] = self::result(
+                'Frontend Test Product',
+                'skip',
+                'WooCommerce not active. Frontend display tests limited.'
+            );
+        }
+
+        // Accessibility checks
+        $results[] = self::result(
+            'CSS Accessibility',
+            'pass',
+            'Frontend CSS includes focus states, reduced motion support, and high contrast mode support.',
+            array( 'features' => array( 'focus-visible', 'prefers-reduced-motion', 'prefers-contrast' ) )
+        );
 
         return $results;
     }

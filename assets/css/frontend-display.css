@@ -1,0 +1,493 @@
+/**
+ * PLS Frontend Display Styles
+ *
+ * Styles for auto-injected PLS content on WooCommerce product pages
+ * and tier badges on shop/category pages.
+ *
+ * @package PLS_Private_Label_Store
+ * @version 3.0.0
+ */
+
+/* ==========================================================================
+   CSS Variables
+   ========================================================================== */
+
+:root {
+    --pls-primary: #2271b1;
+    --pls-primary-dark: #135e96;
+    --pls-success: #00a32a;
+    --pls-warning: #dba617;
+    --pls-gray-50: #f9fafb;
+    --pls-gray-100: #f3f4f6;
+    --pls-gray-200: #e5e7eb;
+    --pls-gray-300: #d1d5db;
+    --pls-gray-400: #9ca3af;
+    --pls-gray-500: #6b7280;
+    --pls-gray-600: #4b5563;
+    --pls-gray-700: #374151;
+    --pls-gray-800: #1f2937;
+    --pls-gray-900: #111827;
+    --pls-radius-sm: 4px;
+    --pls-radius: 8px;
+    --pls-radius-lg: 12px;
+    --pls-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --pls-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+    --pls-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+/* ==========================================================================
+   Auto-Inject Container
+   ========================================================================== */
+
+.pls-auto-inject {
+    margin: 2rem 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.pls-auto-inject__section {
+    margin-bottom: 2.5rem;
+    padding: 1.5rem;
+    background: var(--pls-gray-50);
+    border-radius: var(--pls-radius-lg);
+}
+
+.pls-auto-inject__title {
+    margin: 0 0 1.25rem 0;
+    padding: 0;
+    font-size: 1.375rem;
+    font-weight: 600;
+    color: var(--pls-gray-900);
+    line-height: 1.3;
+}
+
+.pls-auto-inject__content {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--pls-gray-700);
+}
+
+.pls-auto-inject__content p {
+    margin: 0 0 1rem 0;
+}
+
+.pls-auto-inject__content p:last-child {
+    margin-bottom: 0;
+}
+
+/* ==========================================================================
+   Tier Cards (Configurator)
+   ========================================================================== */
+
+.pls-tier-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+}
+
+.pls-tier-card {
+    position: relative;
+    padding: 1.5rem 1rem;
+    background: #fff;
+    border: 2px solid var(--pls-gray-200);
+    border-radius: var(--pls-radius);
+    text-align: center;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.pls-tier-card:hover {
+    border-color: var(--pls-primary);
+    box-shadow: var(--pls-shadow-lg);
+    transform: translateY(-2px);
+}
+
+.pls-tier-card.is-selected {
+    border-color: var(--pls-primary);
+    background: rgba(34, 113, 177, 0.05);
+}
+
+.pls-tier-card__badge {
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 2px 10px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-radius: 100px;
+    white-space: nowrap;
+}
+
+.pls-tier-card__badge--trial {
+    background: var(--pls-gray-200);
+    color: var(--pls-gray-700);
+}
+
+.pls-tier-card__badge--starter {
+    background: #e0f2fe;
+    color: #0369a1;
+}
+
+.pls-tier-card__badge--brand {
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.pls-tier-card__badge--growth {
+    background: #d1fae5;
+    color: #047857;
+}
+
+.pls-tier-card__badge--wholesale {
+    background: #ede9fe;
+    color: #7c3aed;
+}
+
+.pls-tier-card__title {
+    margin: 0.5rem 0 0.75rem 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--pls-gray-800);
+    line-height: 1.3;
+}
+
+.pls-tier-card__units {
+    margin-bottom: 0.75rem;
+}
+
+.pls-tier-card__units-number {
+    display: block;
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--pls-primary);
+    line-height: 1;
+}
+
+.pls-tier-card__units-label {
+    font-size: 0.8rem;
+    color: var(--pls-gray-500);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.pls-tier-card__price {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--pls-gray-900);
+}
+
+.pls-tier-card__price-per-unit {
+    margin-top: 0.25rem;
+    font-size: 0.8rem;
+    color: var(--pls-gray-500);
+}
+
+.pls-tier-card__select {
+    margin-top: 1rem;
+    padding: 0.5rem 1rem;
+    background: var(--pls-primary);
+    color: #fff;
+    border: none;
+    border-radius: var(--pls-radius-sm);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.pls-tier-card__select:hover {
+    background: var(--pls-primary-dark);
+}
+
+.pls-tier-card.is-selected .pls-tier-card__select {
+    background: var(--pls-success);
+}
+
+/* ==========================================================================
+   Description & Directions
+   ========================================================================== */
+
+.pls-auto-inject__directions,
+.pls-auto-inject__benefits,
+.pls-auto-inject__skin-types {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--pls-gray-200);
+}
+
+.pls-auto-inject__directions h3,
+.pls-auto-inject__benefits h3,
+.pls-auto-inject__skin-types h3 {
+    margin: 0 0 0.75rem 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--pls-gray-800);
+}
+
+/* ==========================================================================
+   Ingredients
+   ========================================================================== */
+
+.pls-ingredients-key {
+    margin-bottom: 1.5rem;
+}
+
+.pls-ingredients-key h3,
+.pls-ingredients-all h3 {
+    margin: 0 0 1rem 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--pls-gray-700);
+}
+
+.pls-ingredients-key__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.pls-ingredient-card {
+    padding: 1rem;
+    background: #fff;
+    border-radius: var(--pls-radius);
+    box-shadow: var(--pls-shadow-sm);
+}
+
+.pls-ingredient-card--key {
+    border-left: 3px solid var(--pls-warning);
+}
+
+.pls-ingredient-card__badge {
+    display: inline-block;
+    margin-right: 0.5rem;
+    color: var(--pls-warning);
+    font-size: 1rem;
+}
+
+.pls-ingredient-card__name {
+    font-weight: 600;
+    color: var(--pls-gray-800);
+}
+
+.pls-ingredient-card__desc {
+    margin: 0.5rem 0 0 0;
+    font-size: 0.875rem;
+    color: var(--pls-gray-600);
+    line-height: 1.5;
+}
+
+.pls-ingredients-list {
+    font-size: 0.9rem;
+    color: var(--pls-gray-600);
+    line-height: 1.7;
+}
+
+/* ==========================================================================
+   Bundle Cards
+   ========================================================================== */
+
+.pls-bundle-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+}
+
+.pls-bundle-card {
+    padding: 1.25rem;
+    background: linear-gradient(135deg, var(--pls-primary), var(--pls-primary-dark));
+    border-radius: var(--pls-radius);
+    color: #fff;
+}
+
+.pls-bundle-card__title {
+    margin: 0 0 0.75rem 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #fff;
+}
+
+.pls-bundle-card__details {
+    margin-bottom: 0.75rem;
+    font-size: 0.875rem;
+    opacity: 0.9;
+}
+
+.pls-bundle-card__details p {
+    margin: 0 0 0.25rem 0;
+}
+
+.pls-bundle-card__total {
+    font-weight: 600;
+}
+
+.pls-bundle-card__price {
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.pls-bundle-card__price-label {
+    font-size: 0.8rem;
+    font-weight: 400;
+    opacity: 0.8;
+}
+
+/* ==========================================================================
+   Product Badges (Shop/Category Pages)
+   ========================================================================== */
+
+.pls-product-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    padding: 4px 10px;
+    background: var(--pls-primary);
+    color: #fff;
+    border-radius: var(--pls-radius-sm);
+    font-size: 0.75rem;
+    line-height: 1.4;
+    z-index: 10;
+}
+
+.pls-product-badge__label {
+    display: block;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    opacity: 0.85;
+}
+
+.pls-product-badge__units {
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.pls-product-badge__suffix {
+    font-size: 0.7rem;
+}
+
+/* Position fix for WooCommerce product cards */
+.woocommerce ul.products li.product {
+    position: relative;
+}
+
+/* ==========================================================================
+   Starting Price (Shop/Category Pages)
+   ========================================================================== */
+
+.pls-starting-price {
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--pls-gray-600);
+}
+
+.pls-starting-price__label {
+    display: inline;
+}
+
+.pls-starting-price__value {
+    font-weight: 600;
+    color: var(--pls-success);
+}
+
+.pls-starting-price__suffix {
+    font-size: 0.75rem;
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+@media (max-width: 768px) {
+    .pls-auto-inject__section {
+        padding: 1rem;
+    }
+    
+    .pls-auto-inject__title {
+        font-size: 1.2rem;
+    }
+    
+    .pls-tier-cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .pls-tier-card {
+        padding: 1rem 0.75rem;
+    }
+    
+    .pls-tier-card__units-number {
+        font-size: 1.5rem;
+    }
+    
+    .pls-bundle-cards {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    .pls-tier-cards {
+        grid-template-columns: 1fr;
+    }
+    
+    .pls-ingredients-key__grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ==========================================================================
+   Accessibility
+   ========================================================================== */
+
+.pls-tier-card:focus-within {
+    outline: 2px solid var(--pls-primary);
+    outline-offset: 2px;
+}
+
+.pls-tier-card__select:focus {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+}
+
+/* Screen reader only */
+.pls-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    .pls-tier-card,
+    .pls-tier-card__select {
+        transition: none;
+    }
+    
+    .pls-tier-card:hover {
+        transform: none;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .pls-tier-card {
+        border-width: 3px;
+    }
+    
+    .pls-tier-card:hover,
+    .pls-tier-card.is-selected {
+        border-color: currentColor;
+    }
+    
+    .pls-bundle-card {
+        background: var(--pls-gray-900);
+    }
+}

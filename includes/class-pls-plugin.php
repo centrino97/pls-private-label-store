@@ -91,6 +91,7 @@ final class PLS_Plugin {
         require_once PLS_PLS_DIR . 'includes/frontend/class-pls-ajax.php';
         require_once PLS_PLS_DIR . 'includes/frontend/class-pls-custom-order-page.php';
         require_once PLS_PLS_DIR . 'includes/frontend/class-pls-shortcodes.php';
+        require_once PLS_PLS_DIR . 'includes/frontend/class-pls-frontend-display.php';
 
         require_once PLS_PLS_DIR . 'includes/elementor/class-pls-elementor.php';
     }
@@ -114,6 +115,7 @@ final class PLS_Plugin {
         PLS_Custom_Order_Page::init();
         PLS_Shortcodes::init();
         PLS_Elementor::init();
+        PLS_Frontend_Display::init();
         PLS_Admin_Dashboard_Filter::init();
         PLS_Commission_Email::init();
         PLS_Onboarding::init();
