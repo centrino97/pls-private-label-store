@@ -199,7 +199,7 @@
         runAction: async function(action) {
             if (this.isRunning) return;
 
-            const $button = $(`#pls-${action.replace('_', '-')}`);
+            let $button = $(`#pls-${action.replace('_', '-')}`);
             if (!$button.length) {
                 // Try alternative selector format
                 $button = $(`#pls-${action}`);
