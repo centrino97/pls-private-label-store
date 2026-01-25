@@ -36,7 +36,8 @@ $attr_payload = PLS_Admin_Ajax::attribute_payload();
 
 // Add preview modal CSS
 wp_add_inline_style( 'pls-admin', '
-.pls-modal-fullscreen {
+/* Product Modal - Always Fullscreen */
+#pls-product-modal {
     position: fixed !important;
     top: 0 !important;
     left: 0 !important;
@@ -45,29 +46,50 @@ wp_add_inline_style( 'pls-admin', '
     z-index: 100000 !important;
     background: rgba(0,0,0,0.8) !important;
 }
-.pls-modal-fullscreen .pls-modal__dialog {
+#pls-product-modal .pls-modal__dialog {
     max-width: 100% !important;
     width: 100% !important;
     height: 100vh !important;
     margin: 0 !important;
     border-radius: 0 !important;
-}
-.pls-modal-split .pls-modal__dialog {
     display: flex !important;
-    flex-direction: row !important;
-    max-width: 100% !important;
-    width: 100% !important;
-    height: 100vh !important;
-    margin: 0 !important;
+    flex-direction: column !important;
 }
-.pls-modal-split #pls-product-form {
+#pls-product-modal .pls-modal__head {
+    flex-shrink: 0;
+    padding: 20px;
+    border-bottom: 1px solid #ddd;
+    background: #fff;
+}
+#pls-product-modal .pls-mode-toggle {
+    flex-shrink: 0;
+    padding: 0 20px;
+    background: #f9f9f9;
+    border-bottom: 1px solid #ddd;
+}
+/* Split Screen Mode (when Preview is active) */
+#pls-product-modal.pls-modal-split .pls-modal__dialog {
+    flex-direction: row !important;
+}
+#pls-product-modal.pls-modal-split #pls-product-form {
     width: 50% !important;
     overflow-y: auto !important;
     border-right: 1px solid #ddd !important;
+    flex-shrink: 0;
 }
-.pls-modal-split #pls-preview-panel {
+#pls-product-modal.pls-modal-split #pls-preview-panel {
     width: 50% !important;
     overflow-y: auto !important;
+    background: #fff !important;
+    padding: 20px !important;
+}
+/* Builder Mode (default) */
+#pls-product-modal:not(.pls-modal-split) #pls-product-form {
+    flex: 1;
+    overflow-y: auto;
+}
+#pls-product-modal:not(.pls-modal-split) #pls-preview-panel {
+    display: none !important;
 }
 .pls-preview-controls {
     position: sticky;
@@ -932,6 +954,23 @@ wp_localize_script(
           </div>
         </div>
       </form>
+      
+      <!-- Preview Panel (shown in split-screen mode) -->
+      <div id="pls-preview-panel" style="display: none;">
+        <div style="padding: 20px; background: #fff; height: 100%; overflow-y: auto;">
+          <div style="margin-bottom: 20px;">
+            <h3 style="margin: 0 0 10px 0;"><?php esc_html_e( 'Live Preview', 'pls-private-label-store' ); ?></h3>
+            <p class="description" style="margin: 0;">
+              <?php esc_html_e( 'Preview how your product will appear on the frontend using the shortcode.', 'pls-private-label-store' ); ?>
+            </p>
+          </div>
+          <div id="pls-preview-content" style="background: #f9f9f9; padding: 20px; border-radius: 4px; min-height: 400px;">
+            <p class="description" style="text-align: center; padding: 40px;">
+              <?php esc_html_e( 'Click Preview to see how your product will render.', 'pls-private-label-store' ); ?>
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>

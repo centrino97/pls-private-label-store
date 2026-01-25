@@ -1734,15 +1734,16 @@
         $('.pls-mode-btn[data-mode="'+mode+'"]').addClass('is-active');
         
         if (mode === 'preview'){
-          $('.pls-stepper, .pls-modal__footer .pls-stepper__controls, .pls-modal__footer .pls-stepper__actions').hide();
+          // Enable split-screen mode by default
+          $('#pls-product-modal').addClass('pls-modal-split');
+          $('#pls-product-form').show();
           $('#pls-preview-panel').show();
-          // Make modal fullscreen for preview
-          $('#pls-product-modal').addClass('pls-modal-fullscreen');
           generatePreview();
         } else {
-          $('.pls-stepper, .pls-modal__footer .pls-stepper__controls, .pls-modal__footer .pls-stepper__actions').show();
+          // Builder mode - hide preview panel
+          $('#pls-product-modal').removeClass('pls-modal-split');
           $('#pls-preview-panel').hide();
-          $('#pls-product-modal').removeClass('pls-modal-fullscreen');
+          $('#pls-product-form').show();
         }
       }
 
@@ -1777,7 +1778,6 @@
 
       var previewDebounce = null;
       function generatePreview(){
-        var formData = $('#pls-product-form').serializeArray();
         var productId = $('#pls-product-id').val();
         var wcProductId = null;
         
@@ -1786,38 +1786,35 @@
           wcProductId = productMap[productId].wc_product_id;
         }
         
-        // If product is synced, use actual WooCommerce product URL
+        // Show loading state
+        $('#pls-preview-content').html('<div style="text-align: center; padding: 40px;"><p class="description">Loading preview...</p></div>');
+        
+        // If product is synced, use shortcode with WooCommerce product ID
         if (wcProductId){
-          var previewUrl = '<?php echo esc_js( home_url() ); ?>?product_id=' + wcProductId + '&pls_preview=1&pls_preview_nonce=' + (window.PLS_Admin ? PLS_Admin.nonce : '');
-          $('#pls-preview-iframe').attr('src', previewUrl);
-          $('.pls-preview-loading').hide();
-          $('#pls-preview-iframe').show();
-          return;
-        }
-        
-        // Otherwise generate preview HTML from form data
-        formData.push({ name: 'action', value: 'pls_preview_product' });
-        formData.push({ name: 'nonce', value: (window.PLS_Admin ? PLS_Admin.nonce : '') });
-        
-        $('#pls-preview-iframe').hide();
-        $('.pls-preview-loading').show();
-        
-        $.post(ajaxurl, formData, function(resp){
-          if (resp && resp.success && resp.data && resp.data.html){
-            var iframe = document.getElementById('pls-preview-iframe');
-            if (iframe && iframe.contentDocument){
-              iframe.contentDocument.open();
-              iframe.contentDocument.write(resp.data.html);
-              iframe.contentDocument.close();
-              $('.pls-preview-loading').hide();
-              $('#pls-preview-iframe').show();
+          $.post(ajaxurl, {
+            action: 'pls_get_product_preview_content',
+            nonce: (window.PLS_Admin ? PLS_Admin.nonce : ''),
+            product_id: productId,
+            wc_id: wcProductId
+          }, function(resp){
+            if (resp && resp.success && resp.data && resp.data.html){
+              $('#pls-preview-content').html(resp.data.html);
+            } else {
+              $('#pls-preview-content').html('<div class="pls-note">' + 
+                (resp && resp.data && resp.data.message ? resp.data.message : 'Failed to load preview. Product must be synced to WooCommerce first.') + 
+                '</div>');
             }
-          } else {
-            $('.pls-preview-loading').html('<p style="color: #d63638;">Preview generation failed. Please check form data.</p>');
-          }
-        }).fail(function(){
-          $('.pls-preview-loading').html('<p style="color: #d63638;">Failed to generate preview. Please try again.</p>');
-        });
+          }).fail(function(){
+            $('#pls-preview-content').html('<div class="pls-note">Failed to load preview. Please try again.</div>');
+          });
+        } else {
+          // Product not synced yet
+          $('#pls-preview-content').html('<div class="pls-note" style="padding: 20px; text-align: center;">' +
+            '<p><strong>Product not synced yet</strong></p>' +
+            '<p>Please save and activate the product first to see the preview.</p>' +
+            '<p class="description">The preview uses the <code>[pls_single_product product_id="' + wcProductId + '"]</code> shortcode.</p>' +
+            '</div>');
+        }
       }
 
       // Auto-refresh preview on field changes (debounced)

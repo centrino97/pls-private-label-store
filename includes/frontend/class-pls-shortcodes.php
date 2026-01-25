@@ -656,6 +656,7 @@ final class PLS_Shortcodes {
         $atts = shortcode_atts(
             array(
                 'product_id'        => 0,
+                'wc_id'             => 0, // Alias for product_id (WooCommerce product ID)
                 'show_configurator' => 'yes',
                 'show_description'  => 'yes',
                 'show_ingredients'   => 'yes',
@@ -665,8 +666,10 @@ final class PLS_Shortcodes {
             'pls_single_product'
         );
 
-        // Auto-detect product ID from current WooCommerce product
-        $product_id = absint( $atts['product_id'] );
+        // Support both product_id and wc_id parameters (wc_id takes precedence if both provided)
+        $product_id = absint( $atts['wc_id'] ) ?: absint( $atts['product_id'] );
+        
+        // Auto-detect product ID from current WooCommerce product if not provided
         if ( ! $product_id ) {
             global $product;
             if ( $product instanceof WC_Product ) {
@@ -675,13 +678,13 @@ final class PLS_Shortcodes {
         }
 
         if ( ! $product_id ) {
-            return '<div class="pls-note">' . esc_html__( 'Product not found. This shortcode works on single product pages.', 'pls-private-label-store' ) . '</div>';
+            return '<div class="pls-note">' . esc_html__( 'Product not found. Use product_id or wc_id parameter, or use on single product pages.', 'pls-private-label-store' ) . '</div>';
         }
 
-        // Get WooCommerce product
+        // Get WooCommerce product (product_id can be WooCommerce product ID directly)
         $wc_product = wc_get_product( $product_id );
         if ( ! $wc_product ) {
-            return '<div class="pls-note">' . esc_html__( 'WooCommerce product not found.', 'pls-private-label-store' ) . '</div>';
+            return '<div class="pls-note">' . esc_html__( 'WooCommerce product not found. Product ID: ', 'pls-private-label-store' ) . esc_html( $product_id ) . '</div>';
         }
 
         // Check if this is a PLS product
