@@ -69,6 +69,7 @@ final class PLS_Plugin {
         require_once PLS_PLS_DIR . 'includes/core/class-pls-admin-dashboard-filter.php';
         require_once PLS_PLS_DIR . 'includes/core/class-pls-commission-email.php';
         require_once PLS_PLS_DIR . 'includes/core/class-pls-onboarding.php';
+        require_once PLS_PLS_DIR . 'includes/core/class-pls-seo-integration.php';
 
         require_once PLS_PLS_DIR . 'includes/admin/class-pls-admin-menu.php';
         require_once PLS_PLS_DIR . 'includes/admin/class-pls-admin-ajax.php';
@@ -117,6 +118,7 @@ final class PLS_Plugin {
         PLS_Commission_Email::init();
         PLS_Onboarding::init();
         PLS_Bundle_Cart::init();
+        PLS_SEO_Integration::init();
 
         // Hook ingredient sync
         add_action( 'created_pls_ingredient', array( 'PLS_Ingredient_Sync', 'on_ingredient_created' ) );

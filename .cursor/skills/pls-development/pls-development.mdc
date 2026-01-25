@@ -50,6 +50,48 @@ See full details in the "Cross-Platform Command Compatibility" section below.
 - **If resuming:** Start with the pending tasks from handoff message
 - **Version context:** Note current version in handoff/context for next RELEASE command
 
+### MCP Browser Testing Workflow (Part of DEVELOP)
+
+**When testing on live site (bodoci):**
+
+1. **After RELEASE command completes:**
+   - Wait 1-2 minutes for GitHub Actions to build ZIP
+   - Verify release at: https://github.com/centrino97/pls-private-label-store/releases
+
+2. **Update plugin on live site:**
+   - Go to WP Admin → Dashboard → Updates
+   - Or use UUPD plugin to check for PLS updates
+   - Install the new version
+
+3. **Test via Cursor MCP Browser:**
+   ```
+   Navigate to: [site]/wp-admin/admin.php?page=pls-system-test
+   
+   Test Sequence:
+   1. Click "Generate Sample Data" button
+   2. Wait for completion (check action log)
+   3. Click "Run All Tests" button
+   4. Screenshot/capture results
+   5. Note any failures or warnings
+   ```
+
+4. **Capture test results:**
+   - Health score should be 100%
+   - All categories should pass
+   - Note any specific test failures
+
+5. **If tests fail:**
+   - Read error messages from test results
+   - Fix code issues locally
+   - RELEASE new version
+   - Repeat testing cycle
+
+**Context for every chat:**
+- Live site: bodoci.com
+- Stack: WordPress, WooCommerce, Elementor Pro, Hello Elementor, LiteSpeed, Yoast
+- Testing: Generate sample data → Run system tests → Fix issues → Release
+- Goal: 100% health score, seamless WooCommerce integration
+
 ---
 
 ### RELEASE - Complete Release Workflow

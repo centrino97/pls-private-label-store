@@ -39,6 +39,10 @@ final class PLS_System_Test {
      */
     public static function run_all_tests() {
         $results = array(
+            'pls_info'        => self::test_pls_info(),
+            'server_config'   => self::test_server_config(),
+            'wc_settings'     => self::test_wc_settings(),
+            'user_roles'      => self::test_user_roles(),
             'database'        => self::test_database(),
             'product_options' => self::test_product_options(),
             'products_sync'   => self::test_products_sync(),
@@ -1368,6 +1372,272 @@ final class PLS_System_Test {
                 'net_profit' => $total_revenue - $combined_commission,
             )
         );
+
+        return $results;
+    }
+
+    // =========================================================================
+    // TEST CATEGORY: PLS INFO & VERSION
+    // =========================================================================
+
+    /**
+     * Test PLS plugin info and version.
+     *
+     * @return array Test results.
+     */
+    public static function test_pls_info() {
+        $results = array();
+
+        // Plugin Version
+        $results[] = self::result(
+            'PLS Version',
+            'pass',
+            'v' . PLS_PLS_VERSION
+        );
+
+        // UUPD Version
+        $uupd_file = PLS_PLS_DIR . 'uupd/index.json';
+        if ( file_exists( $uupd_file ) ) {
+            $uupd = json_decode( file_get_contents( $uupd_file ), true );
+            if ( is_array( $uupd ) && isset( $uupd['version'] ) ) {
+                $match = ( $uupd['version'] === PLS_PLS_VERSION );
+                $results[] = self::result(
+                    'UUPD Version',
+                    $match ? 'pass' : 'warning',
+                    'v' . $uupd['version'] . ( $match ? ' (matches)' : ' (MISMATCH!)' )
+                );
+            } else {
+                $results[] = self::result(
+                    'UUPD Version',
+                    'warning',
+                    'UUPD file exists but version field missing.'
+                );
+            }
+        } else {
+            $results[] = self::result(
+                'UUPD Version',
+                'warning',
+                'UUPD index.json file not found.'
+            );
+        }
+
+        // Database Tables Count
+        global $wpdb;
+        $tables = $wpdb->get_col( "SHOW TABLES LIKE '{$wpdb->prefix}pls_%'" );
+        $results[] = self::result(
+            'PLS Tables',
+            count( $tables ) >= 12 ? 'pass' : 'fail',
+            count( $tables ) . '/12 tables exist',
+            array( 'tables' => $tables ),
+            count( $tables ) < 12 ? 'Deactivate and reactivate the plugin to create missing tables.' : ''
+        );
+
+        return $results;
+    }
+
+    // =========================================================================
+    // TEST CATEGORY: SERVER CONFIGURATION
+    // =========================================================================
+
+    /**
+     * Test server configuration (PHP version, memory, extensions).
+     *
+     * @return array Test results.
+     */
+    public static function test_server_config() {
+        $results = array();
+
+        // PHP Version
+        $php_version = phpversion();
+        $php_ok = version_compare( $php_version, '7.4', '>=' );
+        $results[] = self::result(
+            'PHP Version',
+            $php_ok ? 'pass' : 'fail',
+            "PHP {$php_version}" . ( $php_ok ? '' : ' (requires 7.4+)' ),
+            array( 'version' => $php_version ),
+            $php_ok ? '' : 'Upgrade PHP to version 7.4 or higher.'
+        );
+
+        // Memory Limit
+        $memory = ini_get( 'memory_limit' );
+        $memory_bytes = wp_convert_hr_to_bytes( $memory );
+        $memory_mb = round( $memory_bytes / 1024 / 1024 );
+        $results[] = self::result(
+            'Memory Limit',
+            $memory_mb >= 256 ? 'pass' : 'warning',
+            "Memory: {$memory} ({$memory_mb}MB)" . ( $memory_mb < 256 ? ' (recommend 256M+)' : '' ),
+            array( 'memory_limit' => $memory, 'memory_mb' => $memory_mb ),
+            $memory_mb < 256 ? 'Increase memory_limit in php.ini or wp-config.php' : ''
+        );
+
+        // Max Execution Time
+        $max_time = ini_get( 'max_execution_time' );
+        $max_time_int = (int) $max_time;
+        $results[] = self::result(
+            'Max Execution Time',
+            $max_time_int >= 300 ? 'pass' : 'warning',
+            "Timeout: {$max_time}s" . ( $max_time_int < 300 ? ' (recommend 300s for sample data)' : '' ),
+            array( 'max_execution_time' => $max_time ),
+            $max_time_int < 300 ? 'Increase max_execution_time in php.ini for sample data generation' : ''
+        );
+
+        // Required Extensions
+        $extensions = array( 'mysqli', 'curl', 'json', 'mbstring' );
+        foreach ( $extensions as $ext ) {
+            $loaded = extension_loaded( $ext );
+            $results[] = self::result(
+                "PHP Extension: {$ext}",
+                $loaded ? 'pass' : 'fail',
+                $loaded ? 'Extension loaded' : 'Extension missing',
+                array(),
+                $loaded ? '' : "Install PHP {$ext} extension"
+            );
+        }
+
+        return $results;
+    }
+
+    // =========================================================================
+    // TEST CATEGORY: WOOCOMMERCE SETTINGS
+    // =========================================================================
+
+    /**
+     * Test WooCommerce settings status.
+     *
+     * @return array Test results.
+     */
+    public static function test_wc_settings() {
+        $results = array();
+
+        if ( ! class_exists( 'WooCommerce' ) ) {
+            $results[] = self::result(
+                'WooCommerce',
+                'skip',
+                'WooCommerce is not active. Settings tests skipped.'
+            );
+            return $results;
+        }
+
+        $results[] = self::result(
+            'WooCommerce Active',
+            'pass',
+            'WooCommerce is active.'
+        );
+
+        // Currency
+        $currency = get_woocommerce_currency();
+        $results[] = self::result(
+            'Currency',
+            'pass',
+            "Currency: {$currency}",
+            array( 'currency' => $currency )
+        );
+
+        // Tax Status
+        $tax_enabled = wc_tax_enabled();
+        $results[] = self::result(
+            'Taxes',
+            'pass',
+            $tax_enabled ? 'Taxes enabled' : 'Taxes disabled',
+            array( 'tax_enabled' => $tax_enabled )
+        );
+
+        // Payment Gateways
+        if ( function_exists( 'WC' ) && WC()->payment_gateways ) {
+            $gateways = WC()->payment_gateways->get_available_payment_gateways();
+            $gateway_names = array_keys( $gateways );
+            $results[] = self::result(
+                'Payment Gateways',
+                count( $gateways ) > 0 ? 'pass' : 'warning',
+                count( $gateways ) . ' active: ' . implode( ', ', $gateway_names ),
+                array( 'gateways' => $gateway_names ),
+                count( $gateways ) === 0 ? 'Configure at least one payment gateway in WooCommerce → Settings → Payments' : ''
+            );
+        } else {
+            $results[] = self::result(
+                'Payment Gateways',
+                'warning',
+                'Unable to check payment gateways.'
+            );
+        }
+
+        // Shipping
+        if ( class_exists( 'WC_Shipping_Zones' ) ) {
+            $shipping_zones = WC_Shipping_Zones::get_zones();
+            $results[] = self::result(
+                'Shipping Zones',
+                'pass',
+                count( $shipping_zones ) . ' zones configured',
+                array( 'zones' => count( $shipping_zones ) )
+            );
+        } else {
+            $results[] = self::result(
+                'Shipping Zones',
+                'warning',
+                'Unable to check shipping zones.'
+            );
+        }
+
+        return $results;
+    }
+
+    // =========================================================================
+    // TEST CATEGORY: USER ROLES & CAPABILITIES
+    // =========================================================================
+
+    /**
+     * Test user roles and capabilities.
+     *
+     * @return array Test results.
+     */
+    public static function test_user_roles() {
+        $results = array();
+
+        // PLS User Role
+        $pls_role = get_role( 'pls_user' );
+        $results[] = self::result(
+            'PLS User Role',
+            $pls_role ? 'pass' : 'warning',
+            $pls_role ? 'Role exists' : 'Role not created',
+            array(),
+            $pls_role ? '' : 'The PLS User role should be created automatically. Check plugin activation.'
+        );
+
+        // Check Robert/Raniya
+        foreach ( array( 'robert', 'raniya' ) as $username ) {
+            $user = get_user_by( 'login', $username );
+            if ( $user ) {
+                $has_pls = in_array( 'pls_user', $user->roles, true );
+                $results[] = self::result(
+                    "User: {$username}",
+                    $has_pls ? 'pass' : 'warning',
+                    $has_pls ? 'Has PLS User role' : 'Missing PLS User role',
+                    array( 'user_id' => $user->ID, 'roles' => $user->roles ),
+                    $has_pls ? '' : "Assign PLS User role to {$username} in Users → {$username}"
+                );
+            } else {
+                $results[] = self::result(
+                    "User: {$username}",
+                    'skip',
+                    "User '{$username}' not found",
+                    array()
+                );
+            }
+        }
+
+        // Admin capabilities
+        $admin = get_role( 'administrator' );
+        $caps = array( 'pls_manage_products', 'pls_manage_attributes', 'pls_manage_bundles' );
+        foreach ( $caps as $cap ) {
+            $has = $admin && $admin->has_cap( $cap );
+            $results[] = self::result(
+                "Admin Cap: {$cap}",
+                $has ? 'pass' : 'fail',
+                $has ? 'Granted' : 'Missing',
+                array(),
+                $has ? '' : "Capability {$cap} should be granted to administrators. Check PLS_Capabilities class."
+            );
+        }
 
         return $results;
     }

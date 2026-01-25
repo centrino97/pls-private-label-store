@@ -19,6 +19,180 @@ final class PLS_Shortcodes {
         add_shortcode( 'pls_configurator', array( __CLASS__, 'configurator_shortcode' ) );
         add_shortcode( 'pls_bundle', array( __CLASS__, 'bundle_shortcode' ) );
         add_shortcode( 'pls_product_page', array( __CLASS__, 'product_page_shortcode' ) );
+        
+        // Preview endpoint for admin preview
+        add_action( 'template_redirect', array( __CLASS__, 'handle_preview_request' ) );
+    }
+
+    /**
+     * Handle preview requests from admin.
+     */
+    public static function handle_preview_request() {
+        // Check if this is a preview request
+        if ( ! isset( $_GET['pls_preview'] ) ) {
+            return;
+        }
+
+        // Handle category preview
+        if ( isset( $_GET['category_id'] ) ) {
+            self::render_category_preview( absint( $_GET['category_id'] ) );
+            return;
+        }
+
+        // Handle product preview
+        if ( ! isset( $_GET['product_id'] ) ) {
+            return;
+        }
+
+        // Verify nonce
+        if ( ! isset( $_GET['pls_preview_nonce'] ) || ! wp_verify_nonce( $_GET['pls_preview_nonce'], 'pls_admin_nonce' ) ) {
+            wp_die( __( 'Invalid preview request.', 'pls-private-label-store' ) );
+        }
+
+        // Check permissions
+        if ( ! current_user_can( PLS_Capabilities::CAP_PRODUCTS ) ) {
+            wp_die( __( 'Insufficient permissions.', 'pls-private-label-store' ) );
+        }
+
+        $product_id = absint( $_GET['product_id'] );
+        $product = wc_get_product( $product_id );
+
+        if ( ! $product ) {
+            wp_die( __( 'Product not found.', 'pls-private-label-store' ) );
+        }
+
+        // Set up global $product
+        global $wp_query;
+        $wp_query->is_product = true;
+        $wp_query->is_singular = true;
+
+        // Render preview
+        ?>
+        <!DOCTYPE html>
+        <html <?php language_attributes(); ?>>
+        <head>
+            <meta charset="<?php bloginfo( 'charset' ); ?>">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title><?php echo esc_html( sprintf( __( 'Preview: %s', 'pls-private-label-store' ), $product->get_name() ) ); ?></title>
+            <?php wp_head(); ?>
+        </head>
+        <body>
+            <div style="padding: 20px; background: #f0f0f1; min-height: 100vh;">
+                <div style="max-width: 1200px; margin: 0 auto; background: #fff; padding: 40px; border-radius: 8px;">
+                    <?php
+                    // Render using actual shortcode
+                    echo do_shortcode( '[pls_product_page product_id="' . $product_id . '"]' );
+                    ?>
+                </div>
+            </div>
+            <?php wp_footer(); ?>
+        </body>
+        </html>
+        <?php
+        exit;
+    }
+
+    /**
+     * Render category preview.
+     */
+    private static function render_category_preview( $category_id ) {
+        // Verify nonce
+        if ( ! isset( $_GET['pls_preview_nonce'] ) || ! wp_verify_nonce( $_GET['pls_preview_nonce'], 'pls_admin_nonce' ) ) {
+            wp_die( __( 'Invalid preview request.', 'pls-private-label-store' ) );
+        }
+
+        // Check permissions
+        if ( ! current_user_can( PLS_Capabilities::CAP_PRODUCTS ) ) {
+            wp_die( __( 'Insufficient permissions.', 'pls-private-label-store' ) );
+        }
+
+        $category = get_term( $category_id, 'product_cat' );
+        if ( ! $category || is_wp_error( $category ) ) {
+            wp_die( __( 'Category not found.', 'pls-private-label-store' ) );
+        }
+
+        // Set up query for category page
+        global $wp_query;
+        $wp_query->is_product_category = true;
+        $wp_query->is_archive = true;
+        $wp_query->queried_object = $category;
+        $wp_query->queried_object_id = $category_id;
+
+        // Render preview
+        ?>
+        <!DOCTYPE html>
+        <html <?php language_attributes(); ?>>
+        <head>
+            <meta charset="<?php bloginfo( 'charset' ); ?>">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title><?php echo esc_html( sprintf( __( 'Preview: %s', 'pls-private-label-store' ), $category->name ) ); ?></title>
+            <?php wp_head(); ?>
+        </head>
+        <body>
+            <div style="padding: 20px; background: #f0f0f1; min-height: 100vh;">
+                <div style="max-width: 1200px; margin: 0 auto; background: #fff; padding: 40px; border-radius: 8px;">
+                    <h1><?php echo esc_html( $category->name ); ?></h1>
+                    <?php if ( ! empty( $category->description ) ) : ?>
+                        <div class="category-description">
+                            <?php echo wp_kses_post( wpautop( $category->description ) ); ?>
+                        </div>
+                    <?php endif; ?>
+                    
+                    <?php
+                    // Show products in this category using WooCommerce
+                    $args = array(
+                        'post_type' => 'product',
+                        'posts_per_page' => 12,
+                        'tax_query' => array(
+                            array(
+                                'taxonomy' => 'product_cat',
+                                'field' => 'term_id',
+                                'terms' => $category_id,
+                            ),
+                        ),
+                    );
+                    $products = new WP_Query( $args );
+                    
+                    if ( $products->have_posts() ) :
+                        echo '<div class="products" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; margin-top: 30px;">';
+                        while ( $products->have_posts() ) : $products->the_post();
+                            global $product;
+                            ?>
+                            <div class="product-item" style="border: 1px solid #ddd; padding: 15px; border-radius: 8px;">
+                                <?php if ( $product->get_image_id() ) : ?>
+                                    <div style="margin-bottom: 10px;">
+                                        <?php echo $product->get_image( 'medium' ); ?>
+                                    </div>
+                                <?php endif; ?>
+                                <h3 style="margin: 0 0 10px 0;">
+                                    <a href="<?php echo esc_url( $product->get_permalink() ); ?>">
+                                        <?php echo esc_html( $product->get_name() ); ?>
+                                    </a>
+                                </h3>
+                                <div class="price" style="font-size: 18px; font-weight: 600; color: #2271b1;">
+                                    <?php echo $product->get_price_html(); ?>
+                                </div>
+                                <?php if ( $product->is_type( 'variable' ) ) : ?>
+                                    <div style="margin-top: 10px;">
+                                        <?php echo do_shortcode( '[pls_product_page product_id="' . $product->get_id() . '"]' ); ?>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                            <?php
+                        endwhile;
+                        echo '</div>';
+                        wp_reset_postdata();
+                    else :
+                        echo '<p>' . esc_html__( 'No products found in this category.', 'pls-private-label-store' ) . '</p>';
+                    endif;
+                    ?>
+                </div>
+            </div>
+            <?php wp_footer(); ?>
+        </body>
+        </html>
+        <?php
+        exit;
     }
 
     /**

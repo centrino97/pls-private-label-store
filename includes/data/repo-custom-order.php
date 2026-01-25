@@ -240,6 +240,13 @@ final class PLS_Repo_Custom_Order {
             'total_value'             => '%f',
             'nikola_commission_rate'  => '%f',
             'nikola_commission_amount' => '%f',
+            'wc_order_id'             => '%d',
+            'sample_status'           => '%s',
+            'sample_cost'             => '%f',
+            'sample_sent_date'         => '%s',
+            'sample_tracking'          => '%s',
+            'sample_feedback'          => '%s',
+            'converted_at'             => '%s',
         );
 
         $update_data = array();
@@ -267,5 +274,101 @@ final class PLS_Repo_Custom_Order {
             $update_format,
             array( '%d' )
         );
+    }
+
+    /**
+     * Create a WooCommerce order from a custom order.
+     *
+     * @param int   $custom_order_id Custom order ID.
+     * @param array $args            Order creation arguments.
+     * @return int|false WooCommerce order ID or false on failure.
+     */
+    public static function create_wc_order( $custom_order_id, $args = array() ) {
+        if ( ! class_exists( 'WooCommerce' ) ) {
+            return false;
+        }
+
+        $custom_order = self::get( $custom_order_id );
+        if ( ! $custom_order ) {
+            return false;
+        }
+
+        $defaults = array(
+            'status'          => 'pending',        // Admin chooses: pending, on-hold, draft
+            'products'        => array(),          // Array of product_id => quantity
+            'custom_lines'    => array(),          // Custom line items: array( array( 'name' => '...', 'amount' => 0.00 ) )
+            'include_sampling' => true,            // Include sample cost as line item
+            'notes'           => '',               // Order notes
+        );
+        $args = wp_parse_args( $args, $defaults );
+
+        // Create WC Order
+        $order = wc_create_order( array( 'status' => $args['status'] ) );
+        if ( is_wp_error( $order ) ) {
+            return false;
+        }
+
+        // Set customer info
+        $order->set_billing_first_name( $custom_order->contact_name );
+        $order->set_billing_email( $custom_order->contact_email );
+        $order->set_billing_phone( $custom_order->contact_phone );
+        $order->set_billing_company( $custom_order->company_name );
+
+        // Set shipping info (same as billing for custom orders)
+        $order->set_shipping_first_name( $custom_order->contact_name );
+        $order->set_shipping_company( $custom_order->company_name );
+
+        // Add products
+        foreach ( $args['products'] as $product_id => $qty ) {
+            $product = wc_get_product( $product_id );
+            if ( $product ) {
+                $order->add_product( $product, $qty );
+            }
+        }
+
+        // Add custom line items
+        foreach ( $args['custom_lines'] as $line ) {
+            if ( ! isset( $line['name'] ) || ! isset( $line['amount'] ) ) {
+                continue;
+            }
+            $item = new WC_Order_Item_Fee();
+            $item->set_name( sanitize_text_field( $line['name'] ) );
+            $item->set_amount( floatval( $line['amount'] ) );
+            $item->set_total( floatval( $line['amount'] ) );
+            $order->add_item( $item );
+        }
+
+        // Add sampling cost if applicable
+        if ( $args['include_sampling'] && isset( $custom_order->sample_cost ) && $custom_order->sample_cost > 0 ) {
+            $item = new WC_Order_Item_Fee();
+            $item->set_name( 'Sample Cost' );
+            $item->set_amount( floatval( $custom_order->sample_cost ) );
+            $item->set_total( floatval( $custom_order->sample_cost ) );
+            $order->add_item( $item );
+        }
+
+        // Add order note with custom order reference
+        $note = sprintf(
+            'Created from PLS Custom Order #%d - %s',
+            $custom_order_id,
+            $custom_order->contact_name
+        );
+        if ( ! empty( $args['notes'] ) ) {
+            $note .= "\n\n" . sanitize_textarea_field( $args['notes'] );
+        }
+        $order->add_order_note( $note );
+
+        // Link orders bidirectionally
+        $order->update_meta_data( '_pls_custom_order_id', $custom_order_id );
+        $order->calculate_totals();
+        $order->save();
+
+        // Update custom order with WC order ID
+        self::update( $custom_order_id, array(
+            'wc_order_id'  => $order->get_id(),
+            'converted_at' => current_time( 'mysql' ),
+        ) );
+
+        return $order->get_id();
     }
 }

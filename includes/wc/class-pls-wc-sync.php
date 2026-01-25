@@ -930,6 +930,14 @@ final class PLS_WC_Sync {
             }
         }
         
+        // Sync SEO meta to WooCommerce product (if not manually set)
+        if ( class_exists( 'PLS_SEO_Integration' ) ) {
+            PLS_SEO_Integration::sync_seo_meta_to_wc_product( $base_product_id, $product->get_id() );
+        }
+
+        // Trigger action for extensibility
+        do_action( 'pls_product_synced', $base_product_id, $product->get_id() );
+
         // Return validation result if invalid, otherwise return success message
         if ( ! $validation_result['valid'] ) {
             return new WP_Error( 'pls_sync_validation_failed', 'Sync validation failed', $validation_result );

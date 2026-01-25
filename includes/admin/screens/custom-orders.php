@@ -149,6 +149,24 @@ if ( is_wp_error( $categories ) ) {
                                 <button type="button" class="button button-small pls-view-order" data-order-id="<?php echo esc_attr( $order->id ); ?>">
                                     <?php esc_html_e( 'View', 'pls-private-label-store' ); ?>
                                 </button>
+                                <?php if ( ! isset( $order->wc_order_id ) || ! $order->wc_order_id ) : ?>
+                                    <?php if ( class_exists( 'WooCommerce' ) ) : ?>
+                                        <button type="button" class="button button-small button-primary pls-create-wc-order-card" data-order-id="<?php echo esc_attr( $order->id ); ?>" style="margin-left: 8px;">
+                                            <?php esc_html_e( 'Create WC Order', 'pls-private-label-store' ); ?>
+                                        </button>
+                                    <?php endif; ?>
+                                <?php else : ?>
+                                    <?php
+                                    $wc_order = wc_get_order( $order->wc_order_id );
+                                    if ( $wc_order ) {
+                                        ?>
+                                        <a href="<?php echo esc_url( admin_url( 'post.php?post=' . $order->wc_order_id . '&action=edit' ) ); ?>" class="button button-small" style="margin-left: 8px;" target="_blank">
+                                            <?php esc_html_e( 'View WC Order', 'pls-private-label-store' ); ?>
+                                        </a>
+                                        <?php
+                                    }
+                                    ?>
+                                <?php endif; ?>
                             </div>
                         </div>
                     <?php endforeach; ?>
@@ -243,6 +261,77 @@ if ( is_wp_error( $categories ) ) {
                     <button type="submit" class="button button-primary"><?php esc_html_e( 'Create Order', 'pls-private-label-store' ); ?></button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Create WooCommerce Order Modal -->
+<div class="pls-modal" id="pls-create-wc-order-modal" style="display: none;">
+    <div class="pls-modal__dialog" style="max-width: 700px;">
+        <div class="pls-modal__head">
+            <h2 style="margin: 0;"><?php esc_html_e( 'Create WooCommerce Order', 'pls-private-label-store' ); ?></h2>
+            <button type="button" class="pls-modal__close pls-close-wc-order-modal">&times;</button>
+        </div>
+        <div class="pls-modal__body" style="padding: 20px;">
+            <input type="hidden" id="pls-create-wc-order-order-id" />
+            
+            <div class="pls-input-group" style="margin-bottom: 20px;">
+                <label for="pls-wc-order-status"><?php esc_html_e( 'Order Status', 'pls-private-label-store' ); ?></label>
+                <select id="pls-wc-order-status" class="pls-input" style="width: 100%;">
+                    <option value="pending"><?php esc_html_e( 'Pending Payment', 'pls-private-label-store' ); ?></option>
+                    <option value="on-hold"><?php esc_html_e( 'On Hold', 'pls-private-label-store' ); ?></option>
+                    <option value="draft"><?php esc_html_e( 'Draft', 'pls-private-label-store' ); ?></option>
+                </select>
+                <p class="description"><?php esc_html_e( 'Choose the initial status for the WooCommerce order.', 'pls-private-label-store' ); ?></p>
+            </div>
+
+            <div class="pls-input-group" style="margin-bottom: 20px;">
+                <label><?php esc_html_e( 'Products', 'pls-private-label-store' ); ?></label>
+                <div id="pls-wc-order-products">
+                    <div class="pls-product-row" style="display: flex; gap: 8px; margin-bottom: 8px; align-items: center;">
+                        <input type="number" class="pls-product-id" placeholder="Product ID" style="width: 120px;" />
+                        <input type="number" class="pls-product-qty" placeholder="Qty" min="1" value="1" style="width: 80px;" />
+                        <button type="button" class="button pls-remove-product-row"><?php esc_html_e( 'Remove', 'pls-private-label-store' ); ?></button>
+                    </div>
+                </div>
+                <button type="button" class="button button-small" id="pls-add-product-row" style="margin-top: 8px;">
+                    <?php esc_html_e( '+ Add Product', 'pls-private-label-store' ); ?>
+                </button>
+                <p class="description"><?php esc_html_e( 'Add products by entering WooCommerce product IDs and quantities.', 'pls-private-label-store' ); ?></p>
+            </div>
+
+            <div class="pls-input-group" style="margin-bottom: 20px;">
+                <label><?php esc_html_e( 'Custom Line Items', 'pls-private-label-store' ); ?></label>
+                <div id="pls-wc-order-custom-lines">
+                    <!-- Custom lines will be added here -->
+                </div>
+                <button type="button" class="button button-small" id="pls-add-custom-line" style="margin-top: 8px;">
+                    <?php esc_html_e( '+ Add Custom Line Item', 'pls-private-label-store' ); ?>
+                </button>
+                <p class="description"><?php esc_html_e( 'Add custom line items (e.g., setup fees, custom charges).', 'pls-private-label-store' ); ?></p>
+            </div>
+
+            <div class="pls-input-group" style="margin-bottom: 20px;">
+                <label>
+                    <input type="checkbox" id="pls-include-sampling" checked />
+                    <?php esc_html_e( 'Include Sample Cost', 'pls-private-label-store' ); ?>
+                </label>
+                <p class="description" id="pls-sample-cost-display" style="margin-top: 4px; display: none;">
+                    <?php esc_html_e( 'Sample cost will be added as a line item.', 'pls-private-label-store' ); ?>
+                </p>
+            </div>
+
+            <div class="pls-input-group" style="margin-bottom: 20px;">
+                <label for="pls-wc-order-notes"><?php esc_html_e( 'Order Notes', 'pls-private-label-store' ); ?></label>
+                <textarea id="pls-wc-order-notes" rows="3" class="pls-input" style="width: 100%;" placeholder="<?php esc_attr_e( 'Optional notes for the order...', 'pls-private-label-store' ); ?>"></textarea>
+            </div>
+
+            <div style="text-align: right; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--pls-gray-200);">
+                <button type="button" class="button pls-close-wc-order-modal" style="margin-right: 10px;"><?php esc_html_e( 'Cancel', 'pls-private-label-store' ); ?></button>
+                <button type="button" class="button button-primary" id="pls-submit-create-wc-order">
+                    <?php esc_html_e( 'Create Order', 'pls-private-label-store' ); ?>
+                </button>
+            </div>
         </div>
     </div>
 </div>

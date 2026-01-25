@@ -23,7 +23,22 @@ final class PLS_Preview_Renderer {
             return;
         }
 
-        // Create mock product object
+        // Check if product is already synced - if so, use actual WooCommerce product
+        $wc_product_id = null;
+        if ( ! empty( $payload['id'] ) ) {
+            $base_product = PLS_Repo_Base_Product::get( $payload['id'] );
+            if ( $base_product && $base_product->wc_product_id ) {
+                $wc_product_id = $base_product->wc_product_id;
+            }
+        }
+
+        // If synced, render using actual shortcode
+        if ( $wc_product_id ) {
+            self::render_live_product_preview( $wc_product_id );
+            return;
+        }
+
+        // Create mock product object for unsaved products
         $mock_product = self::create_mock_product( $payload );
 
         // Set up global $product for widgets
@@ -107,10 +122,18 @@ final class PLS_Preview_Renderer {
                 <div class="pls-preview-note">
                     <strong><?php esc_html_e( '📋 Live Preview', 'pls-private-label-store' ); ?></strong>
                     <p style="margin: 0;">
-                        <?php esc_html_e( 'This preview shows how your product will look on the frontend. Changes update automatically as you edit the form.', 'pls-private-label-store' ); ?>
+                        <?php esc_html_e( 'This preview shows how your product will look on the frontend using the [pls_product_page] shortcode. Changes update automatically as you edit the form.', 'pls-private-label-store' ); ?>
                     </p>
                 </div>
 
+                <!-- Render using PLS Product Page Shortcode -->
+                <?php
+                // Use shortcode to render actual frontend output
+                if ( $mock_product && $mock_product->get_id() ) {
+                    echo do_shortcode( '[pls_product_page product_id="' . $mock_product->get_id() . '"]' );
+                } else {
+                    // Fallback: Show basic preview
+                ?>
                 <!-- Product Title -->
                 <div class="pls-widget-section">
                     <h2><?php esc_html_e( 'Product Title', 'pls-private-label-store' ); ?></h2>
@@ -192,6 +215,7 @@ final class PLS_Preview_Renderer {
                     </ul>
                 </div>
                 <?php endif; ?>
+                <?php } // End fallback ?>
             </div>
 
             <script src="<?php echo esc_url( includes_url( 'js/jquery/jquery.min.js' ) ); ?>"></script>
@@ -208,6 +232,64 @@ final class PLS_Preview_Renderer {
 
         // Restore original query
         $wp_query = $original_query;
+    }
+
+    /**
+     * Render live product preview using actual WooCommerce product.
+     */
+    private static function render_live_product_preview( $wc_product_id ) {
+        $product = wc_get_product( $wc_product_id );
+        if ( ! $product ) {
+            echo '<div class="pls-preview-error">' . esc_html__( 'Product not found.', 'pls-private-label-store' ) . '</div>';
+            return;
+        }
+
+        // Set up global $product
+        global $wp_query;
+        $wp_query->is_product = true;
+        $wp_query->is_singular = true;
+
+        // Get CSS/JS URLs
+        $offers_css_url = PLS_PLS_URL . 'assets/css/offers.css?ver=' . PLS_PLS_VERSION;
+        $offers_js_url  = PLS_PLS_URL . 'assets/js/offers.js?ver=' . PLS_PLS_VERSION;
+        ?>
+        <!DOCTYPE html>
+        <html <?php language_attributes(); ?>>
+        <head>
+            <meta charset="<?php bloginfo( 'charset' ); ?>">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title><?php echo esc_html( sprintf( __( 'Preview: %s', 'pls-private-label-store' ), $product->get_name() ) ); ?></title>
+            <?php wp_head(); ?>
+            <link rel="stylesheet" href="<?php echo esc_url( $offers_css_url ); ?>" />
+            <style>
+                body {
+                    margin: 0;
+                    padding: 20px;
+                    background: #f0f0f1;
+                }
+                .pls-preview-content {
+                    background: #fff;
+                    padding: 40px;
+                    border-radius: 4px;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                    max-width: 1200px;
+                    margin: 0 auto;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="pls-preview-content">
+                <?php
+                // Render using actual shortcode
+                echo do_shortcode( '[pls_product_page product_id="' . $wc_product_id . '"]' );
+                ?>
+            </div>
+            <script src="<?php echo esc_url( includes_url( 'js/jquery/jquery.min.js' ) ); ?>"></script>
+            <script src="<?php echo esc_url( $offers_js_url ); ?>"></script>
+            <?php wp_footer(); ?>
+        </body>
+        </html>
+        <?php
     }
 
     /**

@@ -1665,16 +1665,66 @@
         if (mode === 'preview'){
           $('.pls-stepper, .pls-modal__footer .pls-stepper__controls, .pls-modal__footer .pls-stepper__actions').hide();
           $('#pls-preview-panel').show();
+          // Make modal fullscreen for preview
+          $('#pls-product-modal').addClass('pls-modal-fullscreen');
           generatePreview();
         } else {
           $('.pls-stepper, .pls-modal__footer .pls-stepper__controls, .pls-modal__footer .pls-stepper__actions').show();
           $('#pls-preview-panel').hide();
+          $('#pls-product-modal').removeClass('pls-modal-fullscreen');
         }
       }
+
+      // Preview mode toggle (split/fullscreen)
+      $(document).on('click', '.pls-preview-mode-btn', function(){
+        var mode = $(this).data('mode');
+        $('.pls-preview-mode-btn').removeClass('active');
+        $(this).addClass('active');
+        
+        if (mode === 'split'){
+          $('#pls-product-modal').removeClass('pls-modal-fullscreen').addClass('pls-modal-split');
+          $('#pls-product-modal .pls-modal__dialog').css({
+            'display': 'flex',
+            'max-width': '100%',
+            'width': '100%',
+            'height': '100vh'
+          });
+          $('#pls-product-form').css('width', '50%');
+          $('#pls-preview-panel').css('width', '50%');
+        } else {
+          $('#pls-product-modal').removeClass('pls-modal-split').addClass('pls-modal-fullscreen');
+          $('#pls-product-modal .pls-modal__dialog').css({
+            'display': 'block',
+            'max-width': '100%',
+            'width': '100%',
+            'height': '100vh'
+          });
+          $('#pls-product-form').css('width', '100%');
+          $('#pls-preview-panel').css('width', '100%');
+        }
+      });
 
       var previewDebounce = null;
       function generatePreview(){
         var formData = $('#pls-product-form').serializeArray();
+        var productId = $('#pls-product-id').val();
+        var wcProductId = null;
+        
+        // Try to get WC product ID from product map
+        if (productId && productMap[productId] && productMap[productId].wc_product_id){
+          wcProductId = productMap[productId].wc_product_id;
+        }
+        
+        // If product is synced, use actual WooCommerce product URL
+        if (wcProductId){
+          var previewUrl = '<?php echo esc_js( home_url() ); ?>?product_id=' + wcProductId + '&pls_preview=1&pls_preview_nonce=' + (window.PLS_Admin ? PLS_Admin.nonce : '');
+          $('#pls-preview-iframe').attr('src', previewUrl);
+          $('.pls-preview-loading').hide();
+          $('#pls-preview-iframe').show();
+          return;
+        }
+        
+        // Otherwise generate preview HTML from form data
         formData.push({ name: 'action', value: 'pls_preview_product' });
         formData.push({ name: 'nonce', value: (window.PLS_Admin ? PLS_Admin.nonce : '') });
         
@@ -1692,10 +1742,10 @@
               $('#pls-preview-iframe').show();
             }
           } else {
-            $('.pls-preview-loading').text('Preview generation failed. Please check form data.');
+            $('.pls-preview-loading').html('<p style="color: #d63638;">Preview generation failed. Please check form data.</p>');
           }
         }).fail(function(){
-          $('.pls-preview-loading').text('Failed to generate preview. Please try again.');
+          $('.pls-preview-loading').html('<p style="color: #d63638;">Failed to generate preview. Please try again.</p>');
         });
       }
 

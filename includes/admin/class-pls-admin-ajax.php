@@ -37,6 +37,7 @@ final class PLS_Admin_Ajax {
         add_action( 'wp_ajax_pls_update_custom_order_status', array( __CLASS__, 'update_custom_order_status' ) );
         add_action( 'wp_ajax_pls_update_custom_order', array( __CLASS__, 'update_custom_order' ) );
         add_action( 'wp_ajax_pls_get_custom_order_details', array( __CLASS__, 'get_custom_order_details' ) );
+        add_action( 'wp_ajax_pls_create_wc_order_from_custom', array( __CLASS__, 'create_wc_order_from_custom' ) );
         add_action( 'wp_ajax_pls_update_custom_order_financials', array( __CLASS__, 'update_custom_order_financials' ) );
         add_action( 'wp_ajax_pls_mark_custom_order_invoiced', array( __CLASS__, 'mark_custom_order_invoiced' ) );
         add_action( 'wp_ajax_pls_mark_custom_order_paid', array( __CLASS__, 'mark_custom_order_paid' ) );
@@ -2421,6 +2422,99 @@ final class PLS_Admin_Ajax {
                 </table>
             </div>
 
+            <!-- Sampling Information Section -->
+            <div class="pls-order-detail__section">
+                <h3><?php esc_html_e( 'Sampling Information', 'pls-private-label-store' ); ?></h3>
+                <table class="form-table">
+                    <tr>
+                        <th><label for="pls-edit-sample-status"><?php esc_html_e( 'Sample Status', 'pls-private-label-store' ); ?></label></th>
+                        <td>
+                            <select id="pls-edit-sample-status" class="regular-text">
+                                <option value="not_sent" <?php selected( isset( $order->sample_status ) ? $order->sample_status : 'not_sent', 'not_sent' ); ?>><?php esc_html_e( 'Not Sent', 'pls-private-label-store' ); ?></option>
+                                <option value="sent" <?php selected( isset( $order->sample_status ) ? $order->sample_status : '', 'sent' ); ?>><?php esc_html_e( 'Sent', 'pls-private-label-store' ); ?></option>
+                                <option value="received" <?php selected( isset( $order->sample_status ) ? $order->sample_status : '', 'received' ); ?>><?php esc_html_e( 'Received', 'pls-private-label-store' ); ?></option>
+                                <option value="approved" <?php selected( isset( $order->sample_status ) ? $order->sample_status : '', 'approved' ); ?>><?php esc_html_e( 'Approved', 'pls-private-label-store' ); ?></option>
+                                <option value="rejected" <?php selected( isset( $order->sample_status ) ? $order->sample_status : '', 'rejected' ); ?>><?php esc_html_e( 'Rejected', 'pls-private-label-store' ); ?></option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><label for="pls-edit-sample-cost"><?php esc_html_e( 'Sample Cost ($)', 'pls-private-label-store' ); ?></label></th>
+                        <td>
+                            <input type="number" step="0.01" id="pls-edit-sample-cost" class="regular-text" 
+                                   value="<?php echo esc_attr( isset( $order->sample_cost ) ? $order->sample_cost : '' ); ?>" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><label for="pls-edit-sample-sent-date"><?php esc_html_e( 'Sample Sent Date', 'pls-private-label-store' ); ?></label></th>
+                        <td>
+                            <input type="date" id="pls-edit-sample-sent-date" class="regular-text" 
+                                   value="<?php echo esc_attr( isset( $order->sample_sent_date ) && $order->sample_sent_date ? $order->sample_sent_date : '' ); ?>" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><label for="pls-edit-sample-tracking"><?php esc_html_e( 'Tracking Number', 'pls-private-label-store' ); ?></label></th>
+                        <td>
+                            <input type="text" id="pls-edit-sample-tracking" class="regular-text" 
+                                   value="<?php echo esc_attr( isset( $order->sample_tracking ) ? $order->sample_tracking : '' ); ?>" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><label for="pls-edit-sample-feedback"><?php esc_html_e( 'Sample Feedback', 'pls-private-label-store' ); ?></label></th>
+                        <td>
+                            <textarea id="pls-edit-sample-feedback" rows="3" class="large-text"><?php echo esc_textarea( isset( $order->sample_feedback ) ? $order->sample_feedback : '' ); ?></textarea>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- WooCommerce Order Section -->
+            <div class="pls-order-detail__section">
+                <h3><?php esc_html_e( 'WooCommerce Order', 'pls-private-label-store' ); ?></h3>
+                <?php
+                $wc_order_id = isset( $order->wc_order_id ) ? $order->wc_order_id : null;
+                if ( $wc_order_id && class_exists( 'WooCommerce' ) ) {
+                    $wc_order = wc_get_order( $wc_order_id );
+                    if ( $wc_order ) {
+                        ?>
+                        <table class="form-table">
+                            <tr>
+                                <th><?php esc_html_e( 'WC Order', 'pls-private-label-store' ); ?></th>
+                                <td>
+                                    <a href="<?php echo esc_url( admin_url( 'post.php?post=' . $wc_order_id . '&action=edit' ) ); ?>" target="_blank" class="button">
+                                        <?php esc_html_e( 'View Order #', 'pls-private-label-store' ); ?><?php echo esc_html( $wc_order_id ); ?>
+                                    </a>
+                                    <span class="description" style="margin-left: 10px;">
+                                        <?php esc_html_e( 'Status:', 'pls-private-label-store' ); ?> 
+                                        <strong><?php echo esc_html( wc_get_order_status_name( $wc_order->get_status() ) ); ?></strong>
+                                    </span>
+                                </td>
+                            </tr>
+                            <?php if ( isset( $order->converted_at ) && $order->converted_at ) : ?>
+                                <tr>
+                                    <th><?php esc_html_e( 'Converted At', 'pls-private-label-store' ); ?></th>
+                                    <td><?php echo esc_html( date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $order->converted_at ) ) ); ?></td>
+                                </tr>
+                            <?php endif; ?>
+                        </table>
+                        <?php
+                    } else {
+                        ?>
+                        <p class="description"><?php esc_html_e( 'WC Order #' . esc_html( $wc_order_id ) . ' not found. It may have been deleted.', 'pls-private-label-store' ); ?></p>
+                        <?php
+                    }
+                } else {
+                    ?>
+                    <p class="description" style="margin-bottom: 12px;"><?php esc_html_e( 'No WooCommerce order created yet. Create one to enable payment processing.', 'pls-private-label-store' ); ?></p>
+                    <button type="button" class="button button-primary pls-create-wc-order" data-order-id="<?php echo esc_attr( $order->id ); ?>">
+                        <span class="dashicons dashicons-cart" style="vertical-align: middle; margin-top: 2px;"></span>
+                        <?php esc_html_e( 'Create WooCommerce Order', 'pls-private-label-store' ); ?>
+                    </button>
+                    <?php
+                }
+                ?>
+            </div>
+
             <!-- Save All Changes Button -->
             <div class="pls-order-detail__actions" style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--pls-gray-200); display: flex; justify-content: space-between; align-items: center;">
                 <span class="description"><?php printf( esc_html__( 'Created: %s', 'pls-private-label-store' ), date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $order->created_at ) ) ); ?></span>
@@ -2491,6 +2585,23 @@ final class PLS_Admin_Ajax {
             $data['message'] = sanitize_textarea_field( wp_unslash( $_POST['message'] ) );
         }
 
+        // Sampling fields
+        if ( isset( $_POST['sample_status'] ) ) {
+            $data['sample_status'] = sanitize_text_field( wp_unslash( $_POST['sample_status'] ) );
+        }
+        if ( isset( $_POST['sample_cost'] ) ) {
+            $data['sample_cost'] = ! empty( $_POST['sample_cost'] ) ? floatval( $_POST['sample_cost'] ) : 0;
+        }
+        if ( isset( $_POST['sample_sent_date'] ) ) {
+            $data['sample_sent_date'] = ! empty( $_POST['sample_sent_date'] ) ? sanitize_text_field( wp_unslash( $_POST['sample_sent_date'] ) ) : null;
+        }
+        if ( isset( $_POST['sample_tracking'] ) ) {
+            $data['sample_tracking'] = sanitize_text_field( wp_unslash( $_POST['sample_tracking'] ) );
+        }
+        if ( isset( $_POST['sample_feedback'] ) ) {
+            $data['sample_feedback'] = sanitize_textarea_field( wp_unslash( $_POST['sample_feedback'] ) );
+        }
+
         // Financial info
         if ( isset( $_POST['production_cost'] ) ) {
             $data['production_cost'] = ! empty( $_POST['production_cost'] ) ? floatval( $_POST['production_cost'] ) : null;
@@ -2518,6 +2629,97 @@ final class PLS_Admin_Ajax {
             wp_send_json_success( array( 'message' => __( 'Order updated successfully.', 'pls-private-label-store' ) ) );
         } else {
             wp_send_json_error( array( 'message' => __( 'Failed to update order.', 'pls-private-label-store' ) ) );
+        }
+    }
+
+    /**
+     * Create WooCommerce order from custom order.
+     */
+    public static function create_wc_order_from_custom() {
+        check_ajax_referer( 'pls_custom_orders_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        if ( ! class_exists( 'WooCommerce' ) ) {
+            wp_send_json_error( array( 'message' => __( 'WooCommerce is not active.', 'pls-private-label-store' ) ) );
+        }
+
+        $order_id = isset( $_POST['order_id'] ) ? absint( $_POST['order_id'] ) : 0;
+        if ( ! $order_id ) {
+            wp_send_json_error( array( 'message' => __( 'Invalid order ID.', 'pls-private-label-store' ) ) );
+        }
+
+        $custom_order = PLS_Repo_Custom_Order::get( $order_id );
+        if ( ! $custom_order ) {
+            wp_send_json_error( array( 'message' => __( 'Custom order not found.', 'pls-private-label-store' ) ) );
+        }
+
+        // Check if WC order already exists
+        if ( isset( $custom_order->wc_order_id ) && $custom_order->wc_order_id ) {
+            $existing_order = wc_get_order( $custom_order->wc_order_id );
+            if ( $existing_order ) {
+                wp_send_json_error( array( 'message' => sprintf( __( 'WooCommerce order #%d already exists for this custom order.', 'pls-private-label-store' ), $custom_order->wc_order_id ) ) );
+            }
+        }
+
+        // Get order creation parameters
+        $status = isset( $_POST['wc_order_status'] ) ? sanitize_text_field( wp_unslash( $_POST['wc_order_status'] ) ) : 'pending';
+        $products = isset( $_POST['products'] ) ? (array) $_POST['products'] : array();
+        $custom_lines = isset( $_POST['custom_lines'] ) ? (array) $_POST['custom_lines'] : array();
+        $include_sampling = isset( $_POST['include_sampling'] ) ? (bool) $_POST['include_sampling'] : true;
+        $notes = isset( $_POST['notes'] ) ? sanitize_textarea_field( wp_unslash( $_POST['notes'] ) ) : '';
+
+        // Validate status
+        $allowed_statuses = array( 'pending', 'on-hold', 'draft' );
+        if ( ! in_array( $status, $allowed_statuses, true ) ) {
+            $status = 'pending';
+        }
+
+        // Prepare products array (product_id => quantity)
+        $products_array = array();
+        foreach ( $products as $product_data ) {
+            if ( isset( $product_data['product_id'] ) && isset( $product_data['quantity'] ) ) {
+                $product_id = absint( $product_data['product_id'] );
+                $quantity = absint( $product_data['quantity'] );
+                if ( $product_id > 0 && $quantity > 0 ) {
+                    $products_array[ $product_id ] = $quantity;
+                }
+            }
+        }
+
+        // Prepare custom lines array
+        $custom_lines_array = array();
+        foreach ( $custom_lines as $line_data ) {
+            if ( isset( $line_data['name'] ) && isset( $line_data['amount'] ) ) {
+                $custom_lines_array[] = array(
+                    'name' => sanitize_text_field( wp_unslash( $line_data['name'] ) ),
+                    'amount' => floatval( $line_data['amount'] ),
+                );
+            }
+        }
+
+        // Create WC order
+        $wc_order_id = PLS_Repo_Custom_Order::create_wc_order( $order_id, array(
+            'status' => $status,
+            'products' => $products_array,
+            'custom_lines' => $custom_lines_array,
+            'include_sampling' => $include_sampling,
+            'notes' => $notes,
+        ) );
+
+        if ( $wc_order_id ) {
+            $wc_order = wc_get_order( $wc_order_id );
+            $order_edit_url = admin_url( 'post.php?post=' . $wc_order_id . '&action=edit' );
+            wp_send_json_success( array(
+                'message' => sprintf( __( 'WooCommerce order #%d created successfully.', 'pls-private-label-store' ), $wc_order_id ),
+                'wc_order_id' => $wc_order_id,
+                'wc_order_url' => $order_edit_url,
+                'wc_order_status' => $wc_order ? wc_get_order_status_name( $wc_order->get_status() ) : '',
+            ) );
+        } else {
+            wp_send_json_error( array( 'message' => __( 'Failed to create WooCommerce order.', 'pls-private-label-store' ) ) );
         }
     }
 

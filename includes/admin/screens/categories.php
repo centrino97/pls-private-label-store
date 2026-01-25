@@ -185,6 +185,15 @@ $categories = array_filter(
                                 data-meta-desc="<?php echo esc_attr( $meta_desc ); ?>">
                             <?php esc_html_e( 'Edit', 'pls-private-label-store' ); ?>
                         </button>
+                        <a href="<?php echo esc_url( add_query_arg( array(
+                            'pls_preview' => '1',
+                            'category_id' => $cat->term_id,
+                            'pls_preview_nonce' => wp_create_nonce( 'pls_admin_nonce' ),
+                        ), home_url() ) ); ?>" 
+                           class="button button-small" 
+                           target="_blank">
+                            <?php esc_html_e( 'Preview', 'pls-private-label-store' ); ?>
+                        </a>
                         <form method="post" style="display: inline;" onsubmit="return confirm('<?php esc_attr_e( 'Are you sure you want to delete this category?', 'pls-private-label-store' ); ?>');">
                             <?php wp_nonce_field( 'pls_category_delete' ); ?>
                             <input type="hidden" name="pls_category_delete" value="1" />

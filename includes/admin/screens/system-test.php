@@ -18,8 +18,39 @@ if ( ! class_exists( 'PLS_System_Test' ) ) {
 // Get quick stats
 $stats = PLS_System_Test::get_quick_stats();
 
-// Define test categories for UI
+// Get PLS version info
+$pls_version = PLS_PLS_VERSION;
+$uupd_file = PLS_PLS_DIR . 'uupd/index.json';
+$uupd_version = '';
+if ( file_exists( $uupd_file ) ) {
+    $uupd = json_decode( file_get_contents( $uupd_file ), true );
+    if ( is_array( $uupd ) && isset( $uupd['version'] ) ) {
+        $uupd_version = $uupd['version'];
+    }
+}
+
+// Define test categories for UI (order matters - diagnostics first)
 $test_categories = array(
+    'pls_info'       => array(
+        'label'       => 'PLS Info & Version',
+        'description' => 'Plugin version, UUPD version match, and database tables count.',
+        'icon'        => 'info',
+    ),
+    'server_config'  => array(
+        'label'       => 'Server Configuration',
+        'description' => 'PHP version, memory limit, execution time, and required extensions.',
+        'icon'        => 'admin-generic',
+    ),
+    'wc_settings'    => array(
+        'label'       => 'WooCommerce Settings',
+        'description' => 'Currency, taxes, payment gateways, and shipping zones.',
+        'icon'        => 'admin-settings',
+    ),
+    'user_roles'     => array(
+        'label'       => 'User Roles & Capabilities',
+        'description' => 'PLS User role, Robert/Raniya users, and admin capabilities.',
+        'icon'        => 'groups',
+    ),
     'database'        => array(
         'label'       => 'Database',
         'description' => 'Verify all PLS tables exist and have correct schema.',
@@ -70,11 +101,31 @@ $test_categories = array(
 
 <div class="pls-system-test-wrap">
     <div class="pls-test-header">
-        <h1>System Test</h1>
-        <p class="description">
-            Comprehensive validation of all PLS functionality. Run tests to ensure the system is 100% production-ready
-            with realistic sample data representing a full year of business activity.
-        </p>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <div>
+                <h1>System Test</h1>
+                <p class="description">
+                    Comprehensive validation of all PLS functionality. Run tests to ensure the system is 100% production-ready
+                    with realistic sample data representing a full year of business activity.
+                </p>
+            </div>
+            <div style="text-align: right;">
+                <div style="font-size: 14px; color: #666; margin-bottom: 4px;">Plugin Version</div>
+                <div style="font-size: 20px; font-weight: 600; color: #2271b1;">
+                    v<?php echo esc_html( $pls_version ); ?>
+                </div>
+                <?php if ( $uupd_version ) : ?>
+                    <div style="font-size: 12px; color: <?php echo ( $uupd_version === $pls_version ) ? '#00a32a' : '#d63638'; ?>; margin-top: 4px;">
+                        UUPD: v<?php echo esc_html( $uupd_version ); ?>
+                        <?php if ( $uupd_version !== $pls_version ) : ?>
+                            <span style="color: #d63638;">⚠ MISMATCH</span>
+                        <?php else : ?>
+                            <span style="color: #00a32a;">✓ Match</span>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
     </div>
 
     <!-- Quick Stats -->

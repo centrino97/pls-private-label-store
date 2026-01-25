@@ -82,6 +82,13 @@ final class PLS_Activator {
             require_once PLS_PLS_DIR . 'includes/core/class-pls-migration-v280.php';
             PLS_Migration_v280::run();
         }
+        
+        // Run v3.0.0 migration if upgrading from earlier version
+        // Adds WC order linking and sampling fields to custom orders
+        if ( version_compare( $stored_version, '3.0.0', '<' ) ) {
+            require_once PLS_PLS_DIR . 'includes/core/class-pls-migration-v300.php';
+            PLS_Migration_v300::run();
+        }
     }
 
     private static function maybe_create_tables() {

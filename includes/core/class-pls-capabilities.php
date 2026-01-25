@@ -49,17 +49,18 @@ final class PLS_Capabilities {
     }
 
     /**
-     * Assign PLS user role to Rober and Raniya if they exist.
+     * Assign PLS user role to Robert and Raniya if they exist.
+     * Also assigns role to any users with @bodoci.com email domain.
      */
     public static function maybe_assign_pls_user_role() {
         if ( get_option( 'pls_users_assigned' ) ) {
             return;
         }
 
-        // Find users by username or email
+        // Find users by username, email, or domain
         $users_to_assign = array();
         
-        // Check for Rober (case-insensitive)
+        // Check for Robert (case-insensitive)
         $robert = get_user_by( 'login', 'robert' );
         if ( ! $robert ) {
             $robert = get_user_by( 'login', 'Rober' );
@@ -87,6 +88,19 @@ final class PLS_Capabilities {
         }
         if ( $raniya ) {
             $users_to_assign[] = $raniya->ID;
+        }
+
+        // Find all users with @bodoci.com email domain
+        global $wpdb;
+        $bodoci_user_ids = $wpdb->get_col( $wpdb->prepare(
+            "SELECT ID FROM {$wpdb->users} WHERE user_email LIKE %s",
+            '%@bodoci.com'
+        ) );
+
+        foreach ( $bodoci_user_ids as $user_id ) {
+            if ( ! in_array( $user_id, $users_to_assign, true ) ) {
+                $users_to_assign[] = $user_id;
+            }
         }
 
         // Assign PLS user role to found users
