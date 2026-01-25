@@ -196,25 +196,9 @@ final class PLS_Sample_Data {
                 error_log( '[PLS Sample Data] ⚠ Sync result: ' . ( is_wp_error( $sync_result ) ? $sync_result->get_error_message() : 'Unknown' ) );
             }
 
-            // Step 8: WooCommerce Orders
-            $action_log[] = array( 'message' => 'Step 8: Creating WooCommerce orders...', 'type' => 'info' );
-            error_log( '[PLS Sample Data] Step 8: Adding WooCommerce orders...' );
-            // Refresh products array to ensure we have latest wc_product_id values after sync
-            wp_cache_flush(); // Clear all caches to ensure fresh data
-            $orders_result = self::add_woocommerce_orders();
-            if ( is_array( $orders_result ) ) {
-                $orders_created = $orders_result['orders_created'] ?? 0;
-                $orders_skipped = $orders_result['orders_skipped'] ?? 0;
-                $action_log[] = array( 'message' => '✓ Created ' . $orders_created . ' WooCommerce orders (' . $orders_skipped . ' skipped).', 'type' => 'success' );
-                error_log( '[PLS Sample Data] ✓ WooCommerce orders added: ' . $orders_created . ' created, ' . $orders_skipped . ' skipped (no products)' );
-            } else {
-                $action_log[] = array( 'message' => '✓ WooCommerce orders created.', 'type' => 'success' );
-                error_log( '[PLS Sample Data] ✓ WooCommerce orders added.' );
-            }
-
-            // Step 9: Commissions
-            $action_log[] = array( 'message' => 'Step 9: Creating commission records...', 'type' => 'info' );
-            error_log( '[PLS Sample Data] Step 9: Adding commissions...' );
+            // Step 8: Commissions (WooCommerce orders are now generated separately via generate_orders())
+            $action_log[] = array( 'message' => 'Step 8: Creating commission records...', 'type' => 'info' );
+            error_log( '[PLS Sample Data] Step 8: Adding commissions...' );
             self::add_commissions();
             require_once PLS_PLS_DIR . 'includes/data/repo-commission.php';
             $commissions = PLS_Repo_Commission::all();
@@ -225,9 +209,9 @@ final class PLS_Sample_Data {
             error_log( '[PLS Sample Data] ⚠ WooCommerce not active - skipping WooCommerce-specific steps' );
         }
 
-        // Step 10: Custom Orders
-        $action_log[] = array( 'message' => 'Step 10: Creating custom orders...', 'type' => 'info' );
-        error_log( '[PLS Sample Data] Step 10: Adding custom orders...' );
+        // Step 9: Custom Orders
+        $action_log[] = array( 'message' => 'Step 9: Creating custom orders...', 'type' => 'info' );
+        error_log( '[PLS Sample Data] Step 9: Adding custom orders...' );
         $custom_orders_result = self::add_custom_orders();
         if ( is_array( $custom_orders_result ) ) {
             $custom_orders_created = $custom_orders_result['orders_created'] ?? 0;
@@ -245,15 +229,19 @@ final class PLS_Sample_Data {
 
             $action_log[] = array( 'message' => '==========================================', 'type' => 'info' );
             $action_log[] = array( 'message' => '✓ Sample data generation completed successfully!', 'type' => 'success' );
+            $action_log[] = array( 'message' => 'Note: WooCommerce orders must be generated separately using "Generate Orders" button.', 'type' => 'info' );
             $action_log[] = array( 'message' => '==========================================', 'type' => 'info' );
             error_log( '[PLS Sample Data] ==========================================' );
             error_log( '[PLS Sample Data] ✓ Sample data generation completed successfully!' );
             error_log( '[PLS Sample Data] ==========================================' );
             
+            $log_file_path = self::save_log_file( 'generate', $action_log );
+            
             return array(
                 'success' => true,
                 'message' => 'Sample data generated successfully!',
                 'action_log' => $action_log,
+                'log_file_path' => $log_file_path,
             );
         } catch ( Exception $e ) {
             $action_log[] = array( 'message' => '❌ ERROR: ' . $e->getMessage(), 'type' => 'error' );
@@ -264,10 +252,13 @@ final class PLS_Sample_Data {
             error_log( '[PLS Sample Data] Stack trace: ' . $e->getTraceAsString() );
             error_log( '[PLS Sample Data] ==========================================' );
             
+            $log_file_path = self::save_log_file( 'generate', $action_log );
+            
             return array(
                 'success' => false,
                 'message' => 'Sample data generation failed: ' . $e->getMessage(),
                 'action_log' => $action_log,
+                'log_file_path' => $log_file_path,
             );
         } catch ( Error $e ) {
             $action_log[] = array( 'message' => '❌ FATAL ERROR: ' . $e->getMessage(), 'type' => 'error' );
@@ -278,10 +269,13 @@ final class PLS_Sample_Data {
             error_log( '[PLS Sample Data] Stack trace: ' . $e->getTraceAsString() );
             error_log( '[PLS Sample Data] ==========================================' );
             
+            $log_file_path = self::save_log_file( 'generate', $action_log );
+            
             return array(
                 'success' => false,
                 'message' => 'Sample data generation failed: ' . $e->getMessage(),
                 'action_log' => $action_log,
+                'log_file_path' => $log_file_path,
             );
         }
     }
@@ -2658,6 +2652,281 @@ final class PLS_Sample_Data {
     }
 
     /**
+     * Generate WooCommerce orders only (separate from main sample data generation).
+     * 
+     * @return array Array with 'success', 'message', 'action_log', and 'log_file_path'.
+     */
+    public static function generate_orders() {
+        // Increase execution time limit
+        @set_time_limit( 300 );
+        @ini_set( 'max_execution_time', 300 );
+        
+        $action_log = array();
+        
+        $action_log[] = array( 'message' => 'Starting WooCommerce orders generation...', 'type' => 'info' );
+        error_log( '[PLS Sample Data] ==========================================' );
+        error_log( '[PLS Sample Data] Starting WooCommerce orders generation...' );
+        error_log( '[PLS Sample Data] ==========================================' );
+        
+        try {
+            // Check if WooCommerce is active
+            if ( ! self::is_woocommerce_active() ) {
+                $action_log[] = array( 'message' => '❌ WooCommerce is not active. Cannot generate orders.', 'type' => 'error' );
+                error_log( '[PLS Sample Data] ❌ WooCommerce not active' );
+                
+                $log_file_path = self::save_log_file( 'generate_orders', $action_log );
+                
+                return array(
+                    'success' => false,
+                    'message' => 'WooCommerce is not active',
+                    'action_log' => $action_log,
+                    'log_file_path' => $log_file_path,
+                );
+            }
+            
+            // Check if products exist
+            $products = PLS_Repo_Base_Product::all();
+            if ( empty( $products ) ) {
+                $action_log[] = array( 'message' => '❌ No products found. Please generate sample data first.', 'type' => 'error' );
+                error_log( '[PLS Sample Data] ❌ No products found' );
+                
+                $log_file_path = self::save_log_file( 'generate_orders', $action_log );
+                
+                return array(
+                    'success' => false,
+                    'message' => 'No products found. Please generate sample data first.',
+                    'action_log' => $action_log,
+                    'log_file_path' => $log_file_path,
+                );
+            }
+            
+            // Check if products are synced
+            $synced_count = 0;
+            foreach ( $products as $product ) {
+                if ( ! empty( $product->wc_product_id ) ) {
+                    $synced_count++;
+                }
+            }
+            
+            if ( $synced_count === 0 ) {
+                $action_log[] = array( 'message' => '⚠ No products are synced to WooCommerce. Syncing products first...', 'type' => 'warning' );
+                error_log( '[PLS Sample Data] ⚠ No synced products, syncing first...' );
+                
+                // Sync products first
+                $sync_result = self::sync_to_woocommerce();
+                if ( is_array( $sync_result ) ) {
+                    $products_synced = $sync_result['products_synced'] ?? 0;
+                    $action_log[] = array( 'message' => '✓ Synced ' . $products_synced . ' products to WooCommerce.', 'type' => 'success' );
+                    error_log( '[PLS Sample Data] ✓ Synced ' . $products_synced . ' products' );
+                }
+                
+                // Clear cache and refresh
+                wp_cache_flush();
+                $products = PLS_Repo_Base_Product::all();
+            }
+            
+            // Step 1: Create WooCommerce orders
+            $action_log[] = array( 'message' => 'Step 1: Creating WooCommerce orders...', 'type' => 'info' );
+            error_log( '[PLS Sample Data] Step 1: Creating WooCommerce orders...' );
+            
+            wp_cache_flush(); // Clear all caches to ensure fresh data
+            $orders_result = self::add_woocommerce_orders();
+            
+            if ( is_array( $orders_result ) ) {
+                $orders_created = $orders_result['orders_created'] ?? 0;
+                $orders_skipped = $orders_result['orders_skipped'] ?? 0;
+                $action_log[] = array( 'message' => '✓ Created ' . $orders_created . ' WooCommerce orders (' . $orders_skipped . ' skipped).', 'type' => 'success' );
+                error_log( '[PLS Sample Data] ✓ WooCommerce orders added: ' . $orders_created . ' created, ' . $orders_skipped . ' skipped' );
+            } else {
+                $action_log[] = array( 'message' => '✓ WooCommerce orders created.', 'type' => 'success' );
+                error_log( '[PLS Sample Data] ✓ WooCommerce orders added.' );
+            }
+            
+            // Step 2: Create commissions for new orders
+            $action_log[] = array( 'message' => 'Step 2: Creating commission records for new orders...', 'type' => 'info' );
+            error_log( '[PLS Sample Data] Step 2: Creating commissions...' );
+            self::add_commissions();
+            require_once PLS_PLS_DIR . 'includes/data/repo-commission.php';
+            $commissions = PLS_Repo_Commission::all();
+            $action_log[] = array( 'message' => '✓ Created ' . count( $commissions ) . ' commission records.', 'type' => 'success' );
+            error_log( '[PLS Sample Data] ✓ Commissions added.' );
+            
+            $action_log[] = array( 'message' => '==========================================', 'type' => 'info' );
+            $action_log[] = array( 'message' => '✓ WooCommerce orders generation completed successfully!', 'type' => 'success' );
+            $action_log[] = array( 'message' => '==========================================', 'type' => 'info' );
+            error_log( '[PLS Sample Data] ==========================================' );
+            error_log( '[PLS Sample Data] ✓ WooCommerce orders generation completed!' );
+            error_log( '[PLS Sample Data] ==========================================' );
+            
+            $log_file_path = self::save_log_file( 'generate_orders', $action_log );
+            
+            return array(
+                'success' => true,
+                'message' => 'WooCommerce orders generated successfully',
+                'action_log' => $action_log,
+                'log_file_path' => $log_file_path,
+            );
+            
+        } catch ( Exception $e ) {
+            $action_log[] = array( 'message' => '❌ ERROR: ' . $e->getMessage(), 'type' => 'error' );
+            error_log( '[PLS Sample Data] ==========================================' );
+            error_log( '[PLS Sample Data] ❌ ERROR: WooCommerce orders generation failed!' );
+            error_log( '[PLS Sample Data] Error: ' . $e->getMessage() );
+            error_log( '[PLS Sample Data] File: ' . $e->getFile() . ':' . $e->getLine() );
+            error_log( '[PLS Sample Data] ==========================================' );
+            
+            $log_file_path = self::save_log_file( 'generate_orders', $action_log );
+            
+            return array(
+                'success' => false,
+                'message' => 'WooCommerce orders generation failed: ' . $e->getMessage(),
+                'action_log' => $action_log,
+                'log_file_path' => $log_file_path,
+            );
+        } catch ( Error $e ) {
+            $action_log[] = array( 'message' => '❌ FATAL ERROR: ' . $e->getMessage(), 'type' => 'error' );
+            error_log( '[PLS Sample Data] ==========================================' );
+            error_log( '[PLS Sample Data] ❌ FATAL ERROR: WooCommerce orders generation failed!' );
+            error_log( '[PLS Sample Data] Error: ' . $e->getMessage() );
+            error_log( '[PLS Sample Data] File: ' . $e->getFile() . ':' . $e->getLine() );
+            error_log( '[PLS Sample Data] ==========================================' );
+            
+            $log_file_path = self::save_log_file( 'generate_orders', $action_log );
+            
+            return array(
+                'success' => false,
+                'message' => 'WooCommerce orders generation failed: ' . $e->getMessage(),
+                'action_log' => $action_log,
+                'log_file_path' => $log_file_path,
+            );
+        }
+    }
+
+    /**
+     * Save log file to uploads directory.
+     * 
+     * @param string $operation_type Operation type (e.g., 'generate', 'generate_orders').
+     * @param array  $action_log Action log array.
+     * @return string|false Log file path or false on failure.
+     */
+    private static function save_log_file( $operation_type, $action_log ) {
+        $upload_dir = wp_upload_dir();
+        $log_dir = $upload_dir['basedir'] . '/pls-logs';
+        
+        // Create directory if it doesn't exist
+        if ( ! file_exists( $log_dir ) ) {
+            wp_mkdir_p( $log_dir );
+        }
+        
+        // Generate filename with timestamp
+        $timestamp = date( 'Y-m-d-H-i-s' );
+        $filename = 'pls-generation-log-' . $timestamp . '.txt';
+        $file_path = $log_dir . '/' . $filename;
+        
+        // Build log content
+        $log_content = "PLS Generation Log\n";
+        $log_content .= "==================\n\n";
+        $log_content .= "Operation: " . ucfirst( str_replace( '_', ' ', $operation_type ) ) . "\n";
+        $log_content .= "Timestamp: " . date( 'Y-m-d H:i:s' ) . "\n";
+        $log_content .= "WordPress Version: " . get_bloginfo( 'version' ) . "\n";
+        $log_content .= "PHP Version: " . PHP_VERSION . "\n\n";
+        $log_content .= str_repeat( '=', 50 ) . "\n\n";
+        
+        foreach ( $action_log as $entry ) {
+            $message = isset( $entry['message'] ) ? $entry['message'] : '';
+            $type = isset( $entry['type'] ) ? $entry['type'] : 'info';
+            
+            // Format log entry
+            $prefix = '';
+            switch ( $type ) {
+                case 'success':
+                    $prefix = '[✓] ';
+                    break;
+                case 'error':
+                    $prefix = '[❌] ';
+                    break;
+                case 'warning':
+                    $prefix = '[⚠] ';
+                    break;
+                case 'info':
+                default:
+                    $prefix = '[i] ';
+                    break;
+            }
+            
+            $log_content .= $prefix . $message . "\n";
+        }
+        
+        $log_content .= "\n" . str_repeat( '=', 50 ) . "\n";
+        $log_content .= "End of Log\n";
+        
+        // Write file
+        $result = file_put_contents( $file_path, $log_content );
+        
+        if ( $result !== false ) {
+            // Save log file path to WordPress option
+            update_option( 'pls_last_generation_log', $file_path );
+            
+            return $file_path;
+        }
+        
+        return false;
+    }
+
+    /**
+     * Ensure a customer exists in WooCommerce.
+     * 
+     * @param string $email Customer email.
+     * @param string $name Customer name (will be split into first/last).
+     */
+    private static function ensure_woocommerce_customer( $email, $name ) {
+        if ( ! self::is_woocommerce_active() ) {
+            return;
+        }
+
+        // Check if customer already exists
+        $customer_id = email_exists( $email );
+        
+        if ( ! $customer_id ) {
+            // Try WooCommerce customer lookup
+            if ( function_exists( 'wc_get_customer_id_by_email' ) ) {
+                $customer_id = wc_get_customer_id_by_email( $email );
+            }
+        }
+        
+        // Create customer if doesn't exist
+        if ( ! $customer_id ) {
+            // Split name into first and last
+            $name_parts = explode( ' ', trim( $name ), 2 );
+            $first_name = $name_parts[0] ?? '';
+            $last_name = isset( $name_parts[1] ) ? $name_parts[1] : '';
+            
+            // Generate unique username from email
+            $username = sanitize_user( str_replace( '@', '_', $email ), true );
+            $counter = 1;
+            while ( username_exists( $username ) ) {
+                $username = sanitize_user( str_replace( '@', '_', $email ) . '_' . $counter, true );
+                $counter++;
+            }
+            
+            $customer_id = wp_create_user( $username, wp_generate_password( 12, false ), $email );
+            if ( ! is_wp_error( $customer_id ) ) {
+                // Set customer name and role
+                wp_update_user( array(
+                    'ID' => $customer_id,
+                    'first_name' => $first_name,
+                    'last_name' => $last_name,
+                    'role' => 'customer',
+                ) );
+                
+                error_log( '[PLS Sample Data] Created WooCommerce customer for sampling order: ' . $email );
+            } else {
+                error_log( '[PLS Sample Data] Failed to create WooCommerce customer for ' . $email . ': ' . $customer_id->get_error_message() );
+            }
+        }
+    }
+
+    /**
      * Add sample custom orders.
      */
     public static function add_custom_orders() {
@@ -2867,6 +3136,11 @@ final class PLS_Sample_Data {
             $result = $wpdb->insert( $table, $order_data, $formats );
             if ( $result !== false ) {
                 $orders_created++;
+                
+                // If this is a sampling order, ensure customer exists in WooCommerce
+                if ( isset( $order_data['status'] ) && $order_data['status'] === 'sampling' && ! empty( $order_data['contact_email'] ) ) {
+                    self::ensure_woocommerce_customer( $order_data['contact_email'], $order_data['contact_name'] );
+                }
             } else {
                 error_log( '[PLS Sample Data] Custom Order: Failed to insert order for ' . ( $order_data['contact_name'] ?? 'Unknown' ) . ': ' . $wpdb->last_error );
             }

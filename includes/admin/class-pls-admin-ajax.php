@@ -60,10 +60,8 @@ final class PLS_Admin_Ajax {
         add_action( 'wp_ajax_pls_run_test_category', array( __CLASS__, 'run_test_category' ) );
         add_action( 'wp_ajax_pls_run_all_tests', array( __CLASS__, 'run_all_tests' ) );
         add_action( 'wp_ajax_pls_fix_issue', array( __CLASS__, 'fix_issue' ) );
-        
-        // Data Import AJAX handlers
-        add_action( 'wp_ajax_pls_check_prerequisites', array( __CLASS__, 'check_prerequisites' ) );
-        add_action( 'wp_ajax_pls_import_action', array( __CLASS__, 'import_action' ) );
+        add_action( 'wp_ajax_pls_generate_orders', array( __CLASS__, 'generate_orders' ) );
+        add_action( 'wp_ajax_pls_get_last_log', array( __CLASS__, 'get_last_log' ) );
     }
 
     /**
@@ -3645,19 +3643,18 @@ final class PLS_Admin_Ajax {
         );
 
         switch ( $action ) {
-            case 'resync_products':
-                $result = PLS_System_Test::fix_resync_products();
-                break;
-
-            case 'resync_bundles':
-                $result = PLS_System_Test::fix_resync_bundles();
-                break;
-
             case 'generate_sample_data':
                 // Increase timeout for sample data generation (can take 1-3 minutes)
                 @set_time_limit( 300 );
                 @ini_set( 'max_execution_time', 300 );
                 $result = PLS_System_Test::fix_generate_sample_data();
+                break;
+
+            case 'generate_orders':
+                // Increase timeout for order generation
+                @set_time_limit( 300 );
+                @ini_set( 'max_execution_time', 300 );
+                $result = PLS_System_Test::fix_generate_orders();
                 break;
 
             case 'delete_sample_data':
@@ -3869,6 +3866,63 @@ final class PLS_Admin_Ajax {
         wp_send_json_success( array(
             'action_log' => $action_log,
             'message' => __( 'Import completed successfully.', 'pls-private-label-store' ),
+        ) );
+    }
+
+    /**
+     * AJAX: Generate WooCommerce orders only.
+     */
+    public static function generate_orders() {
+        check_ajax_referer( 'pls_admin_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        // Increase timeout for order generation
+        @set_time_limit( 300 );
+        @ini_set( 'max_execution_time', 300 );
+
+        require_once PLS_PLS_DIR . 'includes/core/class-pls-system-test.php';
+        $result = PLS_System_Test::fix_generate_orders();
+
+        if ( $result['success'] ) {
+            wp_send_json_success( $result );
+        } else {
+            wp_send_json_error( $result );
+        }
+    }
+
+    /**
+     * AJAX: Get last generation log file content.
+     */
+    public static function get_last_log() {
+        check_ajax_referer( 'pls_admin_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $log_file_path = get_option( 'pls_last_generation_log' );
+
+        if ( ! $log_file_path || ! file_exists( $log_file_path ) ) {
+            wp_send_json_error( array( 'message' => __( 'No log file found.', 'pls-private-label-store' ) ), 404 );
+        }
+
+        $log_content = file_get_contents( $log_file_path );
+        
+        if ( $log_content === false ) {
+            wp_send_json_error( array( 'message' => __( 'Failed to read log file.', 'pls-private-label-store' ) ), 500 );
+        }
+
+        $filename = basename( $log_file_path );
+        $file_time = filemtime( $log_file_path );
+
+        wp_send_json_success( array(
+            'log_content' => $log_content,
+            'filename' => $filename,
+            'file_time' => $file_time,
+            'file_time_formatted' => date( 'Y-m-d H:i:s', $file_time ),
         ) );
     }
 }

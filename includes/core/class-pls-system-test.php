@@ -1924,6 +1924,26 @@ final class PLS_System_Test {
     }
 
     /**
+     * Generate WooCommerce orders only.
+     *
+     * @return array Result.
+     */
+    public static function fix_generate_orders() {
+        if ( ! class_exists( 'PLS_Sample_Data' ) ) {
+            require_once PLS_PLS_DIR . 'includes/core/class-pls-sample-data.php';
+        }
+
+        $result = PLS_Sample_Data::generate_orders();
+        
+        // Ensure action_log is included in the result
+        if ( ! isset( $result['action_log'] ) ) {
+            $result['action_log'] = array();
+        }
+        
+        return $result;
+    }
+
+    /**
      * Delete all sample data.
      *
      * @return array Result.

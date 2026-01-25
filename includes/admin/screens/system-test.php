@@ -186,21 +186,6 @@ $test_categories = array(
             <p class="description">Run all test categories to validate the complete system.</p>
         </div>
         
-        <div class="pls-control-group">
-            <h3>Quick Actions</h3>
-            <div class="pls-action-buttons">
-                <button type="button" class="button" id="pls-resync-products">
-                    <span class="dashicons dashicons-update"></span>
-                    Re-sync Products
-                </button>
-                <button type="button" class="button" id="pls-resync-bundles">
-                    <span class="dashicons dashicons-update"></span>
-                    Re-sync Bundles
-                </button>
-            </div>
-            <p class="description">Use these actions to fix sync issues.</p>
-        </div>
-
         <div class="pls-control-group pls-sample-data-control">
             <h3>Sample Data</h3>
             <div class="pls-sample-data-status" style="margin-bottom: 12px; padding: 12px; background: <?php echo $sample_data_status['has_data'] ? '#e7f5e9' : '#f0f0f1'; ?>; border-radius: 6px;">
@@ -235,6 +220,10 @@ $test_categories = array(
                     <span class="dashicons dashicons-database-add"></span>
                     <?php echo $sample_data_status['has_data'] ? esc_html__( 'Regenerate Sample Data', 'pls-private-label-store' ) : esc_html__( 'Generate Sample Data', 'pls-private-label-store' ); ?>
                 </button>
+                <button type="button" class="button button-secondary" id="pls-generate-orders" <?php echo ( ! $sample_data_status['has_data'] || empty( $sample_data_status['counts']['products'] ) ) ? 'disabled' : ''; ?>>
+                    <span class="dashicons dashicons-cart"></span>
+                    <?php esc_html_e( 'Generate Orders', 'pls-private-label-store' ); ?>
+                </button>
                 <?php if ( $sample_data_status['has_data'] ) : ?>
                     <button type="button" class="button button-link-delete" id="pls-delete-sample-data" style="color: #d63638;">
                         <span class="dashicons dashicons-trash"></span>
@@ -243,15 +232,38 @@ $test_categories = array(
                 <?php endif; ?>
             </div>
             <p class="description">
-                <?php esc_html_e( 'Generate creates: 10 products, 4 bundles, 50+ WC orders (12 months history), 15 custom orders, categories, ingredients, and commissions.', 'pls-private-label-store' ); ?>
-            </p>
-            <p style="margin-top: 12px;">
-                <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-data-import' ) ); ?>" class="button button-secondary">
-                    <?php esc_html_e( 'Use Multistep Import Wizard', 'pls-private-label-store' ); ?>
-                </a>
-                <span class="pls-help-icon" title="<?php esc_attr_e( 'The multistep wizard provides step-by-step import with validation at each stage. Use this for better control and troubleshooting.', 'pls-private-label-store' ); ?>" style="cursor: help; margin-left: 4px;">ⓘ</span>
+                <?php esc_html_e( 'Generate Sample Data creates: products, bundles, custom orders, categories, ingredients, and commissions. Generate Orders creates WooCommerce orders (requires products to exist first).', 'pls-private-label-store' ); ?>
             </p>
         </div>
+
+        <div class="pls-control-group">
+            <h3>View Last Log</h3>
+            <div id="pls-log-viewer" style="display: none;">
+                <div style="margin-bottom: 12px;">
+                    <strong id="pls-log-filename"></strong>
+                    <span style="color: #666; font-size: 12px; margin-left: 8px;" id="pls-log-time"></span>
+                </div>
+                <textarea id="pls-log-content" readonly style="width: 100%; height: 300px; font-family: monospace; font-size: 12px; padding: 12px; border: 1px solid #ddd; border-radius: 4px; background: #f9f9f9;"></textarea>
+                <div style="margin-top: 12px;">
+                    <button type="button" class="button" id="pls-copy-log">
+                        <span class="dashicons dashicons-clipboard"></span>
+                        <?php esc_html_e( 'Copy Log', 'pls-private-label-store' ); ?>
+                    </button>
+                    <a href="#" id="pls-download-log" class="button button-secondary" download style="margin-left: 8px;">
+                        <span class="dashicons dashicons-download"></span>
+                        <?php esc_html_e( 'Download Log', 'pls-private-label-store' ); ?>
+                    </a>
+                </div>
+            </div>
+            <button type="button" class="button" id="pls-view-last-log">
+                <span class="dashicons dashicons-visibility"></span>
+                <?php esc_html_e( 'View Last Log', 'pls-private-label-store' ); ?>
+            </button>
+            <p class="description">
+                <?php esc_html_e( 'View and copy the last generation log file. Useful for troubleshooting and sharing with support.', 'pls-private-label-store' ); ?>
+            </p>
+        </div>
+    </div>
     </div>
 
     <!-- Test Summary (shown after running tests) -->
@@ -306,11 +318,6 @@ $test_categories = array(
         <?php endforeach; ?>
     </div>
 
-    <!-- Action Log -->
-    <div class="pls-action-log" id="pls-action-log" style="display: none;">
-        <h3>Action Log</h3>
-        <div class="log-content" id="log-content"></div>
-    </div>
 </div>
 
 <script type="text/template" id="tmpl-test-result">

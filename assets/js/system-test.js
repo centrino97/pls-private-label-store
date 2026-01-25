@@ -59,11 +59,14 @@
                 }
             });
 
-            // Quick actions
-            $('#pls-resync-products').on('click', () => this.runAction('resync_products'));
-            $('#pls-resync-bundles').on('click', () => this.runAction('resync_bundles'));
+            // Sample data actions
             $('#pls-generate-sample-data').on('click', () => this.runAction('generate_sample_data'));
+            $('#pls-generate-orders').on('click', () => this.runAction('generate_orders'));
             $('#pls-delete-sample-data').on('click', () => this.confirmAndDelete());
+            
+            // Log viewing
+            $('#pls-view-last-log').on('click', () => this.viewLastLog());
+            $('#pls-copy-log').on('click', () => this.copyLog());
         },
 
         /**
@@ -188,69 +191,83 @@
         },
 
         /**
-         * Run a quick action (resync, generate, etc.).
+         * Run a quick action (generate sample data, generate orders, etc.).
          */
         runAction: async function(action) {
             if (this.isRunning) return;
 
             const $button = $(`#pls-${action.replace('_', '-')}`);
-            $button.addClass('is-loading');
-
-            this.showActionLog();
-            const actionName = action.replace('_', ' ');
-            this.logAction('Starting ' + actionName + '...');
-            
-            // Show longer timeout message for sample data generation
-            if (action === 'generate_sample_data') {
-                this.logAction('This may take 1-3 minutes. Please wait...', 'info');
+            if (!$button.length) {
+                // Try alternative selector format
+                $button = $(`#pls-${action}`);
             }
+            
+            $button.addClass('is-loading').prop('disabled', true);
+
+            // Show loading message
+            const actionName = action.replace('_', ' ');
+            const loadingMsg = action === 'generate_sample_data' || action === 'generate_orders' 
+                ? 'This may take 1-3 minutes. Please wait...' 
+                : 'Processing...';
+            
+            // Show notice
+            const $notice = $('<div class="notice notice-info is-dismissible" style="margin: 20px 0;"><p>' + loadingMsg + '</p></div>');
+            $('.pls-control-group').first().before($notice);
 
             try {
+                // Determine AJAX action name
+                let ajaxAction = 'pls_fix_issue';
+                if (action === 'generate_orders') {
+                    ajaxAction = 'pls_generate_orders';
+                }
+                
                 // Increase timeout for sample data generation (can take 1-3 minutes)
-                const timeout = action === 'generate_sample_data' ? 300000 : 30000; // 5 minutes for sample data, 30s for others
+                const timeout = (action === 'generate_sample_data' || action === 'generate_orders') ? 300000 : 30000;
                 
                 const response = await $.ajax({
                     url: plsSystemTest.ajaxUrl,
                     type: 'POST',
                     timeout: timeout,
                     data: {
-                        action: 'pls_fix_issue',
+                        action: ajaxAction,
                         nonce: plsSystemTest.nonce,
                         fix_action: action
                     }
                 });
 
+                $notice.remove();
+
                 if (response.success) {
-                    // Display action log if available
-                    if (response.data?.action_log && Array.isArray(response.data.action_log)) {
-                        response.data.action_log.forEach(logEntry => {
-                            const message = logEntry.message || logEntry;
-                            const type = logEntry.type || 'info';
-                            this.logAction(message, type);
-                        });
-                    } else {
-                        this.logAction(response.data.message || 'Action completed successfully', 'success');
+                    // Show success notice with log file info
+                    let successMsg = response.data?.message || 'Action completed successfully';
+                    if (response.data?.log_file_path) {
+                        successMsg += ' Log file saved. Use "View Last Log" to see details.';
                     }
                     
+                    const $successNotice = $('<div class="notice notice-success is-dismissible" style="margin: 20px 0;"><p>' + successMsg + '</p></div>');
+                    $('.pls-control-group').first().before($successNotice);
+                    
                     // Refresh stats after action
-                    setTimeout(() => location.reload(), 1500);
+                    setTimeout(() => location.reload(), 2000);
                 } else {
-                    // Display action log even on error
-                    if (response.data?.action_log && Array.isArray(response.data.action_log)) {
-                        response.data.action_log.forEach(logEntry => {
-                            const message = logEntry.message || logEntry;
-                            const type = logEntry.type || 'error';
-                            this.logAction(message, type);
-                        });
-                    } else {
-                        this.logAction(response.data?.message || 'Action failed', 'error');
+                    // Show error notice
+                    const errorMsg = response.data?.message || 'Action failed';
+                    const $errorNotice = $('<div class="notice notice-error is-dismissible" style="margin: 20px 0;"><p>' + errorMsg + '</p></div>');
+                    $('.pls-control-group').first().before($errorNotice);
+                    
+                    // If log file exists, suggest viewing it
+                    if (response.data?.log_file_path) {
+                        $errorNotice.find('p').append('<br><strong>Use "View Last Log" to see detailed error information.</strong>');
                     }
                 }
             } catch (error) {
-                this.logAction(error.message || 'Action failed', 'error');
+                $notice.remove();
+                const errorMsg = error.message || 'Action failed';
+                const $errorNotice = $('<div class="notice notice-error is-dismissible" style="margin: 20px 0;"><p>' + errorMsg + '</p></div>');
+                $('.pls-control-group').first().before($errorNotice);
             }
 
-            $button.removeClass('is-loading');
+            $button.removeClass('is-loading').prop('disabled', false);
         },
 
         /**
@@ -445,28 +462,107 @@
         },
 
         /**
-         * Show action log.
+         * View last generation log.
          */
-        showActionLog: function() {
-            $('#pls-action-log').show();
+        viewLastLog: async function() {
+            const $button = $('#pls-view-last-log');
+            const $viewer = $('#pls-log-viewer');
+            
+            // Toggle if already visible
+            if ($viewer.is(':visible')) {
+                $viewer.slideUp(300);
+                $button.html('<span class="dashicons dashicons-visibility"></span> View Last Log');
+                return;
+            }
+            
+            $button.addClass('is-loading').prop('disabled', true);
+
+            try {
+                const response = await $.ajax({
+                    url: plsSystemTest.ajaxUrl,
+                    type: 'POST',
+                    data: {
+                        action: 'pls_get_last_log',
+                        nonce: plsSystemTest.nonce
+                    }
+                });
+
+                if (response.success) {
+                    $('#pls-log-filename').text(response.data.filename);
+                    $('#pls-log-time').text('(' + response.data.file_time_formatted + ')');
+                    $('#pls-log-content').val(response.data.log_content);
+                    
+                    // Set download link
+                    const uploadDir = plsSystemTest.uploadUrl || '/wp-content/uploads/';
+                    const logUrl = uploadDir + 'pls-logs/' + response.data.filename;
+                    $('#pls-download-log').attr('href', logUrl);
+                    
+                    $viewer.slideDown(300);
+                    $button.html('<span class="dashicons dashicons-hidden"></span> Hide Log').removeClass('is-loading');
+                } else {
+                    alert('No log file found. Generate sample data or orders first.');
+                }
+            } catch (error) {
+                alert('Failed to load log: ' + (error.message || 'Unknown error'));
+            }
+
+            $button.prop('disabled', false);
         },
 
         /**
-         * Log an action.
+         * Copy log content to clipboard.
          */
-        logAction: function(message, type = '') {
-            const time = new Date().toLocaleTimeString();
-            const typeClass = type ? `log-${type}` : '';
-            const html = `<div class="log-entry ${typeClass}">
-                <span class="log-time">[${time}]</span>
-                <span class="log-message">${message}</span>
-            </div>`;
+        copyLog: function() {
+            const $logContent = $('#pls-log-content');
+            const logText = $logContent.val();
+
+            if (!logText) {
+                alert('No log content to copy.');
+                return;
+            }
+
+            // Use Clipboard API if available
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(logText).then(() => {
+                    const $button = $('#pls-copy-log');
+                    const originalText = $button.html();
+                    $button.html('<span class="dashicons dashicons-yes-alt"></span> Copied!');
+                    setTimeout(() => {
+                        $button.html(originalText);
+                    }, 2000);
+                }).catch(err => {
+                    console.error('Failed to copy:', err);
+                    this.fallbackCopyLog(logText);
+                });
+            } else {
+                this.fallbackCopyLog(logText);
+            }
+        },
+
+        /**
+         * Fallback copy method for older browsers.
+         */
+        fallbackCopyLog: function(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
             
-            $('#log-content').append(html);
+            try {
+                document.execCommand('copy');
+                const $button = $('#pls-copy-log');
+                const originalText = $button.html();
+                $button.html('<span class="dashicons dashicons-yes-alt"></span> Copied!');
+                setTimeout(() => {
+                    $button.html(originalText);
+                }, 2000);
+            } catch (err) {
+                alert('Failed to copy. Please select and copy manually.');
+            }
             
-            // Auto-scroll to bottom
-            const $logContent = $('#log-content');
-            $logContent.scrollTop($logContent[0].scrollHeight);
+            document.body.removeChild(textarea);
         }
     };
 

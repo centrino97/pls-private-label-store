@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 4.3.1
+Stable tag: 4.4.0
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,17 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 4.4.0 =
+* **NEW:** Split sample data generation - "Generate Sample Data" and "Generate Orders" are now separate functions
+* **NEW:** Downloadable TXT log files for all generation operations with full details
+* **NEW:** View Last Log functionality with copy to clipboard feature
+* **REMOVED:** Data Import page (multistep wizard) - replaced with simplified two-button approach
+* **REMOVED:** Quick Actions section from System Test page (sync is automatic)
+* **FIXED:** Sampling customers now automatically created in WooCommerce when custom orders have sampling status
+* **IMPROVED:** Better error handling and logging for data generation operations
+* **IMPROVED:** Log files stored in wp-content/uploads/pls-logs/ for easy access
+* **IMPROVED:** System Test page UI simplified and streamlined
+
 = 4.3.1 =
 * **NEW:** Shop page shortcode `[pls_shop_page]` for browsing all PLS products in Elementor templates
 * **NEW:** Shop page preview functionality for testing templates
