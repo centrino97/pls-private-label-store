@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 2.4.0
+Stable tag: 2.4.1
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,11 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 2.4.1 =
+* **FIXED:** Sample data cleanup now reads ALL WooCommerce products directly (not just PLS records) to ensure sync
+* **IMPROVED:** Cleanup checks WooCommerce directly for products with PLS meta markers for complete sync guarantee
+* **IMPROVED:** All WooCommerce products/variations with PLS markers are deleted, ensuring no stale data
+
 = 2.4.0 =
 * **IMPROVED:** Sample data cleanup - Now automatically deletes ALL sample data before generation (no validation prompt)
 * **FIXED:** Duplicate products - Sample data generation now checks for existing products/bundles by slug/key and skips duplicates
