@@ -93,9 +93,19 @@ wp_localize_script(
     <div>
       <p class="pls-label"><?php esc_html_e( 'Catalog', 'pls-private-label-store' ); ?></p>
       <h1><?php esc_html_e( 'PLS products', 'pls-private-label-store' ); ?></h1>
-      <p class="description"><?php esc_html_e( 'Create and manage every SKU inside PLS. WooCommerce only receives the final variable product.', 'pls-private-label-store' ); ?></p>
+      <p class="description">
+        <?php esc_html_e( 'Create and manage every SKU inside PLS. WooCommerce only receives the final variable product.', 'pls-private-label-store' ); ?>
+        <br>
+        <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-attributes' ) ); ?>" style="color: var(--pls-accent); text-decoration: underline;">
+          <?php esc_html_e( '→ Manage Product Options first', 'pls-private-label-store' ); ?>
+        </a>
+        <?php esc_html_e( ' (product creation follows your options)', 'pls-private-label-store' ); ?>
+      </p>
     </div>
     <div>
+      <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-attributes' ) ); ?>" class="button" style="margin-right: 10px;">
+        <?php esc_html_e( 'Product Options', 'pls-private-label-store' ); ?>
+      </a>
       <button class="button button-primary button-hero" id="pls-open-product-modal"><?php esc_html_e( 'Add product', 'pls-private-label-store' ); ?></button>
     </div>
   </div>

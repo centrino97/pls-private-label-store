@@ -206,12 +206,30 @@
                 });
 
                 if (response.success) {
-                    this.logAction(response.data.message, 'success');
+                    // Display action log if available
+                    if (response.data?.action_log && Array.isArray(response.data.action_log)) {
+                        response.data.action_log.forEach(logEntry => {
+                            const message = logEntry.message || logEntry;
+                            const type = logEntry.type || 'info';
+                            this.logAction(message, type);
+                        });
+                    } else {
+                        this.logAction(response.data.message || 'Action completed successfully', 'success');
+                    }
                     
                     // Refresh stats after action
                     setTimeout(() => location.reload(), 1500);
                 } else {
-                    this.logAction(response.data?.message || 'Action failed', 'error');
+                    // Display action log even on error
+                    if (response.data?.action_log && Array.isArray(response.data.action_log)) {
+                        response.data.action_log.forEach(logEntry => {
+                            const message = logEntry.message || logEntry;
+                            const type = logEntry.type || 'error';
+                            this.logAction(message, type);
+                        });
+                    } else {
+                        this.logAction(response.data?.message || 'Action failed', 'error');
+                    }
                 }
             } catch (error) {
                 this.logAction(error.message || 'Action failed', 'error');

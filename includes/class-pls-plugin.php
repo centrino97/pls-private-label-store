@@ -2,6 +2,9 @@
 /**
  * Main plugin bootstrap.
  *
+ * v2.6.0: Simplified architecture - ALL WooCommerce products are PLS products.
+ * Auto-sync is built into the AJAX handlers, with hooks for programmatic access.
+ *
  * @package PLS_Private_Label_Store
  */
 
@@ -120,7 +123,13 @@ final class PLS_Plugin {
         add_action( 'edited_pls_ingredient', array( 'PLS_Ingredient_Sync', 'on_ingredient_updated' ) );
         add_action( 'delete_pls_ingredient', array( 'PLS_Ingredient_Sync', 'on_ingredient_deleted' ) );
 
+        // Auto-sync hooks for programmatic extensibility (v2.6.0)
+        // These allow external code to trigger syncs when products are changed programmatically
+        add_action( 'pls_product_saved', array( 'PLS_WC_Sync', 'sync_base_product_to_wc' ) );
+        add_action( 'pls_pack_tier_updated', array( $this, 'sync_all_products_on_tier_change' ) );
+
         // Hook WooCommerce order status changes for commission tracking
+        // v2.6.0: Simplified - ALL WooCommerce orders are PLS orders
         if ( class_exists( 'WooCommerce' ) ) {
             add_action( 'woocommerce_order_status_changed', array( $this, 'check_order_payment' ), 10, 4 );
         }
@@ -129,7 +138,20 @@ final class PLS_Plugin {
     }
 
     /**
+     * Sync all products when pack tier defaults change.
+     * Triggered by the pls_pack_tier_updated action.
+     */
+    public function sync_all_products_on_tier_change() {
+        if ( class_exists( 'PLS_WC_Sync' ) ) {
+            PLS_WC_Sync::sync_all_base_products();
+        }
+    }
+
+    /**
      * Check WooCommerce order payment status and create/update commission.
+     * 
+     * v2.6.0 Simplification: ALL WooCommerce products are PLS products,
+     * so we process ALL orders without filtering.
      *
      * @param int    $order_id Order ID.
      * @param string $from     Previous status.
@@ -148,41 +170,17 @@ final class PLS_Plugin {
             return;
         }
 
-        // Get PLS products
-        $pls_products = PLS_Repo_Base_Product::all();
-        $pls_wc_ids = array();
-        foreach ( $pls_products as $product ) {
-            if ( $product->wc_product_id ) {
-                $pls_wc_ids[] = $product->wc_product_id;
-            }
-        }
-
-        // Check if order contains PLS products
-        $items = $order->get_items();
-        $order_contains_pls = false;
-        
-        foreach ( $items as $item ) {
-            if ( in_array( $item->get_product_id(), $pls_wc_ids, true ) ) {
-                $order_contains_pls = true;
-                break;
-            }
-        }
-
-        if ( ! $order_contains_pls ) {
-            return;
-        }
-
         // Get commission rates
         $commission_rates = get_option( 'pls_commission_rates', array() );
         $tier_rates = isset( $commission_rates['tiers'] ) ? $commission_rates['tiers'] : array();
         $bundle_rates = isset( $commission_rates['bundles'] ) ? $commission_rates['bundles'] : array();
+        $default_rate = isset( $commission_rates['default'] ) ? floatval( $commission_rates['default'] ) : 0.05;
 
         // Calculate and store commission for each item
+        // v2.6.0: Process ALL items since ALL WooCommerce = PLS
+        $items = $order->get_items();
         foreach ( $items as $item_id => $item ) {
             $product_id = $item->get_product_id();
-            if ( ! in_array( $product_id, $pls_wc_ids, true ) ) {
-                continue;
-            }
 
             // Check if commission already exists
             $existing = PLS_Repo_Commission::get_by_order( $order_id );
@@ -203,10 +201,10 @@ final class PLS_Plugin {
             $commission_amount = 0;
             $tier_key = null;
             $bundle_key = null;
+            $units_sold = $quantity;
 
             // Check order item meta for bundle info (from cart detection)
             $bundle_key_meta = $item->get_meta( 'pls_bundle_key' );
-            $bundle_type_meta = $item->get_meta( 'pls_bundle_type' );
             
             // If bundle item from cart detection, use bundle commission rate
             if ( $bundle_key_meta && isset( $bundle_rates[ $bundle_key_meta ] ) ) {
@@ -233,36 +231,42 @@ final class PLS_Plugin {
                             $units = $variation_units * $quantity;
                         }
                     }
-                    $commission_amount = $commission_rate_per_unit * $units;
                 }
+                $units_sold = $units;
+                $commission_amount = $commission_rate_per_unit * $units;
             }
             
             // If no bundle commission found, check for pack tier
             if ( ! $commission_amount && $item->get_variation_id() ) {
                 // Check if it's a variation (pack tier)
                 $variation = wc_get_product( $item->get_variation_id() );
-                $attributes = $variation->get_attributes();
-                
-                if ( isset( $attributes['pa_pack-tier'] ) ) {
-                    $tier_term = get_term_by( 'slug', $attributes['pa_pack-tier'], 'pa_pack-tier' );
-                    if ( $tier_term ) {
-                        $tier_key = pls_get_tier_key_from_term( $tier_term->name );
-                        if ( $tier_key && isset( $tier_rates[ $tier_key ] ) ) {
-                            $commission_rate_per_unit = $tier_rates[ $tier_key ];
-                            // Get units from variation meta or term meta
-                            $units = (int) get_post_meta( $variation->get_id(), '_pls_units', true );
-                            if ( ! $units ) {
-                                $units = (int) get_term_meta( $tier_term->term_id, '_pls_default_units', true );
+                if ( $variation ) {
+                    $attributes = $variation->get_attributes();
+                    
+                    if ( isset( $attributes['pa_pack-tier'] ) ) {
+                        $tier_term = get_term_by( 'slug', $attributes['pa_pack-tier'], 'pa_pack-tier' );
+                        if ( $tier_term ) {
+                            $tier_key = pls_get_tier_key_from_term( $tier_term->name );
+                            if ( $tier_key && isset( $tier_rates[ $tier_key ] ) ) {
+                                $commission_rate_per_unit = $tier_rates[ $tier_key ];
+                                // Get units from variation meta or term meta
+                                $units = (int) get_post_meta( $variation->get_id(), '_pls_units', true );
+                                if ( ! $units ) {
+                                    $units = (int) get_term_meta( $tier_term->term_id, '_pls_default_units', true );
+                                }
+                                if ( ! $units ) {
+                                    $units = $quantity; // Fallback
+                                }
+                                $units_sold = $units * $quantity;
+                                $commission_amount = $commission_rate_per_unit * $units_sold;
                             }
-                            if ( ! $units ) {
-                                $units = $quantity; // Fallback
-                            }
-                            $commission_amount = $commission_rate_per_unit * $units * $quantity;
                         }
                     }
                 }
-            } else {
-                // Check if it's a bundle product (Grouped Product)
+            }
+            
+            // Check if it's a bundle product (Grouped Product)
+            if ( ! $commission_amount ) {
                 $bundle_key = pls_get_bundle_key_from_product( $product_id );
                 if ( $bundle_key && isset( $bundle_rates[ $bundle_key ] ) ) {
                     $commission_rate_per_unit = $bundle_rates[ $bundle_key ];
@@ -270,38 +274,24 @@ final class PLS_Plugin {
                 }
             }
 
-            if ( $commission_amount > 0 ) {
-                // Calculate actual units sold
-                $units_sold = $quantity;
-                if ( $item->get_variation_id() ) {
-                    $variation = wc_get_product( $item->get_variation_id() );
-                    if ( $variation ) {
-                        $variation_units = (int) get_post_meta( $variation->get_id(), '_pls_units', true );
-                        if ( ! $variation_units ) {
-                            $attributes = $variation->get_attributes();
-                            if ( isset( $attributes['pa_pack-tier'] ) ) {
-                                $tier_term = get_term_by( 'slug', $attributes['pa_pack-tier'], 'pa_pack-tier' );
-                                if ( $tier_term ) {
-                                    $variation_units = (int) get_term_meta( $tier_term->term_id, '_pls_default_units', true );
-                                }
-                            }
-                        }
-                        if ( $variation_units ) {
-                            $units_sold = $variation_units * $quantity;
-                        }
-                    }
-                }
+            // Fallback: use default commission rate based on item total
+            if ( ! $commission_amount && $default_rate > 0 ) {
+                $item_total = $item->get_total();
+                $commission_amount = $item_total * $default_rate;
+                $commission_rate_per_unit = $default_rate;
+            }
 
+            if ( $commission_amount > 0 ) {
                 PLS_Repo_Commission::create(
                     array(
                         'wc_order_id'            => $order_id,
-                        'wc_order_item_id'      => $item_id,
+                        'wc_order_item_id'       => $item_id,
                         'product_id'             => $product_id,
                         'tier_key'               => $tier_key,
                         'bundle_key'             => $bundle_key,
                         'units'                  => $units_sold,
                         'commission_rate_per_unit' => $commission_rate_per_unit,
-                        'commission_amount'     => $commission_amount,
+                        'commission_amount'      => $commission_amount,
                         'status'                 => 'pending',
                     )
                 );

@@ -21,12 +21,81 @@ final class PLS_Sample_Data {
     }
 
     /**
+     * Check if database is empty (no PLS data exists).
+     *
+     * @return array Array with 'is_empty' bool and 'details' array.
+     */
+    public static function check_if_empty() {
+        global $wpdb;
+        $details = array();
+        
+        // Check base products
+        $products_count = PLS_Repo_Base_Product::count();
+        $details['products'] = $products_count;
+        
+        // Check bundles
+        require_once PLS_PLS_DIR . 'includes/data/repo-bundle.php';
+        $bundles_count = PLS_Repo_Bundle::count();
+        $details['bundles'] = $bundles_count;
+        
+        // Check custom orders
+        require_once PLS_PLS_DIR . 'includes/data/repo-custom-order.php';
+        $custom_orders_count = PLS_Repo_Custom_Order::count();
+        $details['custom_orders'] = $custom_orders_count;
+        
+        // Check commissions
+        require_once PLS_PLS_DIR . 'includes/data/repo-commission.php';
+        $commissions_count = PLS_Repo_Commission::count();
+        $details['commissions'] = $commissions_count;
+        
+        // Check WooCommerce orders (if WooCommerce is active)
+        $wc_orders_count = 0;
+        if ( self::is_woocommerce_active() ) {
+            $wc_orders = wc_get_orders( array( 'limit' => 1, 'status' => 'any' ) );
+            $wc_orders_count = count( $wc_orders );
+        }
+        $details['wc_orders'] = $wc_orders_count;
+        
+        $is_empty = ( $products_count === 0 && $bundles_count === 0 && $custom_orders_count === 0 && 
+                     $commissions_count === 0 && $wc_orders_count === 0 );
+        
+        return array(
+            'is_empty' => $is_empty,
+            'details' => $details,
+        );
+    }
+
+    /**
      * Clean up existing data and add sample data.
+     *
+     * @return array Array with 'success', 'message', and 'action_log' array.
      */
     public static function generate() {
         // Increase execution time limit for long-running operation (sample data generation can take 1-3 minutes)
         @set_time_limit( 300 ); // 5 minutes should be enough
         @ini_set( 'max_execution_time', 300 );
+        
+        $action_log = array();
+        
+        // Check if database is empty first
+        $empty_check = self::check_if_empty();
+        if ( ! $empty_check['is_empty'] ) {
+            $details_str = array();
+            foreach ( $empty_check['details'] as $key => $count ) {
+                if ( $count > 0 ) {
+                    $details_str[] = ucfirst( str_replace( '_', ' ', $key ) ) . ': ' . $count;
+                }
+            }
+            $message = 'Database is not empty. Found: ' . implode( ', ', $details_str ) . '. Please clean up first or use cleanup option.';
+            $action_log[] = array( 'message' => $message, 'type' => 'warning' );
+            return array(
+                'success' => false,
+                'message' => $message,
+                'action_log' => $action_log,
+            );
+        }
+        
+        $action_log[] = array( 'message' => '✓ Database is empty. Proceeding with sample data generation...', 'type' => 'success' );
         
         // Log to error log (always works, even during redirects)
         error_log( '[PLS Sample Data] ==========================================' );
@@ -36,26 +105,38 @@ final class PLS_Sample_Data {
         
         try {
             // Step 1: Cleanup
+            $action_log[] = array( 'message' => 'Step 1: Cleaning up existing data...', 'type' => 'info' );
             error_log( '[PLS Sample Data] Step 1: Cleaning up existing data...' );
             self::cleanup();
+            $action_log[] = array( 'message' => '✓ Cleanup completed.', 'type' => 'success' );
             error_log( '[PLS Sample Data] ✓ Cleanup completed.' );
 
         // Step 2: Categories
+        $action_log[] = array( 'message' => 'Step 2: Creating categories...', 'type' => 'info' );
         error_log( '[PLS Sample Data] Step 2: Adding categories...' );
         self::add_categories();
+        $categories = get_terms( array( 'taxonomy' => 'pls_category', 'hide_empty' => false ) );
+        $action_log[] = array( 'message' => '✓ Created ' . count( $categories ) . ' categories.', 'type' => 'success' );
         error_log( '[PLS Sample Data] ✓ Categories added.' );
 
         // Step 3: Ingredients
+        $action_log[] = array( 'message' => 'Step 3: Creating ingredients...', 'type' => 'info' );
         error_log( '[PLS Sample Data] Step 3: Adding ingredients...' );
         self::add_ingredients();
+        $ingredients = get_terms( array( 'taxonomy' => 'pls_ingredient', 'hide_empty' => false ) );
+        $action_log[] = array( 'message' => '✓ Created ' . count( $ingredients ) . ' ingredients.', 'type' => 'success' );
         error_log( '[PLS Sample Data] ✓ Ingredients added.' );
 
         // Step 4: Product Options
+        $action_log[] = array( 'message' => 'Step 4: Creating product options (attributes)...', 'type' => 'info' );
         error_log( '[PLS Sample Data] Step 4: Adding product options...' );
         self::add_product_options();
+        $product_options = PLS_Repo_Attributes::get_product_options();
+        $action_log[] = array( 'message' => '✓ Created ' . count( $product_options ) . ' product options.', 'type' => 'success' );
         error_log( '[PLS Sample Data] ✓ Product options added.' );
 
         // Step 5: Products
+        $action_log[] = array( 'message' => 'Step 5: Creating base products...', 'type' => 'info' );
         error_log( '[PLS Sample Data] Step 5: Adding products...' );
         self::add_products();
         $products = PLS_Repo_Base_Product::all();
@@ -68,20 +149,30 @@ final class PLS_Sample_Data {
                 $draft_count++;
             }
         }
+        $action_log[] = array( 'message' => '✓ Created ' . count( $products ) . ' products (' . $live_count . ' live, ' . $draft_count . ' draft).', 'type' => 'success' );
         error_log( '[PLS Sample Data] ✓ Products added: ' . count( $products ) . ' total (' . $live_count . ' live, ' . $draft_count . ' draft)' );
 
         if ( self::is_woocommerce_active() ) {
             // Step 6: Bundles
+            $action_log[] = array( 'message' => 'Step 6: Creating bundles...', 'type' => 'info' );
             error_log( '[PLS Sample Data] Step 6: Adding bundles...' );
             self::add_bundles();
+            require_once PLS_PLS_DIR . 'includes/data/repo-bundle.php';
+            $bundles = PLS_Repo_Bundle::all();
+            $action_log[] = array( 'message' => '✓ Created ' . count( $bundles ) . ' bundles.', 'type' => 'success' );
             error_log( '[PLS Sample Data] ✓ Bundles added.' );
 
             // Step 7: Sync to WooCommerce
+            $action_log[] = array( 'message' => 'Step 7: Syncing products and bundles to WooCommerce...', 'type' => 'info' );
             error_log( '[PLS Sample Data] Step 7: Syncing products and bundles to WooCommerce...' );
             $sync_result = self::sync_to_woocommerce();
             if ( is_array( $sync_result ) ) {
-                error_log( '[PLS Sample Data] ✓ Sync completed: ' . ( $sync_result['products_synced'] ?? 0 ) . ' products, ' . ( $sync_result['bundles_synced'] ?? 0 ) . ' bundles' );
+                $products_synced = $sync_result['products_synced'] ?? 0;
+                $bundles_synced = $sync_result['bundles_synced'] ?? 0;
+                $action_log[] = array( 'message' => '✓ Synced ' . $products_synced . ' products and ' . $bundles_synced . ' bundles to WooCommerce.', 'type' => 'success' );
+                error_log( '[PLS Sample Data] ✓ Sync completed: ' . $products_synced . ' products, ' . $bundles_synced . ' bundles' );
                 if ( ! empty( $sync_result['errors'] ) ) {
+                    $action_log[] = array( 'message' => '⚠ Sync warnings: ' . count( $sync_result['errors'] ) . ' issues found.', 'type' => 'warning' );
                     error_log( '[PLS Sample Data] ⚠ Sync errors: ' . count( $sync_result['errors'] ) );
                     foreach ( $sync_result['errors'] as $error ) {
                         error_log( '[PLS Sample Data]   - ' . $error['type'] . ': ' . ( isset( $error['message'] ) ? $error['message'] : ( isset( $error['error'] ) ? $error['error'] : 'Unknown error' ) ) );
@@ -89,14 +180,18 @@ final class PLS_Sample_Data {
                 }
                 
                 // Step 7.5: Verify sync integrity
+                $action_log[] = array( 'message' => 'Step 7.5: Verifying sync integrity...', 'type' => 'info' );
                 error_log( '[PLS Sample Data] Step 7.5: Verifying sync integrity...' );
                 $verify_result = self::verify_sync_integrity();
                 if ( is_array( $verify_result ) ) {
                     if ( $verify_result['all_synced'] ) {
+                        $action_log[] = array( 'message' => '✓ Sync verification passed: All products are in sync.', 'type' => 'success' );
                         error_log( '[PLS Sample Data] ✓ Sync verification passed: All products and orders are in sync' );
                     } else {
+                        $action_log[] = array( 'message' => '⚠ Sync verification found issues: ' . ( $verify_result['message'] ?? 'Unknown' ), 'type' => 'warning' );
                         error_log( '[PLS Sample Data] ⚠ Sync verification found issues: ' . $verify_result['message'] );
                         if ( ! empty( $verify_result['missing_variations'] ) ) {
+                            $action_log[] = array( 'message' => '⚠ Re-syncing ' . count( $verify_result['missing_variations'] ) . ' products with missing variations...', 'type' => 'warning' );
                             error_log( '[PLS Sample Data]   - Products missing variations: ' . count( $verify_result['missing_variations'] ) );
                             // Retry sync for products missing variations
                             error_log( '[PLS Sample Data]   - Re-syncing products with missing variations...' );
@@ -107,34 +202,49 @@ final class PLS_Sample_Data {
                     }
                 }
             } else {
+                $action_log[] = array( 'message' => '⚠ Sync failed: ' . ( is_wp_error( $sync_result ) ? $sync_result->get_error_message() : 'Unknown error' ), 'type' => 'error' );
                 error_log( '[PLS Sample Data] ⚠ Sync result: ' . ( is_wp_error( $sync_result ) ? $sync_result->get_error_message() : 'Unknown' ) );
             }
 
             // Step 8: WooCommerce Orders
+            $action_log[] = array( 'message' => 'Step 8: Creating WooCommerce orders...', 'type' => 'info' );
             error_log( '[PLS Sample Data] Step 8: Adding WooCommerce orders...' );
             // Refresh products array to ensure we have latest wc_product_id values after sync
             wp_cache_flush(); // Clear all caches to ensure fresh data
             $orders_result = self::add_woocommerce_orders();
             if ( is_array( $orders_result ) ) {
-                error_log( '[PLS Sample Data] ✓ WooCommerce orders added: ' . ( $orders_result['orders_created'] ?? 0 ) . ' created, ' . ( $orders_result['orders_skipped'] ?? 0 ) . ' skipped (no products)' );
+                $orders_created = $orders_result['orders_created'] ?? 0;
+                $orders_skipped = $orders_result['orders_skipped'] ?? 0;
+                $action_log[] = array( 'message' => '✓ Created ' . $orders_created . ' WooCommerce orders (' . $orders_skipped . ' skipped).', 'type' => 'success' );
+                error_log( '[PLS Sample Data] ✓ WooCommerce orders added: ' . $orders_created . ' created, ' . $orders_skipped . ' skipped (no products)' );
             } else {
+                $action_log[] = array( 'message' => '✓ WooCommerce orders created.', 'type' => 'success' );
                 error_log( '[PLS Sample Data] ✓ WooCommerce orders added.' );
             }
 
             // Step 9: Commissions
+            $action_log[] = array( 'message' => 'Step 9: Creating commission records...', 'type' => 'info' );
             error_log( '[PLS Sample Data] Step 9: Adding commissions...' );
             self::add_commissions();
+            require_once PLS_PLS_DIR . 'includes/data/repo-commission.php';
+            $commissions = PLS_Repo_Commission::all();
+            $action_log[] = array( 'message' => '✓ Created ' . count( $commissions ) . ' commission records.', 'type' => 'success' );
             error_log( '[PLS Sample Data] ✓ Commissions added.' );
         } else {
+            $action_log[] = array( 'message' => '⚠ WooCommerce not active - skipping WooCommerce-specific steps', 'type' => 'warning' );
             error_log( '[PLS Sample Data] ⚠ WooCommerce not active - skipping WooCommerce-specific steps' );
         }
 
         // Step 10: Custom Orders
+        $action_log[] = array( 'message' => 'Step 10: Creating custom orders...', 'type' => 'info' );
         error_log( '[PLS Sample Data] Step 10: Adding custom orders...' );
         $custom_orders_result = self::add_custom_orders();
         if ( is_array( $custom_orders_result ) ) {
-            error_log( '[PLS Sample Data] ✓ Custom orders added: ' . ( $custom_orders_result['orders_created'] ?? 0 ) . ' created' );
+            $custom_orders_created = $custom_orders_result['orders_created'] ?? 0;
+            $action_log[] = array( 'message' => '✓ Created ' . $custom_orders_created . ' custom orders.', 'type' => 'success' );
+            error_log( '[PLS Sample Data] ✓ Custom orders added: ' . $custom_orders_created . ' created' );
         } else {
+            $action_log[] = array( 'message' => '✓ Custom orders created.', 'type' => 'success' );
             error_log( '[PLS Sample Data] ✓ Custom orders added.' );
         }
 
@@ -143,25 +253,46 @@ final class PLS_Sample_Data {
             update_option( 'pls_commission_email_recipients', array( 'n.nikolic97@gmail.com' ) );
         }
 
+            $action_log[] = array( 'message' => '==========================================', 'type' => 'info' );
+            $action_log[] = array( 'message' => '✓ Sample data generation completed successfully!', 'type' => 'success' );
+            $action_log[] = array( 'message' => '==========================================', 'type' => 'info' );
             error_log( '[PLS Sample Data] ==========================================' );
             error_log( '[PLS Sample Data] ✓ Sample data generation completed successfully!' );
             error_log( '[PLS Sample Data] ==========================================' );
+            
+            return array(
+                'success' => true,
+                'message' => 'Sample data generated successfully!',
+                'action_log' => $action_log,
+            );
         } catch ( Exception $e ) {
+            $action_log[] = array( 'message' => '❌ ERROR: ' . $e->getMessage(), 'type' => 'error' );
             error_log( '[PLS Sample Data] ==========================================' );
             error_log( '[PLS Sample Data] ❌ ERROR: Sample data generation failed!' );
             error_log( '[PLS Sample Data] Error: ' . $e->getMessage() );
             error_log( '[PLS Sample Data] File: ' . $e->getFile() . ':' . $e->getLine() );
             error_log( '[PLS Sample Data] Stack trace: ' . $e->getTraceAsString() );
             error_log( '[PLS Sample Data] ==========================================' );
-            throw $e; // Re-throw to be caught by AJAX handler
+            
+            return array(
+                'success' => false,
+                'message' => 'Sample data generation failed: ' . $e->getMessage(),
+                'action_log' => $action_log,
+            );
         } catch ( Error $e ) {
+            $action_log[] = array( 'message' => '❌ FATAL ERROR: ' . $e->getMessage(), 'type' => 'error' );
             error_log( '[PLS Sample Data] ==========================================' );
             error_log( '[PLS Sample Data] ❌ FATAL ERROR: Sample data generation failed!' );
             error_log( '[PLS Sample Data] Error: ' . $e->getMessage() );
             error_log( '[PLS Sample Data] File: ' . $e->getFile() . ':' . $e->getLine() );
             error_log( '[PLS Sample Data] Stack trace: ' . $e->getTraceAsString() );
             error_log( '[PLS Sample Data] ==========================================' );
-            throw $e; // Re-throw to be caught by AJAX handler
+            
+            return array(
+                'success' => false,
+                'message' => 'Sample data generation failed: ' . $e->getMessage(),
+                'action_log' => $action_log,
+            );
         }
     }
 

@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 2.5.2
+Stable tag: 2.6.0
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,27 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 2.6.0 =
+* **MAJOR:** Architectural Simplification - ALL WooCommerce products are now PLS products (no PLS filtering needed)
+* **MAJOR:** Automatic Product Sync - Products automatically sync to WooCommerce on save, no user intervention required
+* **SIMPLIFIED:** Revenue page - Tracks ALL orders without PLS filtering, cleaner implementation
+* **SIMPLIFIED:** Commission page - Includes ALL orders in commission calculations, removed complex filtering
+* **NEW:** Auto-sync hooks - `pls_product_saved` and `pls_pack_tier_updated` hooks for programmatic extensibility
+* **NEW:** Pack tier update triggers full sync - When pack tier defaults change, all products automatically resync
+* **IMPROVED:** Commission tracking - ALL WooCommerce orders generate commissions automatically
+* **IMPROVED:** Order links - All orders now link to PLS Order Detail page instead of WooCommerce
+* **IMPROVED:** Simplified codebase - Removed redundant PLS product ID checks throughout the plugin
+* **FIXED:** Data loss issues - Improved sync verification prevents data inconsistencies
+
+= 2.5.3 =
+* **NEW:** Action log for sample data generation - Shows detailed progress of what is being created (categories, ingredients, products, bundles, orders, commissions)
+* **NEW:** Empty database check - Sample data generation now checks if database is empty before proceeding
+* **IMPROVED:** Revenue page now includes ALL WooCommerce orders (not just PLS products) - tracks total revenue from all orders
+* **IMPROVED:** Commission page now includes ALL WooCommerce orders - calculates commissions for non-PLS orders using default rate
+* **IMPROVED:** Product Options made more prominent - moved higher in menu (right after Products) and added link on Products page
+* **IMPROVED:** Product creation follows Product Options - product creation modal dynamically loads options from Product Options page
+* **IMPROVED:** Better visibility - Product Options page is now easily accessible and clearly linked from Products page
+
 = 2.5.2 =
 * **FIXED:** Sample data generation now has comprehensive error handling - won't fail after first order
 * **FIXED:** Order creation wrapped in try-catch blocks to prevent one failed order from stopping entire process

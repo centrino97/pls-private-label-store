@@ -1422,25 +1422,13 @@ final class PLS_System_Test {
             require_once PLS_PLS_DIR . 'includes/core/class-pls-sample-data.php';
         }
 
-        try {
-            PLS_Sample_Data::generate();
-            
-            return array(
-                'success' => true,
-                'message' => 'Sample data generated successfully. Check PHP error log for details.',
-            );
-        } catch ( Exception $e ) {
-            error_log( '[PLS System Test] Sample data generation exception: ' . $e->getMessage() );
-            return array(
-                'success' => false,
-                'message' => 'Sample data generation failed: ' . $e->getMessage() . '. Check PHP error log for details.',
-            );
-        } catch ( Error $e ) {
-            error_log( '[PLS System Test] Sample data generation fatal error: ' . $e->getMessage() );
-            return array(
-                'success' => false,
-                'message' => 'Sample data generation failed: ' . $e->getMessage() . '. Check PHP error log for details.',
-            );
+        $result = PLS_Sample_Data::generate();
+        
+        // Ensure action_log is included in the result
+        if ( ! isset( $result['action_log'] ) ) {
+            $result['action_log'] = array();
         }
+        
+        return $result;
     }
 }

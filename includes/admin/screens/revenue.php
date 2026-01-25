@@ -1,4 +1,13 @@
 <?php
+/**
+ * Revenue tracking screen.
+ * 
+ * Since WooCommerce is ONLY used for PLS products, ALL orders are PLS orders.
+ * No filtering needed - this is a simplified v2.6.0 approach.
+ *
+ * @package PLS_Private_Label_Store
+ */
+
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
@@ -7,35 +16,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 $date_from = isset( $_GET['date_from'] ) ? sanitize_text_field( wp_unslash( $_GET['date_from'] ) ) : date( 'Y-m-01' );
 $date_to   = isset( $_GET['date_to'] ) ? sanitize_text_field( wp_unslash( $_GET['date_to'] ) ) : date( 'Y-m-d' );
 $product_filter = isset( $_GET['product_id'] ) ? absint( $_GET['product_id'] ) : 0;
-$tier_filter = isset( $_GET['tier'] ) ? sanitize_text_field( wp_unslash( $_GET['tier'] ) ) : '';
 $status_filter = isset( $_GET['status'] ) ? sanitize_text_field( wp_unslash( $_GET['status'] ) ) : '';
 
-// Get PLS products to identify which WooCommerce orders contain them
+// Get PLS products for filter dropdown
 $pls_products = PLS_Repo_Base_Product::all();
-$pls_wc_ids   = array();
-foreach ( $pls_products as $product ) {
-    if ( $product->wc_product_id ) {
-        $pls_wc_ids[] = $product->wc_product_id;
-        
-        // Also include variation IDs if product is variable (for proper order detection)
-        $wc_product = wc_get_product( $product->wc_product_id );
-        if ( $wc_product && $wc_product->is_type( 'variable' ) ) {
-            $variations = $wc_product->get_children();
-            $pls_wc_ids = array_merge( $pls_wc_ids, $variations );
-        }
-    }
-}
 
-// Also include bundle WooCommerce product IDs
-require_once PLS_PLS_DIR . 'includes/data/repo-bundle.php';
-$bundles = PLS_Repo_Bundle::all();
-foreach ( $bundles as $bundle ) {
-    if ( $bundle->wc_product_id ) {
-        $pls_wc_ids[] = $bundle->wc_product_id;
-    }
-}
-
-// Get WooCommerce orders
+// Get ALL WooCommerce orders - ALL orders are PLS orders (v2.6.0 simplification)
 $orders_query_args = array(
     'limit'    => -1,
     'orderby'  => 'date',
@@ -52,72 +38,61 @@ if ( $status_filter ) {
 $orders_query = new WC_Order_Query( $orders_query_args );
 $all_orders = $orders_query->get_orders();
 
-// Filter orders that contain PLS products
-$pls_orders = array();
+// Process ALL orders - no PLS filtering needed (all WC = PLS)
 $total_revenue = 0;
 $orders_count = 0;
 $revenue_by_product = array();
 $revenue_by_tier = array();
+$filtered_orders = array();
 
 foreach ( $all_orders as $order ) {
     $items = $order->get_items();
-    $order_contains_pls = false;
-    $order_total = 0;
     
+    // Apply product filter if set
+    if ( $product_filter ) {
+        $has_product = false;
+        foreach ( $items as $item ) {
+            if ( $item->get_product_id() == $product_filter ) {
+                $has_product = true;
+                break;
+            }
+        }
+        if ( ! $has_product ) {
+            continue;
+        }
+    }
+    
+    // Track revenue by product and tier
     foreach ( $items as $item ) {
         $product_id = $item->get_product_id();
         $variation_id = $item->get_variation_id();
+        $item_total = $item->get_total();
         
-        // Check if product ID or variation ID matches PLS products
-        $is_pls_product = in_array( $product_id, $pls_wc_ids, true ) || 
-                          ( $variation_id && in_array( $variation_id, $pls_wc_ids, true ) );
+        // Track by product
+        if ( ! isset( $revenue_by_product[ $product_id ] ) ) {
+            $revenue_by_product[ $product_id ] = 0;
+        }
+        $revenue_by_product[ $product_id ] += $item_total;
         
-        if ( $is_pls_product ) {
-            $order_contains_pls = true;
-            $order_total += $item->get_total();
-            
-            // Track by product (use parent product ID for grouping)
-            if ( ! isset( $revenue_by_product[ $product_id ] ) ) {
-                $revenue_by_product[ $product_id ] = 0;
-            }
-            $revenue_by_product[ $product_id ] += $item->get_total();
-            
-            // Track by tier/bundle
-            if ( $variation_id ) {
-                $variation = wc_get_product( $variation_id );
-                if ( $variation ) {
-                    $attributes = $variation->get_attributes();
-                    if ( isset( $attributes['pa_pack-tier'] ) ) {
-                        $tier = $attributes['pa_pack-tier'];
-                        if ( ! isset( $revenue_by_tier[ $tier ] ) ) {
-                            $revenue_by_tier[ $tier ] = 0;
-                        }
-                        $revenue_by_tier[ $tier ] += $item->get_total();
+        // Track by tier (from variation attributes)
+        if ( $variation_id ) {
+            $variation = wc_get_product( $variation_id );
+            if ( $variation ) {
+                $attributes = $variation->get_attributes();
+                if ( isset( $attributes['pa_pack-tier'] ) ) {
+                    $tier = $attributes['pa_pack-tier'];
+                    if ( ! isset( $revenue_by_tier[ $tier ] ) ) {
+                        $revenue_by_tier[ $tier ] = 0;
                     }
+                    $revenue_by_tier[ $tier ] += $item_total;
                 }
             }
         }
     }
     
-    if ( $order_contains_pls ) {
-        // Apply filters
-        if ( $product_filter ) {
-            $has_product = false;
-            foreach ( $items as $item ) {
-                if ( $item->get_product_id() == $product_filter ) {
-                    $has_product = true;
-                    break;
-                }
-            }
-            if ( ! $has_product ) {
-                continue;
-            }
-        }
-        
-        $pls_orders[] = $order;
-        $total_revenue += $order->get_total();
-        $orders_count++;
-    }
+    $filtered_orders[] = $order;
+    $total_revenue += $order->get_total();
+    $orders_count++;
 }
 
 // Calculate average order value
@@ -133,7 +108,7 @@ foreach ( $revenue_by_tier as $tier => $revenue ) {
     }
 }
 
-// Get monthly revenue trend (last 6 months)
+// Get monthly revenue trend (last 6 months) - ALL orders
 $monthly_trend = array();
 for ( $i = 5; $i >= 0; $i-- ) {
     $month_start = date( 'Y-m-01', strtotime( "-{$i} months" ) );
@@ -150,18 +125,9 @@ for ( $i = 5; $i >= 0; $i-- ) {
     $month_orders = $month_query->get_orders();
     $month_revenue = 0;
     
+    // Sum ALL order totals - no PLS filtering needed
     foreach ( $month_orders as $order ) {
-        $items = $order->get_items();
-        foreach ( $items as $item ) {
-            $product_id = $item->get_product_id();
-            $variation_id = $item->get_variation_id();
-            
-            // Check if product ID or variation ID matches PLS products
-            if ( in_array( $product_id, $pls_wc_ids, true ) || 
-                 ( $variation_id && in_array( $variation_id, $pls_wc_ids, true ) ) ) {
-                $month_revenue += $item->get_total();
-            }
-        }
+        $month_revenue += $order->get_total();
     }
     
     $monthly_trend[] = array(
@@ -179,7 +145,7 @@ $top_products = array_slice( $revenue_by_product, 0, 5, true );
         <div>
             <p class="pls-label"><?php esc_html_e( 'Revenue', 'pls-private-label-store' ); ?></p>
             <h1><?php esc_html_e( 'Sales Revenue', 'pls-private-label-store' ); ?></h1>
-            <p class="description"><?php esc_html_e( 'Track total sales revenue from PLS product orders.', 'pls-private-label-store' ); ?></p>
+            <p class="description"><?php esc_html_e( 'Track total sales revenue from all orders.', 'pls-private-label-store' ); ?></p>
         </div>
     </div>
 
@@ -211,7 +177,7 @@ $top_products = array_slice( $revenue_by_product, 0, 5, true );
             <h3><?php esc_html_e( 'Monthly Revenue Trend', 'pls-private-label-store' ); ?></h3>
             <div class="pls-chart-bars">
                 <?php
-                $max_revenue = max( array_column( $monthly_trend, 'revenue' ) );
+                $max_revenue = ! empty( $monthly_trend ) ? max( array_column( $monthly_trend, 'revenue' ) ) : 0;
                 foreach ( $monthly_trend as $month_data ) :
                     $height = $max_revenue > 0 ? ( $month_data['revenue'] / $max_revenue ) * 100 : 0;
                     ?>
@@ -321,18 +287,18 @@ $top_products = array_slice( $revenue_by_product, 0, 5, true );
                         <th><?php esc_html_e( 'Date', 'pls-private-label-store' ); ?></th>
                         <th><?php esc_html_e( 'Customer', 'pls-private-label-store' ); ?></th>
                         <th><?php esc_html_e( 'Products', 'pls-private-label-store' ); ?></th>
-                        <th><?php esc_html_e( 'Tier/Bundle', 'pls-private-label-store' ); ?></th>
+                        <th><?php esc_html_e( 'Tier', 'pls-private-label-store' ); ?></th>
                         <th><?php esc_html_e( 'Total', 'pls-private-label-store' ); ?></th>
                         <th><?php esc_html_e( 'Status', 'pls-private-label-store' ); ?></th>
                     </tr>
                 </thead>
                 <tbody>
-                <?php if ( empty( $pls_orders ) ) : ?>
+                <?php if ( empty( $filtered_orders ) ) : ?>
                     <tr>
                         <td colspan="7"><?php esc_html_e( 'No orders found for this period.', 'pls-private-label-store' ); ?></td>
                     </tr>
                 <?php else : ?>
-                    <?php foreach ( $pls_orders as $order ) : ?>
+                    <?php foreach ( $filtered_orders as $order ) : ?>
                         <?php
                         $order_id = $order->get_id();
                         $order_date = $order->get_date_created()->date_i18n( get_option( 'date_format' ) );
@@ -341,46 +307,36 @@ $top_products = array_slice( $revenue_by_product, 0, 5, true );
                         $order_status = $order->get_status();
                         $order_items = $order->get_items();
                         $product_names = array();
-                        $tier_bundle_info = array();
+                        $tier_info = array();
                         
                         foreach ( $order_items as $item ) {
-                            $product_id = $item->get_product_id();
-                            $variation_id = $item->get_variation_id();
-                            
-                            // Check if product ID or variation ID matches PLS products
-                            if ( ! in_array( $product_id, $pls_wc_ids, true ) && 
-                                 ! ( $variation_id && in_array( $variation_id, $pls_wc_ids, true ) ) ) {
-                                continue;
-                            }
-                            
                             $product = $item->get_product();
-                            $product_names[] = $product->get_name();
-                            
-                            if ( $item->get_variation_id() ) {
-                                $variation = wc_get_product( $item->get_variation_id() );
-                                $attributes = $variation->get_attributes();
-                                if ( isset( $attributes['pa_pack-tier'] ) ) {
-                                    $tier_bundle_info[] = ucfirst( str_replace( '-', ' ', $attributes['pa_pack-tier'] ) );
-                                }
-                            } else {
-                                // Check if bundle
-                                $bundle_key = pls_get_bundle_key_from_product( $product_id );
-                                if ( $bundle_key ) {
-                                    $tier_bundle_info[] = ucfirst( str_replace( '_', ' ', $bundle_key ) );
+                            if ( $product ) {
+                                $product_names[] = $product->get_name();
+                                
+                                // Get tier info from variation
+                                if ( $item->get_variation_id() ) {
+                                    $variation = wc_get_product( $item->get_variation_id() );
+                                    if ( $variation ) {
+                                        $attributes = $variation->get_attributes();
+                                        if ( isset( $attributes['pa_pack-tier'] ) ) {
+                                            $tier_info[] = ucfirst( str_replace( '-', ' ', $attributes['pa_pack-tier'] ) );
+                                        }
+                                    }
                                 }
                             }
                         }
                         ?>
                         <tr>
                             <td>
-                                <a href="<?php echo esc_url( admin_url( 'post.php?post=' . $order_id . '&action=edit' ) ); ?>">
+                                <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-order-detail&order_id=' . $order_id ) ); ?>">
                                     #<?php echo esc_html( $order_id ); ?>
                                 </a>
                             </td>
                             <td><?php echo esc_html( $order_date ); ?></td>
                             <td><?php echo esc_html( $customer_name ); ?></td>
                             <td><?php echo esc_html( implode( ', ', array_slice( array_unique( $product_names ), 0, 2 ) ) ); ?></td>
-                            <td><?php echo esc_html( implode( ', ', array_unique( $tier_bundle_info ) ) ); ?></td>
+                            <td><?php echo esc_html( implode( ', ', array_unique( $tier_info ) ) ); ?></td>
                             <td><strong><?php echo wc_price( $order_total ); ?></strong></td>
                             <td>
                                 <span class="pls-status-badge pls-status-<?php echo esc_attr( $order_status ); ?>">

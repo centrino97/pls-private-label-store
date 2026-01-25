@@ -1864,7 +1864,10 @@ final class PLS_Admin_Ajax {
             }
         }
 
-        wp_send_json_success( array( 'message' => __( 'Pack tier defaults updated.', 'pls-private-label-store' ) ) );
+        // v2.6.0: Trigger auto-sync for all products when tier defaults change
+        do_action( 'pls_pack_tier_updated' );
+
+        wp_send_json_success( array( 'message' => __( 'Pack tier defaults updated and products synced.', 'pls-private-label-store' ) ) );
     }
 
     /**

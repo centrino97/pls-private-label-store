@@ -1,4 +1,15 @@
 <?php
+/**
+ * Commission tracking screen.
+ * 
+ * Since WooCommerce is ONLY used for PLS products, ALL orders are PLS orders.
+ * Commissions come from two sources:
+ * 1. Product orders (WooCommerce orders with pack tiers/bundles) - stored in pls_order_commission
+ * 2. Custom orders (private label requests) - stored in pls_custom_order
+ *
+ * @package PLS_Private_Label_Store
+ */
+
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
@@ -11,7 +22,7 @@ $selected_month = isset( $_GET['month'] ) ? sanitize_text_field( wp_unslash( $_G
 $date_from = isset( $_GET['date_from'] ) ? sanitize_text_field( wp_unslash( $_GET['date_from'] ) ) : date( 'Y-m-01' );
 $date_to   = isset( $_GET['date_to'] ) ? sanitize_text_field( wp_unslash( $_GET['date_to'] ) ) : date( 'Y-m-d' );
 
-// Get commissions from synced product orders
+// Get commissions from product orders (all WooCommerce orders are PLS orders)
 $product_commissions = PLS_Repo_Commission::query(
     array(
         'date_from' => $date_from,
@@ -34,12 +45,10 @@ foreach ( $custom_orders as $order ) {
 
 // Calculate monthly summary
 $monthly_summary = array();
-$months_to_show = array();
 
 // Get last 12 months
 for ( $i = 11; $i >= 0; $i-- ) {
     $month_key = date( 'Y-m', strtotime( "-{$i} months" ) );
-    $months_to_show[] = $month_key;
     $month_start = $month_key . '-01';
     $month_end = date( 'Y-m-t', strtotime( $month_start ) );
     
@@ -171,7 +180,7 @@ $paid_total = $paid_product + $paid_custom;
         <div>
             <p class="pls-label"><?php esc_html_e( 'Commission', 'pls-private-label-store' ); ?></p>
             <h1><?php esc_html_e( 'Commission Tracking', 'pls-private-label-store' ); ?></h1>
-            <p class="description"><?php esc_html_e( 'Track and manage commissions from PLS product orders and custom orders.', 'pls-private-label-store' ); ?></p>
+            <p class="description"><?php esc_html_e( 'Track and manage commissions from product orders and custom orders.', 'pls-private-label-store' ); ?></p>
         </div>
         <div>
             <button type="button" class="button" id="pls-send-monthly-report">
@@ -186,7 +195,7 @@ $paid_total = $paid_product + $paid_custom;
             <h3><?php esc_html_e( 'Total Commission', 'pls-private-label-store' ); ?></h3>
             <div class="pls-revenue-amount"><?php echo wc_price( $total_commission ); ?></div>
             <p class="description">
-                <?php echo wc_price( $total_product_commission ); ?> <?php esc_html_e( 'from products', 'pls-private-label-store' ); ?> + 
+                <?php echo wc_price( $total_product_commission ); ?> <?php esc_html_e( 'from orders', 'pls-private-label-store' ); ?> + 
                 <?php echo wc_price( $total_custom_commission ); ?> <?php esc_html_e( 'from custom orders', 'pls-private-label-store' ); ?>
             </p>
         </div>
@@ -303,7 +312,7 @@ $paid_total = $paid_product + $paid_custom;
                         <input type="date" name="date_from" value="<?php echo esc_attr( $date_from ); ?>" />
                     </label>
                     <label>
-                        <?php esc_html_e( 'To:', 'pls-private-label-store' ); ?></label>
+                        <?php esc_html_e( 'To:', 'pls-private-label-store' ); ?>
                         <input type="date" name="date_to" value="<?php echo esc_attr( $date_to ); ?>" />
                     </label>
                     <button type="submit" class="button"><?php esc_html_e( 'Filter', 'pls-private-label-store' ); ?></button>
@@ -384,7 +393,7 @@ $paid_total = $paid_product + $paid_custom;
                                 </th>
                                 <td>
                                     <?php if ( 'product' === $comm['type'] ) : ?>
-                                        <a href="<?php echo esc_url( admin_url( 'post.php?post=' . $comm['order_id'] . '&action=edit' ) ); ?>">
+                                        <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-order-detail&order_id=' . $comm['order_id'] ) ); ?>">
                                             <?php echo esc_html( $comm['source'] ); ?>
                                         </a>
                                     <?php else : ?>

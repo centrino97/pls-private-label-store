@@ -246,6 +246,15 @@ final class PLS_Admin_Menu {
 
         add_submenu_page(
             'pls-dashboard',
+            __( 'PLS – Product Options', 'pls-private-label-store' ),
+            __( 'Product Options', 'pls-private-label-store' ),
+            PLS_Capabilities::CAP_ATTRS,
+            'pls-attributes',
+            array( __CLASS__, 'render_attributes' )
+        );
+
+        add_submenu_page(
+            'pls-dashboard',
             __( 'PLS – Orders', 'pls-private-label-store' ),
             __( 'Orders', 'pls-private-label-store' ),
             'manage_woocommerce',
@@ -296,15 +305,6 @@ final class PLS_Admin_Menu {
             PLS_Capabilities::CAP_PRODUCTS,
             'pls-categories',
             array( __CLASS__, 'render_categories' )
-        );
-
-        add_submenu_page(
-            'pls-dashboard',
-            __( 'PLS – Product Options', 'pls-private-label-store' ),
-            __( 'Product Options', 'pls-private-label-store' ),
-            PLS_Capabilities::CAP_ATTRS,
-            'pls-attributes',
-            array( __CLASS__, 'render_attributes' )
         );
 
         add_submenu_page(
