@@ -11,6 +11,34 @@ final class PLS_Repo_Attributes {
         return $wpdb->get_results( "SELECT * FROM {$table} ORDER BY id DESC" );
     }
 
+    /**
+     * Get attribute by label.
+     *
+     * @param string $label Attribute label.
+     * @return object|null
+     */
+    public static function get_by_label( $label ) {
+        global $wpdb;
+        $table = PLS_Repositories::table( 'attribute' );
+        return $wpdb->get_row(
+            $wpdb->prepare( "SELECT * FROM {$table} WHERE label = %s", $label )
+        );
+    }
+
+    /**
+     * Get attribute by attr_key.
+     *
+     * @param string $attr_key Attribute key.
+     * @return object|null
+     */
+    public static function get_by_key( $attr_key ) {
+        global $wpdb;
+        $table = PLS_Repositories::table( 'attribute' );
+        return $wpdb->get_row(
+            $wpdb->prepare( "SELECT * FROM {$table} WHERE attr_key = %s", $attr_key )
+        );
+    }
+
     public static function insert_attr( $data ) {
         global $wpdb;
         $table    = PLS_Repositories::table( 'attribute' );
@@ -52,9 +80,50 @@ final class PLS_Repo_Attributes {
             }
         }
 
+        if ( isset( $data['default_min_tier'] ) ) {
+            $insert_data['default_min_tier'] = max( 1, min( 5, absint( $data['default_min_tier'] ) ) );
+            $format[] = '%d';
+        }
+
         $wpdb->insert( $table, $insert_data, $format );
 
         return $wpdb->insert_id;
+    }
+
+    /**
+     * Update an attribute.
+     *
+     * @param int   $id   Attribute ID.
+     * @param array $data Update data.
+     * @return bool
+     */
+    public static function update_attr( $id, $data ) {
+        global $wpdb;
+        $table = PLS_Repositories::table( 'attribute' );
+
+        $update_data = array();
+        $format = array();
+
+        if ( isset( $data['label'] ) ) {
+            $update_data['label'] = sanitize_text_field( $data['label'] );
+            $format[] = '%s';
+        }
+
+        if ( isset( $data['is_variation'] ) ) {
+            $update_data['is_variation'] = ! empty( $data['is_variation'] ) ? 1 : 0;
+            $format[] = '%d';
+        }
+
+        if ( isset( $data['default_min_tier'] ) ) {
+            $update_data['default_min_tier'] = max( 1, min( 5, absint( $data['default_min_tier'] ) ) );
+            $format[] = '%d';
+        }
+
+        if ( empty( $update_data ) ) {
+            return false;
+        }
+
+        return (bool) $wpdb->update( $table, $update_data, array( 'id' => $id ), $format, array( '%d' ) );
     }
 
     public static function set_wc_attribute_id( $id, $wc_attribute_id ) {
@@ -282,7 +351,34 @@ final class PLS_Repo_Attributes {
     }
 
     /**
-     * Get attribute values available for a specific tier level.
+     * Get the effective minimum tier for a value.
+     * 
+     * Logic:
+     * 1. If value has min_tier_level > 1, use it
+     * 2. Otherwise, inherit from option's default_min_tier
+     * 3. If neither is set, default to Tier 1
+     *
+     * @param object $value Value object with min_tier_level.
+     * @param object|null $attribute Optional attribute object with default_min_tier.
+     * @return int Effective minimum tier level (1-5).
+     */
+    public static function get_effective_min_tier( $value, $attribute = null ) {
+        // If value has an explicit tier set (> 1), use it
+        if ( isset( $value->min_tier_level ) && (int) $value->min_tier_level > 1 ) {
+            return (int) $value->min_tier_level;
+        }
+
+        // If attribute has default_min_tier, use it
+        if ( $attribute && isset( $attribute->default_min_tier ) && (int) $attribute->default_min_tier > 1 ) {
+            return (int) $attribute->default_min_tier;
+        }
+
+        // Default to Tier 1 (available to all)
+        return 1;
+    }
+
+    /**
+     * Get attribute values available for a specific tier level with inheritance.
      *
      * @param int $attribute_id Attribute ID.
      * @param int $tier_level Tier level (1-5).
@@ -290,18 +386,34 @@ final class PLS_Repo_Attributes {
      */
     public static function get_values_for_tier( $attribute_id, $tier_level ) {
         global $wpdb;
-        $table = PLS_Repositories::table( 'attribute_value' );
+        $attr_table = PLS_Repositories::table( 'attribute' );
+        $value_table = PLS_Repositories::table( 'attribute_value' );
 
-        return $wpdb->get_results(
+        // Get the attribute's default_min_tier
+        $attribute = $wpdb->get_row(
+            $wpdb->prepare( "SELECT * FROM {$attr_table} WHERE id = %d", $attribute_id )
+        );
+        $default_tier = ( $attribute && isset( $attribute->default_min_tier ) ) ? (int) $attribute->default_min_tier : 1;
+
+        // Get all values for this attribute
+        $all_values = $wpdb->get_results(
             $wpdb->prepare(
-                "SELECT * FROM {$table} 
-                WHERE attribute_id = %d 
-                AND min_tier_level <= %d 
-                ORDER BY sort_order ASC, id ASC",
-                $attribute_id,
-                $tier_level
+                "SELECT * FROM {$value_table} WHERE attribute_id = %d ORDER BY sort_order ASC, id ASC",
+                $attribute_id
             )
         );
+
+        // Filter values based on effective tier
+        $filtered = array();
+        foreach ( $all_values as $value ) {
+            $effective_tier = self::get_effective_min_tier( $value, $attribute );
+            if ( $effective_tier <= $tier_level ) {
+                $value->effective_min_tier = $effective_tier;
+                $filtered[] = $value;
+            }
+        }
+
+        return $filtered;
     }
 
     /**

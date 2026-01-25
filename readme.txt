@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 2.7.2
+Stable tag: 2.8.0
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,19 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 2.8.0 =
+* **NEW:** Database migration v2.8.0 - Added default_min_tier to attributes table
+* **NEW:** Package Type WooCommerce attribute auto-created for frontend selection
+* **NEW:** Tier inheritance system - Values inherit tier from option default, can override per-value
+* **NEW:** Default tier requirement field in Product Options editor
+* **NEW:** Apple-style CSS components - Toggle switches, option cards, tier badges
+* **IMPROVED:** Variation matching in sample data - More robust fallback logic
+* **IMPROVED:** Label Application filtered from Additional Options dropdown (has dedicated section)
+* **IMPROVED:** Product Options page shows tier badges for options requiring higher tiers
+* **IMPROVED:** Attribute update AJAX handler - Full edit support for options
+* **FIXED:** Commission repository all() method now exists
+* **FIXED:** get_values_for_tier() now respects option-level default_min_tier inheritance
+
 = 2.7.2 =
 * **CRITICAL FIX:** Sample data generation fixed - Changed pls_category to product_cat taxonomy
 * **CRITICAL FIX:** Added WP_Error checks before count() calls on get_terms results

@@ -65,6 +65,91 @@ final class PLS_WC_Sync {
     }
 
     /**
+     * Ensure global package-type attribute + terms exist.
+     * Used for frontend selection (not as variation attribute).
+     *
+     * @return array|null { attribute_id, taxonomy, term_ids } or null on failure.
+     */
+    public static function ensure_package_type_attribute() {
+        if ( ! function_exists( 'wc_get_attribute_taxonomies' ) || ! function_exists( 'wc_create_attribute' ) ) {
+            return null;
+        }
+
+        $slug = 'package-type';
+        $attribute = null;
+        $taxonomies = wc_get_attribute_taxonomies();
+        if ( ! is_array( $taxonomies ) ) {
+            $taxonomies = array();
+        }
+
+        foreach ( $taxonomies as $tax ) {
+            if ( $slug === $tax->attribute_name ) {
+                $attribute = $tax;
+                break;
+            }
+        }
+
+        if ( ! $attribute ) {
+            $attr_id = wc_create_attribute(
+                array(
+                    'name'         => 'Package Type',
+                    'slug'         => $slug,
+                    'type'         => 'select',
+                    'order_by'     => 'menu_order',
+                    'has_archives' => false,
+                )
+            );
+
+            if ( is_wp_error( $attr_id ) ) {
+                return null;
+            }
+
+            delete_transient( 'wc_attribute_taxonomies' );
+            $taxonomies = wc_get_attribute_taxonomies();
+            if ( ! is_array( $taxonomies ) ) {
+                $taxonomies = array();
+            }
+
+            foreach ( $taxonomies as $tax ) {
+                if ( $slug === $tax->attribute_name ) {
+                    $attribute = $tax;
+                    break;
+                }
+            }
+        }
+
+        if ( ! $attribute ) {
+            return null;
+        }
+
+        $taxonomy = wc_attribute_taxonomy_name( $slug );
+        $term_ids = array();
+
+        // Get package type values from PLS attributes
+        $package_type_attr = PLS_Repo_Attributes::get_by_label( 'Package Type' );
+        if ( $package_type_attr ) {
+            $values = PLS_Repo_Attributes::values_for_attr( $package_type_attr->id );
+            foreach ( $values as $value ) {
+                $term = get_term_by( 'slug', $value->value_key, $taxonomy );
+                if ( ! $term ) {
+                    $inserted = wp_insert_term( $value->label, $taxonomy, array( 'slug' => $value->value_key ) );
+                    if ( ! is_wp_error( $inserted ) ) {
+                        $term_ids[ $value->value_key ] = $inserted['term_id'];
+                    }
+                } else {
+                    $term_ids[ $value->value_key ] = $term->term_id;
+                }
+            }
+        }
+
+        return array(
+            'attribute_id' => $attribute->attribute_id,
+            'taxonomy'     => $taxonomy,
+            'term_ids'     => $term_ids,
+        );
+    }
+
+    /**
      * Ensure global pack-tier attribute + terms exist.
      *
      * @return array|null { attribute_id, taxonomy, term_ids } or null on failure.

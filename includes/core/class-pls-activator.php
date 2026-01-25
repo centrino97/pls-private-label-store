@@ -75,6 +75,13 @@ final class PLS_Activator {
             require_once PLS_PLS_DIR . 'includes/core/class-pls-migration-v270.php';
             PLS_Migration_v270::run();
         }
+        
+        // Run v2.8.0 migration if upgrading from earlier version
+        // Adds default_min_tier to attributes and package_type_value_id to pack tiers
+        if ( version_compare( $stored_version, '2.8.0', '<' ) ) {
+            require_once PLS_PLS_DIR . 'includes/core/class-pls-migration-v280.php';
+            PLS_Migration_v280::run();
+        }
     }
 
     private static function maybe_create_tables() {
@@ -111,6 +118,8 @@ final class PLS_Activator {
             currency VARCHAR(10) NULL,
             is_enabled TINYINT(1) NOT NULL DEFAULT 1,
             wc_variation_id BIGINT(20) UNSIGNED NULL,
+            package_type_value_id BIGINT(20) UNSIGNED NULL,
+            calculated_price DECIMAL(18,2) NULL,
             sort_order INT(11) NOT NULL DEFAULT 0,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -118,6 +127,7 @@ final class PLS_Activator {
             UNIQUE KEY base_tier (base_product_id, tier_key),
             KEY base_product_id (base_product_id),
             KEY wc_variation_id (wc_variation_id),
+            KEY package_type_value_id (package_type_value_id),
             KEY tier_key (tier_key)
         ) $charset_collate;";
 
@@ -188,6 +198,7 @@ final class PLS_Activator {
             option_type VARCHAR(50) NOT NULL DEFAULT 'product-option',
             is_primary TINYINT(1) NOT NULL DEFAULT 0,
             is_variation TINYINT(1) NOT NULL DEFAULT 0,
+            default_min_tier INT(11) DEFAULT 1,
             sort_order INT(11) NOT NULL DEFAULT 0,
             PRIMARY KEY (id),
             UNIQUE KEY attr_key (attr_key),
@@ -195,7 +206,8 @@ final class PLS_Activator {
             KEY wc_attribute_id (wc_attribute_id),
             KEY option_type (option_type),
             KEY is_primary (is_primary),
-            KEY is_variation (is_variation)
+            KEY is_variation (is_variation),
+            KEY default_min_tier (default_min_tier)
         ) $charset_collate;";
 
         $tables[] = "CREATE TABLE {$p}pls_attribute_value (

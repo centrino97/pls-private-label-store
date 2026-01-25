@@ -20,6 +20,7 @@ final class PLS_Admin_Ajax {
         add_action( 'wp_ajax_pls_activate_product', array( __CLASS__, 'activate_product' ) );
         add_action( 'wp_ajax_pls_deactivate_product', array( __CLASS__, 'deactivate_product' ) );
         add_action( 'wp_ajax_pls_create_attribute', array( __CLASS__, 'create_attribute' ) );
+        add_action( 'wp_ajax_pls_update_attribute', array( __CLASS__, 'update_attribute' ) );
         add_action( 'wp_ajax_pls_create_attribute_value', array( __CLASS__, 'create_attribute_value' ) );
         add_action( 'wp_ajax_pls_update_attribute_values', array( __CLASS__, 'update_attribute_values' ) );
         add_action( 'wp_ajax_pls_update_attribute_tier_rules', array( __CLASS__, 'update_attribute_tier_rules' ) );
@@ -173,10 +174,14 @@ final class PLS_Admin_Ajax {
             wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
         }
 
-        $label        = isset( $_POST['label'] ) ? sanitize_text_field( wp_unslash( $_POST['label'] ) ) : '';
-        $is_variation = isset( $_POST['is_variation'] ) ? 1 : 0;
-        $option_type  = isset( $_POST['option_type'] ) ? sanitize_text_field( wp_unslash( $_POST['option_type'] ) ) : 'product-option';
-        $is_primary   = isset( $_POST['is_primary'] ) ? 1 : 0;
+        $label            = isset( $_POST['label'] ) ? sanitize_text_field( wp_unslash( $_POST['label'] ) ) : '';
+        $is_variation     = isset( $_POST['is_variation'] ) ? 1 : 0;
+        $option_type      = isset( $_POST['option_type'] ) ? sanitize_text_field( wp_unslash( $_POST['option_type'] ) ) : 'product-option';
+        $is_primary       = isset( $_POST['is_primary'] ) ? 1 : 0;
+        $default_min_tier = isset( $_POST['default_min_tier'] ) ? absint( $_POST['default_min_tier'] ) : 1;
+
+        // Clamp default_min_tier to 1-5
+        $default_min_tier = max( 1, min( 5, $default_min_tier ) );
 
         if ( '' === $label ) {
             wp_send_json_error( array( 'message' => __( 'Attribute label is required.', 'pls-private-label-store' ) ), 400 );
@@ -202,20 +207,64 @@ final class PLS_Admin_Ajax {
                 'is_variation'     => $is_variation,
                 'option_type'      => $option_type,
                 'is_primary'       => $is_primary,
+                'default_min_tier' => $default_min_tier,
             )
         );
 
         wp_send_json_success(
             array(
                 'attribute' => array(
-                    'id'          => $attr_id,
-                    'label'       => $label,
-                    'option_type' => $option_type,
-                    'is_primary'  => $is_primary,
-                    'values'      => array(),
+                    'id'               => $attr_id,
+                    'label'            => $label,
+                    'option_type'      => $option_type,
+                    'is_primary'       => $is_primary,
+                    'default_min_tier' => $default_min_tier,
+                    'values'           => array(),
                 ),
             )
         );
+    }
+
+    /**
+     * Update attribute via AJAX.
+     */
+    public static function update_attribute() {
+        check_ajax_referer( 'pls_admin_nonce', 'nonce' );
+
+        if ( ! current_user_can( PLS_Capabilities::CAP_PRODUCTS ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $id               = isset( $_POST['option_id'] ) ? absint( $_POST['option_id'] ) : 0;
+        $label            = isset( $_POST['label'] ) ? sanitize_text_field( wp_unslash( $_POST['label'] ) ) : '';
+        $is_variation     = isset( $_POST['is_variation'] ) ? 1 : 0;
+        $default_min_tier = isset( $_POST['default_min_tier'] ) ? absint( $_POST['default_min_tier'] ) : 1;
+
+        if ( ! $id ) {
+            wp_send_json_error( array( 'message' => __( 'Attribute ID is required.', 'pls-private-label-store' ) ), 400 );
+        }
+
+        if ( '' === $label ) {
+            wp_send_json_error( array( 'message' => __( 'Attribute label is required.', 'pls-private-label-store' ) ), 400 );
+        }
+
+        // Clamp default_min_tier to 1-5
+        $default_min_tier = max( 1, min( 5, $default_min_tier ) );
+
+        $result = PLS_Repo_Attributes::update_attr(
+            $id,
+            array(
+                'label'            => $label,
+                'is_variation'     => $is_variation,
+                'default_min_tier' => $default_min_tier,
+            )
+        );
+
+        if ( $result ) {
+            wp_send_json_success( array( 'message' => __( 'Attribute updated successfully.', 'pls-private-label-store' ) ) );
+        } else {
+            wp_send_json_error( array( 'message' => __( 'Failed to update attribute.', 'pls-private-label-store' ) ), 500 );
+        }
     }
 
     /**

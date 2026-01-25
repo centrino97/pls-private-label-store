@@ -670,15 +670,17 @@ wp_localize_script(
                         <select class="pls-attr-select" name="">
                           <option value=""><?php esc_html_e( 'Select option', 'pls-private-label-store' ); ?></option>
                           <?php 
-                          // Filter out Pack Tier (primary), Package Type, Package Color, Package Cap, and ingredient attributes
+                          // Filter out Pack Tier (primary), Package Type, Package Color, Package Cap, Label Application, and ingredient attributes
                           $primary_attr_id = $primary_attr ? $primary_attr->id : 0;
-                          $excluded_keys = array( 'pack-tier', 'package-type', 'package-color', 'package-colour', 'package-cap' );
+                          $excluded_keys = array( 'pack-tier', 'package-type', 'package-color', 'package-colour', 'package-cap', 'label-application' );
                           foreach ( $attr_payload as $attr ) : 
                             // Skip primary attribute (Pack Tier) and ingredient attributes
                             if ( isset( $attr['is_primary'] ) && $attr['is_primary'] ) continue;
                             if ( isset( $attr['option_type'] ) && $attr['option_type'] === 'ingredient' ) continue;
                             if ( isset( $attr['id'] ) && (int) $attr['id'] === $primary_attr_id ) continue;
                             if ( isset( $attr['attr_key'] ) && in_array( $attr['attr_key'], $excluded_keys, true ) ) continue;
+                            // Also skip Label Application by label name (in case attr_key differs)
+                            if ( isset( $attr['label'] ) && stripos( $attr['label'], 'label application' ) !== false ) continue;
                           ?>
                               <option value="<?php echo esc_attr( $attr['id'] ); ?>"><?php echo esc_html( $attr['label'] ); ?></option>
                           <?php endforeach; ?>

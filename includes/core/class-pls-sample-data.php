@@ -2224,38 +2224,50 @@ final class PLS_Sample_Data {
                     }
                 }
 
-                // Get pack tier to find units
+                // Get pack tier to find units - re-fetch to get fresh wc_variation_id after sync
+                wp_cache_delete( 'pls_pack_tier_' . $base_product->id );
                 $pack_tiers = PLS_Repo_Pack_Tier::for_base( $base_product->id );
                 $target_units = null;
                 $target_tier = null;
+                
+                // Map tier_key to units (fallback values)
+                $tier_to_units = array(
+                    'tier_1' => 50,
+                    'tier_2' => 100,
+                    'tier_3' => 250,
+                    'tier_4' => 500,
+                    'tier_5' => 1000,
+                );
+                
                 foreach ( $pack_tiers as $tier ) {
                     if ( $tier->tier_key === $tier_key ) {
                         $target_units = (int) $tier->units;
                         $target_tier = $tier;
-                        // Also check if tier has a wc_variation_id directly
-                        if ( $tier->wc_variation_id ) {
-                            $variation = wc_get_product( $tier->wc_variation_id );
-                            if ( $variation && $variation instanceof WC_Product_Variation && $variation->get_parent_id() === $wc_product_id ) {
+                        // Check if tier has a wc_variation_id directly
+                        if ( ! empty( $tier->wc_variation_id ) ) {
+                            $test_var = wc_get_product( $tier->wc_variation_id );
+                            if ( $test_var && $test_var instanceof WC_Product_Variation && (int) $test_var->get_parent_id() === (int) $wc_product_id ) {
                                 $variation_id = (int) $tier->wc_variation_id;
-                                break;
+                                error_log( '[PLS Sample Data] Order: Found variation via wc_variation_id: ' . $variation_id . ' for ' . $base_product->name );
                             }
                         }
                         break;
                     }
                 }
                 
+                // Fallback to default units if tier not found
+                if ( ! $target_units && isset( $tier_to_units[ $tier_key ] ) ) {
+                    $target_units = $tier_to_units[ $tier_key ];
+                    error_log( '[PLS Sample Data] Order: Using fallback units ' . $target_units . ' for tier ' . $tier_key );
+                }
+                
                 // If no direct variation ID, search by units meta
                 if ( ! $variation_id && $target_units && ! empty( $variations ) ) {
                     foreach ( $variations as $var_id ) {
-                        $variation = wc_get_product( $var_id );
-                        if ( ! $variation || ! $variation instanceof WC_Product_Variation ) {
-                            continue;
-                        }
-
-                        // Check if this variation matches the units
                         $var_units = get_post_meta( $var_id, '_pls_units', true );
                         if ( $var_units && (int) $var_units === $target_units ) {
-                            $variation_id = $var_id;
+                            $variation_id = (int) $var_id;
+                            error_log( '[PLS Sample Data] Order: Found variation via _pls_units meta: ' . $variation_id );
                             break;
                         }
                     }
@@ -2263,7 +2275,6 @@ final class PLS_Sample_Data {
                 
                 // Secondary fallback: try matching by attribute slug
                 if ( ! $variation_id && $target_units && ! empty( $variations ) ) {
-                    // Map units to expected slugs (matching ensure_pack_tier_attribute defaults)
                     $units_to_slug = array(
                         50 => 'tier-1',
                         100 => 'tier-2',
@@ -2275,29 +2286,40 @@ final class PLS_Sample_Data {
                     
                     if ( $expected_slug ) {
                         foreach ( $variations as $var_id ) {
-                            $variation = wc_get_product( $var_id );
-                            if ( ! $variation || ! $variation instanceof WC_Product_Variation ) {
+                            $variation_obj = wc_get_product( $var_id );
+                            if ( ! $variation_obj || ! $variation_obj instanceof WC_Product_Variation ) {
                                 continue;
                             }
                             
-                            $attributes = $variation->get_attributes();
-                            // WooCommerce stores attributes as slugs
+                            $attributes = $variation_obj->get_attributes();
                             if ( isset( $attributes['pa_pack-tier'] ) && $attributes['pa_pack-tier'] === $expected_slug ) {
-                                $variation_id = $var_id;
+                                $variation_id = (int) $var_id;
+                                error_log( '[PLS Sample Data] Order: Found variation via attribute slug: ' . $variation_id );
                                 break;
                             }
                         }
                     }
                 }
-
-                // Final fallback: use first variation if no match found (but log warning)
+                
+                // Tertiary fallback: use tier index (tier_1 = first variation, etc.)
                 if ( ! $variation_id && ! empty( $variations ) ) {
-                    $variation_id = $variations[0];
-                    error_log( '[PLS Sample Data] Order: ⚠ Using first variation ' . $variation_id . ' as fallback for ' . $base_product->name . ' (tier: ' . $tier_key . ', units: ' . $target_units . ')' );
+                    $tier_index = 0;
+                    if ( preg_match( '/tier_(\d+)/', $tier_key, $matches ) ) {
+                        $tier_index = max( 0, (int) $matches[1] - 1 );
+                    }
+                    
+                    if ( isset( $variations[ $tier_index ] ) ) {
+                        $variation_id = (int) $variations[ $tier_index ];
+                        error_log( '[PLS Sample Data] Order: Using tier index fallback: variation ' . $variation_id . ' at index ' . $tier_index );
+                    } else {
+                        // Use first available variation
+                        $variation_id = (int) $variations[0];
+                        error_log( '[PLS Sample Data] Order: Using first variation as final fallback: ' . $variation_id );
+                    }
                 }
                 
                 if ( ! $variation_id ) {
-                    error_log( '[PLS Sample Data] Order: ❌ Could not find variation for ' . $base_product->name . ' (tier: ' . $tier_key . ', units: ' . $target_units . ')' );
+                    error_log( '[PLS Sample Data] Order: No variations available for ' . $base_product->name );
                     continue;
                 }
 

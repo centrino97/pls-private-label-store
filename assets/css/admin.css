@@ -1089,6 +1089,229 @@ body.pls-modal-open {
   background: var(--pls-accent-light);
 }
 
+/* ============================================
+   Apple-Style Toggle Switch (iOS style)
+   ============================================ */
+
+.pls-toggle-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  gap: var(--pls-space-sm);
+}
+
+.pls-toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.pls-toggle-switch__slider {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  background-color: var(--pls-gray-300);
+  border-radius: 24px;
+  transition: background-color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.pls-toggle-switch__slider::before {
+  content: "";
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  left: 2px;
+  top: 2px;
+  background-color: white;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.pls-toggle-switch input:checked + .pls-toggle-switch__slider {
+  background-color: var(--pls-success);
+}
+
+.pls-toggle-switch input:checked + .pls-toggle-switch__slider::before {
+  transform: translateX(20px);
+}
+
+.pls-toggle-switch input:focus + .pls-toggle-switch__slider {
+  box-shadow: 0 0 0 2px var(--pls-accent-light);
+}
+
+.pls-toggle-switch input:disabled + .pls-toggle-switch__slider {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pls-toggle-switch__label {
+  font-size: var(--pls-font-size-base);
+  color: var(--pls-gray-800);
+}
+
+/* ============================================
+   Option Card (clean, minimal)
+   ============================================ */
+
+.pls-option-card-new {
+  display: flex;
+  align-items: center;
+  gap: var(--pls-space-md);
+  padding: var(--pls-space-md) var(--pls-space-lg);
+  background: #fff;
+  border: 1px solid var(--pls-gray-200);
+  border-radius: var(--pls-radius-lg);
+  transition: all 0.15s ease;
+}
+
+.pls-option-card-new:hover {
+  border-color: var(--pls-gray-300);
+  box-shadow: var(--pls-shadow-sm);
+}
+
+.pls-option-card-new__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.pls-option-card-new__title {
+  font-weight: 500;
+  color: var(--pls-gray-900);
+  margin: 0;
+}
+
+.pls-option-card-new__subtitle {
+  font-size: var(--pls-font-size-sm);
+  color: var(--pls-gray-500);
+  margin: 2px 0 0;
+}
+
+.pls-option-card-new__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--pls-space-sm);
+  flex-shrink: 0;
+}
+
+.pls-option-card-new__action {
+  padding: 6px 12px;
+  background: var(--pls-gray-100);
+  border: 1px solid var(--pls-gray-200);
+  border-radius: var(--pls-radius-md);
+  font-size: var(--pls-font-size-sm);
+  color: var(--pls-gray-700);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pls-option-card-new__action:hover {
+  background: var(--pls-gray-200);
+  border-color: var(--pls-gray-300);
+}
+
+/* ============================================
+   Tier Requirement Badge
+   ============================================ */
+
+.pls-tier-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--pls-radius-full);
+  font-size: var(--pls-font-size-xs);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.pls-tier-badge--1 {
+  background: var(--pls-gray-100);
+  color: var(--pls-gray-600);
+}
+
+.pls-tier-badge--2 {
+  background: #E0F2FE;
+  color: #0369A1;
+}
+
+.pls-tier-badge--3 {
+  background: #DCFCE7;
+  color: #166534;
+}
+
+.pls-tier-badge--4 {
+  background: #FEF3C7;
+  color: #92400E;
+}
+
+.pls-tier-badge--5 {
+  background: #FEE2E2;
+  color: #991B1B;
+}
+
+.pls-tier-badge--locked {
+  background: var(--pls-gray-200);
+  color: var(--pls-gray-500);
+}
+
+.pls-tier-badge--locked::before {
+  content: "🔒 ";
+}
+
+/* ============================================
+   Quick Add Value (inline)
+   ============================================ */
+
+.pls-quick-add {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pls-space-xs);
+  margin-top: var(--pls-space-sm);
+}
+
+.pls-quick-add input {
+  width: 160px;
+  padding: 4px 8px;
+  border: 1px solid var(--pls-gray-300);
+  border-radius: var(--pls-radius-sm);
+  font-size: var(--pls-font-size-sm);
+}
+
+.pls-quick-add button {
+  padding: 4px 8px;
+  background: var(--pls-accent);
+  color: white;
+  border: none;
+  border-radius: var(--pls-radius-sm);
+  font-size: var(--pls-font-size-sm);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.pls-quick-add button:hover {
+  background: var(--pls-accent-hover);
+}
+
+/* Option list container */
+.pls-option-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pls-space-sm);
+}
+
+/* Values count badge */
+.pls-values-count {
+  font-size: var(--pls-font-size-sm);
+  color: var(--pls-gray-500);
+  background: var(--pls-gray-100);
+  padding: 2px 8px;
+  border-radius: var(--pls-radius-full);
+}
+
 .pls-label-price {
   border: 1px solid var(--pls-gray-200);
   border-radius: var(--pls-radius-md);

@@ -217,6 +217,23 @@ require_once PLS_PLS_DIR . 'includes/core/class-pls-tier-rules.php';
                         <input type="text" id="pls-option-label" name="label" class="regular-text" required style="width: 100%;" />
                     </div>
                     <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600;"><?php esc_html_e( 'Default Minimum Tier', 'pls-private-label-store' ); ?></label>
+                        <select id="pls-option-default-tier" name="default_min_tier" style="width: 100%;">
+                            <?php for ( $i = 1; $i <= 5; $i++ ) : ?>
+                                <option value="<?php echo esc_attr( $i ); ?>">
+                                    <?php 
+                                    echo esc_html( sprintf( 
+                                        __( 'Tier %d%s', 'pls-private-label-store' ), 
+                                        $i, 
+                                        $i === 1 ? ' (Available to all)' : '' 
+                                    ) ); 
+                                    ?>
+                                </option>
+                            <?php endfor; ?>
+                        </select>
+                        <p class="description" style="margin-top: 5px; color: #646970;"><?php esc_html_e( 'Values inherit this tier by default (can be overridden per value).', 'pls-private-label-store' ); ?></p>
+                    </div>
+                    <div style="margin-bottom: 15px;">
                         <label><input type="checkbox" id="pls-option-variation" name="is_variation" value="1" checked /> <?php esc_html_e( 'For variations', 'pls-private-label-store' ); ?></label>
                     </div>
                     <p style="text-align: right; margin-top: 20px;">
@@ -278,12 +295,26 @@ require_once PLS_PLS_DIR . 'includes/core/class-pls-tier-rules.php';
             }
             ?>
             <?php if ( $current_option ) : ?>
+                <?php 
+                // Get default_min_tier (with fallback to 1)
+                $default_min_tier = isset( $current_option->default_min_tier ) ? intval( $current_option->default_min_tier ) : 1;
+                ?>
                 <div class="tab-content pls-tab-content" data-option-id="<?php echo esc_attr( $current_option->id ); ?>">
                     <div style="background: #fff; border: 1px solid #ccd0d4; border-radius: 4px; padding: 15px;">
                         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
-                            <h2 style="margin: 0;"><?php echo esc_html( $current_option->label ); ?></h2>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <h2 style="margin: 0;"><?php echo esc_html( $current_option->label ); ?></h2>
+                                <?php if ( $default_min_tier > 1 ) : ?>
+                                    <span class="pls-tier-badge pls-tier-badge--<?php echo esc_attr( $default_min_tier ); ?>">T<?php echo esc_html( $default_min_tier ); ?>+</span>
+                                <?php endif; ?>
+                            </div>
                             <div>
-                                <button type="button" class="button pls-edit-option" data-option-id="<?php echo esc_attr( $current_option->id ); ?>" data-option-label="<?php echo esc_attr( $current_option->label ); ?>"><?php esc_html_e( 'Edit', 'pls-private-label-store' ); ?></button>
+                                <button type="button" class="button pls-edit-option" 
+                                        data-option-id="<?php echo esc_attr( $current_option->id ); ?>" 
+                                        data-option-label="<?php echo esc_attr( $current_option->label ); ?>"
+                                        data-option-default-tier="<?php echo esc_attr( $default_min_tier ); ?>">
+                                    <?php esc_html_e( 'Edit', 'pls-private-label-store' ); ?>
+                                </button>
                                 <button type="button" class="button button-link-delete pls-delete-option" data-option-id="<?php echo esc_attr( $current_option->id ); ?>" style="color: #b32d2e;"><?php esc_html_e( 'Delete', 'pls-private-label-store' ); ?></button>
                             </div>
                         </div>
@@ -484,6 +515,7 @@ jQuery(document).ready(function($) {
         $('#pls-option-modal-title').text('Add Product Option');
         $('#pls-option-id').val('');
         $('#pls-option-label').val('');
+        $('#pls-option-default-tier').val('1'); // Reset to Tier 1
         $('#pls-option-variation').prop('checked', true);
         $('#pls-option-modal').fadeIn(200);
         $('body').addClass('pls-modal-open');
@@ -492,9 +524,11 @@ jQuery(document).ready(function($) {
     $('.pls-edit-option').on('click', function() {
         var optionId = $(this).data('option-id');
         var optionLabel = $(this).data('option-label');
+        var defaultTier = $(this).data('option-default-tier') || 1;
         $('#pls-option-modal-title').text('Edit Product Option');
         $('#pls-option-id').val(optionId);
         $('#pls-option-label').val(optionLabel);
+        $('#pls-option-default-tier').val(defaultTier);
         $('#pls-option-modal').fadeIn(200);
         $('body').addClass('pls-modal-open');
     });
@@ -517,19 +551,35 @@ jQuery(document).ready(function($) {
         var isEdit = optionId !== '';
 
         if (isEdit) {
-            // For edit, we'd need an update endpoint - for now, show message
-            showNotice('Edit functionality coming soon. Please delete and recreate.', 'info');
-            $('#pls-option-modal').fadeOut(200);
-            $('body').removeClass('pls-modal-open');
+            // Update existing option
+            $.post(ajaxurl, {
+                action: 'pls_update_attribute',
+                nonce: nonce,
+                option_id: optionId,
+                label: $('#pls-option-label').val(),
+                is_variation: $('#pls-option-variation').is(':checked') ? 1 : 0,
+                default_min_tier: $('#pls-option-default-tier').val()
+            }, function(resp) {
+                if (resp.success) {
+                    showNotice('Option updated successfully');
+                    $('#pls-option-modal').fadeOut(200);
+                    $('body').removeClass('pls-modal-open');
+                    refreshPageData();
+                } else {
+                    showNotice(resp.data.message || 'Error updating option', 'error');
+                }
+            });
             return;
         }
 
+        // Create new option
         $.post(ajaxurl, {
             action: 'pls_create_attribute',
             nonce: nonce,
             label: $('#pls-option-label').val(),
             is_variation: $('#pls-option-variation').is(':checked') ? 1 : 0,
-            option_type: 'product-option'
+            option_type: 'product-option',
+            default_min_tier: $('#pls-option-default-tier').val()
         }, function(resp) {
             if (resp.success) {
                 showNotice('Option created successfully');

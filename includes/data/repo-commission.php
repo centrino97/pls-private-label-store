@@ -23,6 +23,17 @@ final class PLS_Repo_Commission {
     }
 
     /**
+     * Get all commission records.
+     *
+     * @return array
+     */
+    public static function all() {
+        global $wpdb;
+        $table = $wpdb->prefix . 'pls_order_commission';
+        return $wpdb->get_results( "SELECT * FROM {$table} ORDER BY created_at DESC", OBJECT );
+    }
+
+    /**
      * Get commissions for a WooCommerce order.
      *
      * @param int $wc_order_id WooCommerce order ID.
