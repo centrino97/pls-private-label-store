@@ -148,6 +148,61 @@ final class PLS_Plugin {
     }
 
     /**
+     * Get tier key from term name.
+     * Helper function for commission calculation.
+     *
+     * @param string $term_name Term name like "Trial Pack (50 units)".
+     * @return string|null Tier key like "tier_1" or null.
+     */
+    private function get_tier_key_from_term( $term_name ) {
+        // Extract units from term name like "Trial Pack (50 units)"
+        if ( preg_match( '/\((\d+)\s*units?\)/i', $term_name, $matches ) ) {
+            $units = (int) $matches[1];
+            // Map units to tier keys
+            $units_to_tier = array(
+                50   => 'tier_1',
+                100  => 'tier_2',
+                250  => 'tier_3',
+                500  => 'tier_4',
+                1000 => 'tier_5',
+            );
+            return isset( $units_to_tier[ $units ] ) ? $units_to_tier[ $units ] : null;
+        }
+        
+        // Try to match tier level from term name
+        if ( preg_match( '/tier[_\s-]*(\d+)/i', $term_name, $matches ) ) {
+            return 'tier_' . $matches[1];
+        }
+        
+        return null;
+    }
+
+    /**
+     * Get bundle key from product ID.
+     * Helper function for commission calculation.
+     *
+     * @param int $product_id WooCommerce product ID.
+     * @return string|null Bundle key or null.
+     */
+    private function get_bundle_key_from_product( $product_id ) {
+        $bundle_key = get_post_meta( $product_id, '_pls_bundle_key', true );
+        if ( $bundle_key ) {
+            return $bundle_key;
+        }
+        
+        // Check if it's a grouped product with PLS bundle ID
+        $bundle_id = get_post_meta( $product_id, '_pls_bundle_id', true );
+        if ( $bundle_id ) {
+            $bundle = PLS_Repo_Bundle::get( $bundle_id );
+            if ( $bundle ) {
+                return $bundle->bundle_key;
+            }
+        }
+        
+        return null;
+    }
+
+    /**
      * Check WooCommerce order payment status and create/update commission.
      * 
      * v2.6.0 Simplification: ALL WooCommerce products are PLS products,
@@ -246,7 +301,7 @@ final class PLS_Plugin {
                     if ( isset( $attributes['pa_pack-tier'] ) ) {
                         $tier_term = get_term_by( 'slug', $attributes['pa_pack-tier'], 'pa_pack-tier' );
                         if ( $tier_term ) {
-                            $tier_key = pls_get_tier_key_from_term( $tier_term->name );
+                            $tier_key = $this->get_tier_key_from_term( $tier_term->name );
                             if ( $tier_key && isset( $tier_rates[ $tier_key ] ) ) {
                                 $commission_rate_per_unit = $tier_rates[ $tier_key ];
                                 // Get units from variation meta or term meta
@@ -267,7 +322,7 @@ final class PLS_Plugin {
             
             // Check if it's a bundle product (Grouped Product)
             if ( ! $commission_amount ) {
-                $bundle_key = pls_get_bundle_key_from_product( $product_id );
+                $bundle_key = $this->get_bundle_key_from_product( $product_id );
                 if ( $bundle_key && isset( $bundle_rates[ $bundle_key ] ) ) {
                     $commission_rate_per_unit = $bundle_rates[ $bundle_key ];
                     $commission_amount = $commission_rate_per_unit * $quantity;
