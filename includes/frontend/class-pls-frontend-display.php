@@ -112,15 +112,16 @@ final class PLS_Frontend_Display {
      * @return array Settings with defaults.
      */
     public static function get_settings() {
+        // Defaults reflect shortcode-only approach (auto-injection disabled in v4.5.2)
         $defaults = array(
-            'auto_inject_enabled'  => true,
+            'auto_inject_enabled'  => false, // Disabled - use shortcodes instead
             'injection_position'   => 'after_summary',
             'show_configurator'    => true,
             'show_description'     => true,
             'show_ingredients'     => true,
             'show_bundles'         => true,
-            'show_tier_badges'     => true,
-            'show_starting_price'  => true,
+            'show_tier_badges'     => false, // Disabled - badges not auto-displayed
+            'show_starting_price'  => false, // Disabled - badges not auto-displayed
         );
 
         $saved = get_option( 'pls_frontend_display_settings', array() );

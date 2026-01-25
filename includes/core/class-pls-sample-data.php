@@ -1999,18 +1999,23 @@ final class PLS_Sample_Data {
 
     /**
      * Add sample WooCommerce orders with PLS products.
+     * 
+     * @param array $action_log Action log array (passed by reference) to add error messages.
+     * @return array Array with orders_created, orders_skipped, skip_reasons, and message.
      */
-    public static function add_woocommerce_orders() {
+    public static function add_woocommerce_orders( &$action_log = array() ) {
         if ( ! class_exists( 'WooCommerce' ) || ! function_exists( 'wc_create_order' ) ) {
-            return array( 'orders_created' => 0, 'orders_skipped' => 0, 'message' => 'WooCommerce not active' );
+            $action_log[] = array( 'message' => '❌ WooCommerce not active - cannot create orders', 'type' => 'error' );
+            return array( 'orders_created' => 0, 'orders_skipped' => 0, 'skip_reasons' => array(), 'message' => 'WooCommerce not active' );
         }
 
         // Clear cache and refresh products to ensure we have latest wc_product_id values
         wp_cache_flush();
         $products = PLS_Repo_Base_Product::all();
         if ( empty( $products ) ) {
+            $action_log[] = array( 'message' => '❌ No products found, skipping order creation', 'type' => 'error' );
             error_log( '[PLS Sample Data] Order: No products found, skipping order creation' );
-            return array( 'orders_created' => 0, 'orders_skipped' => 0, 'message' => 'No products found' );
+            return array( 'orders_created' => 0, 'orders_skipped' => 0, 'skip_reasons' => array(), 'message' => 'No products found' );
         }
 
         // Filter to only products that have been synced (have wc_product_id)
@@ -2022,6 +2027,7 @@ final class PLS_Sample_Data {
         }
 
         if ( empty( $synced_products ) ) {
+            $action_log[] = array( 'message' => '⚠ No products have wc_product_id set. Products may not be synced yet. Attempting sync...', 'type' => 'warning' );
             error_log( '[PLS Sample Data] Order: No products have wc_product_id set. Products may not be synced yet.' );
             // Try to sync products now
             require_once PLS_PLS_DIR . 'includes/wc/class-pls-wc-sync.php';
@@ -2038,15 +2044,18 @@ final class PLS_Sample_Data {
                 }
             }
             if ( empty( $synced_products ) ) {
+                $action_log[] = array( 'message' => '❌ Still no synced products after re-sync attempt', 'type' => 'error' );
                 error_log( '[PLS Sample Data] Order: Still no synced products after re-sync attempt' );
-                return array( 'orders_created' => 0, 'orders_skipped' => 0, 'message' => 'No synced products available' );
+                return array( 'orders_created' => 0, 'orders_skipped' => 0, 'skip_reasons' => array(), 'message' => 'No synced products available' );
             }
+            $action_log[] = array( 'message' => '✓ Products synced successfully after re-sync attempt', 'type' => 'success' );
         }
 
         // Use synced products for order creation
         $products = array_values( $synced_products );
         $orders_created = 0;
         $orders_skipped = 0;
+        $skip_reasons = array(); // Track reasons for skipped orders
 
         // Generate orders spread across the past year (12 months)
         // Create ~30-40 orders distributed across different months
@@ -2234,7 +2243,21 @@ final class PLS_Sample_Data {
                 ) );
                 
                 if ( is_wp_error( $order ) ) {
-                    error_log( '[PLS Sample Data] Order #' . ( $order_index + 1 ) . ': Failed to create order: ' . $order->get_error_message() );
+                    $reason = 'Failed to create order: ' . $order->get_error_message();
+                    $action_log[] = array( 
+                        'message' => '❌ Order #' . ( $order_index + 1 ) . ': ' . $reason, 
+                        'type' => 'error',
+                        'details' => array(
+                            'order_index' => $order_index + 1,
+                            'error_message' => $order->get_error_message(),
+                            'error_code' => $order->get_error_code(),
+                            'suggestion' => 'Check WooCommerce is properly configured',
+                        )
+                    );
+                    if ( ! isset( $skip_reasons[ $reason ] ) ) {
+                        $skip_reasons[ $reason ] = 0;
+                    }
+                    $skip_reasons[ $reason ]++;
                     $orders_skipped++;
                     continue;
                 }
@@ -2308,7 +2331,16 @@ final class PLS_Sample_Data {
             foreach ( $order_data['items'] as $item_data ) {
                 $product_index = $item_data['product_index'];
                 if ( ! isset( $products[ $product_index ] ) ) {
-                    error_log( '[PLS Sample Data] Order: Product index ' . $product_index . ' not found in products array (max index: ' . ( count( $products ) - 1 ) . ')' );
+                    $reason = 'Product index ' . $product_index . ' not found in products array (max index: ' . ( count( $products ) - 1 ) . ')';
+                    $action_log[] = array( 
+                        'message' => '⚠ Order #' . ( $order_index + 1 ) . ' item: ' . $reason, 
+                        'type' => 'warning',
+                        'details' => array(
+                            'product_index' => $product_index,
+                            'max_index' => count( $products ) - 1,
+                            'total_products' => count( $products ),
+                        )
+                    );
                     continue;
                 }
 
@@ -2316,35 +2348,93 @@ final class PLS_Sample_Data {
                 $wc_product_id = $base_product->wc_product_id;
 
                 if ( ! $wc_product_id ) {
-                    error_log( '[PLS Sample Data] Order: Product ' . $base_product->name . ' has no WC product ID, skipping' );
+                    $reason = 'Product "' . $base_product->name . '" has no WC product ID';
+                    $action_log[] = array( 
+                        'message' => '⚠ Order #' . ( $order_index + 1 ) . ' item: ' . $reason, 
+                        'type' => 'warning',
+                        'details' => array(
+                            'product_name' => $base_product->name,
+                            'product_id' => $base_product->id,
+                            'suggestion' => 'Product may need to be synced to WooCommerce',
+                        )
+                    );
                     continue;
                 }
 
                 $wc_product = wc_get_product( $wc_product_id );
                 if ( ! $wc_product ) {
-                    error_log( '[PLS Sample Data] Order: WC product ' . $wc_product_id . ' not found for ' . $base_product->name );
+                    $reason = 'WC product #' . $wc_product_id . ' not found for "' . $base_product->name . '"';
+                    $action_log[] = array( 
+                        'message' => '⚠ Order #' . ( $order_index + 1 ) . ' item: ' . $reason, 
+                        'type' => 'warning',
+                        'details' => array(
+                            'product_name' => $base_product->name,
+                            'product_id' => $base_product->id,
+                            'wc_product_id' => $wc_product_id,
+                            'suggestion' => 'WooCommerce product may have been deleted - try re-syncing',
+                        )
+                    );
                     continue;
                 }
                 
                 // If product is not variable, try to re-sync it first
                 if ( ! $wc_product->is_type( 'variable' ) ) {
-                    error_log( '[PLS Sample Data] Order: Product ' . $base_product->name . ' (WC #' . $wc_product_id . ') is type ' . $wc_product->get_type() . ', attempting re-sync' );
+                    $action_log[] = array( 
+                        'message' => '⚠ Order #' . ( $order_index + 1 ) . ' item: Product "' . $base_product->name . '" (WC #' . $wc_product_id . ') is type ' . $wc_product->get_type() . ', attempting re-sync...', 
+                        'type' => 'warning',
+                        'details' => array(
+                            'product_name' => $base_product->name,
+                            'wc_product_id' => $wc_product_id,
+                            'current_type' => $wc_product->get_type(),
+                            'expected_type' => 'variable',
+                        )
+                    );
                     
                     // Try to re-sync the product
                     require_once PLS_PLS_DIR . 'includes/wc/class-pls-wc-sync.php';
                     $sync_result = PLS_WC_Sync::sync_base_product_to_wc( $base_product->id );
                     
                     if ( is_wp_error( $sync_result ) ) {
-                        error_log( '[PLS Sample Data] Order: Re-sync failed for ' . $base_product->name . ': ' . $sync_result->get_error_message() );
+                        $reason = 'Re-sync failed for "' . $base_product->name . '": ' . $sync_result->get_error_message();
+                        $action_log[] = array( 
+                            'message' => '❌ Order #' . ( $order_index + 1 ) . ' item: ' . $reason, 
+                            'type' => 'error',
+                            'details' => array(
+                                'product_name' => $base_product->name,
+                                'product_id' => $base_product->id,
+                                'wc_product_id' => $wc_product_id,
+                                'error_message' => $sync_result->get_error_message(),
+                                'suggestion' => 'Check product configuration and pack tiers',
+                            )
+                        );
+                        if ( ! isset( $skip_reasons[ $reason ] ) ) {
+                            $skip_reasons[ $reason ] = 0;
+                        }
+                        $skip_reasons[ $reason ]++;
                         continue;
                     }
                     
                     // Reload the product
                     $wc_product = wc_get_product( $wc_product_id );
                     if ( ! $wc_product || ! $wc_product->is_type( 'variable' ) ) {
-                        error_log( '[PLS Sample Data] Order: Product still not variable after re-sync: ' . $base_product->name );
+                        $reason = 'Product "' . $base_product->name . '" still not variable after re-sync';
+                        $action_log[] = array( 
+                            'message' => '❌ Order #' . ( $order_index + 1 ) . ' item: ' . $reason, 
+                            'type' => 'error',
+                            'details' => array(
+                                'product_name' => $base_product->name,
+                                'product_id' => $base_product->id,
+                                'wc_product_id' => $wc_product_id,
+                                'suggestion' => 'Product may not have pack tiers configured',
+                            )
+                        );
+                        if ( ! isset( $skip_reasons[ $reason ] ) ) {
+                            $skip_reasons[ $reason ] = 0;
+                        }
+                        $skip_reasons[ $reason ]++;
                         continue;
                     }
+                    $action_log[] = array( 'message' => '✓ Product "' . $base_product->name . '" re-synced successfully', 'type' => 'success' );
                 }
 
                 // Get variation for tier - match by units, not tier_key
@@ -2353,14 +2443,37 @@ final class PLS_Sample_Data {
                 $variation_id = null;
 
                 if ( empty( $variations ) ) {
-                    error_log( '[PLS Sample Data] Order: No variations found for ' . $base_product->name . ' (WC #' . $wc_product_id . ') - attempting re-sync' );
+                    $action_log[] = array( 
+                        'message' => '⚠ Order #' . ( $order_index + 1 ) . ' item: No variations found for "' . $base_product->name . '" (WC #' . $wc_product_id . ') - attempting re-sync...', 
+                        'type' => 'warning',
+                        'details' => array(
+                            'product_name' => $base_product->name,
+                            'product_id' => $base_product->id,
+                            'wc_product_id' => $wc_product_id,
+                        )
+                    );
                     
                     // Try to re-sync the product to create variations
                     require_once PLS_PLS_DIR . 'includes/wc/class-pls-wc-sync.php';
                     $sync_result = PLS_WC_Sync::sync_base_product_to_wc( $base_product->id );
                     
                     if ( is_wp_error( $sync_result ) ) {
-                        error_log( '[PLS Sample Data] Order: Re-sync failed for ' . $base_product->name . ': ' . $sync_result->get_error_message() );
+                        $reason = 'Re-sync failed for "' . $base_product->name . '": ' . $sync_result->get_error_message();
+                        $action_log[] = array( 
+                            'message' => '❌ Order #' . ( $order_index + 1 ) . ' item: ' . $reason, 
+                            'type' => 'error',
+                            'details' => array(
+                                'product_name' => $base_product->name,
+                                'product_id' => $base_product->id,
+                                'wc_product_id' => $wc_product_id,
+                                'error_message' => $sync_result->get_error_message(),
+                                'suggestion' => 'Check pack tiers are configured for this product',
+                            )
+                        );
+                        if ( ! isset( $skip_reasons[ $reason ] ) ) {
+                            $skip_reasons[ $reason ] = 0;
+                        }
+                        $skip_reasons[ $reason ]++;
                         continue;
                     }
                     
@@ -2369,9 +2482,24 @@ final class PLS_Sample_Data {
                     $variations = $wc_product ? $wc_product->get_children() : array();
                     
                     if ( empty( $variations ) ) {
-                        error_log( '[PLS Sample Data] Order: Still no variations after re-sync for ' . $base_product->name );
+                        $reason = 'Still no variations after re-sync for "' . $base_product->name . '"';
+                        $action_log[] = array( 
+                            'message' => '❌ Order #' . ( $order_index + 1 ) . ' item: ' . $reason, 
+                            'type' => 'error',
+                            'details' => array(
+                                'product_name' => $base_product->name,
+                                'product_id' => $base_product->id,
+                                'wc_product_id' => $wc_product_id,
+                                'suggestion' => 'Product may not have pack tiers configured - check Product Options',
+                            )
+                        );
+                        if ( ! isset( $skip_reasons[ $reason ] ) ) {
+                            $skip_reasons[ $reason ] = 0;
+                        }
+                        $skip_reasons[ $reason ]++;
                         continue;
                     }
+                    $action_log[] = array( 'message' => '✓ Variations created after re-sync for "' . $base_product->name . '"', 'type' => 'success' );
                 }
 
                 // Get pack tier to find units - re-fetch to get fresh wc_variation_id after sync
@@ -2469,26 +2597,71 @@ final class PLS_Sample_Data {
                 }
                 
                 if ( ! $variation_id ) {
-                    error_log( '[PLS Sample Data] Order: No variations available for ' . $base_product->name . ' (WC #' . $wc_product_id . ')' );
-                    error_log( '[PLS Sample Data] Order: Product has ' . count( $variations ) . ' variations, but none matched tier ' . $tier_key . ' (target units: ' . ( $target_units ?: 'unknown' ) . ')' );
+                    $reason = 'No matching variation found for "' . $base_product->name . '" (WC #' . $wc_product_id . ')';
+                    $variation_details = array();
                     if ( ! empty( $variations ) ) {
-                        error_log( '[PLS Sample Data] Order: Available variation IDs: ' . implode( ', ', $variations ) );
                         foreach ( $variations as $var_id ) {
                             $var = wc_get_product( $var_id );
                             if ( $var ) {
                                 $var_units = get_post_meta( $var_id, '_pls_units', true );
                                 $var_attrs = $var->get_attributes();
-                                error_log( '[PLS Sample Data] Order: Variation #' . $var_id . ' - Units: ' . ( $var_units ?: 'none' ) . ', Attributes: ' . json_encode( $var_attrs ) );
+                                $variation_details[] = array(
+                                    'variation_id' => $var_id,
+                                    'units' => $var_units ?: 'none',
+                                    'attributes' => $var_attrs,
+                                );
                             }
                         }
                     }
+                    
+                    $details_message = 'Product has ' . count( $variations ) . ' variation(s), but none matched tier ' . $tier_key . ' (target units: ' . ( $target_units ?: 'unknown' ) . ')';
+                    if ( ! empty( $variations ) ) {
+                        $details_message .= '. Available variation IDs: ' . implode( ', ', $variations );
+                    }
+                    
+                    $action_log[] = array( 
+                        'message' => '❌ Order #' . ( $order_index + 1 ) . ' item: ' . $reason . '. ' . $details_message, 
+                        'type' => 'error',
+                        'details' => array(
+                            'product_name' => $base_product->name,
+                            'product_id' => $base_product->id,
+                            'wc_product_id' => $wc_product_id,
+                            'tier_key' => $tier_key,
+                            'target_units' => $target_units ?: 'unknown',
+                            'available_variations_count' => count( $variations ),
+                            'variation_ids' => $variations,
+                            'variation_details' => $variation_details,
+                            'suggestion' => 'Check that pack tier ' . $tier_key . ' is configured with ' . ( $target_units ?: 'correct' ) . ' units',
+                        )
+                    );
+                    
+                    if ( ! isset( $skip_reasons[ $reason ] ) ) {
+                        $skip_reasons[ $reason ] = 0;
+                    }
+                    $skip_reasons[ $reason ]++;
                     continue;
                 }
 
                 if ( $variation_id ) {
                     $variation = wc_get_product( $variation_id );
                     if ( ! $variation ) {
-                        error_log( '[PLS Sample Data] Order: Variation ' . $variation_id . ' not found' );
+                        $reason = 'Variation #' . $variation_id . ' not found';
+                        $action_log[] = array( 
+                            'message' => '❌ Order #' . ( $order_index + 1 ) . ' item: ' . $reason, 
+                            'type' => 'error',
+                            'details' => array(
+                                'product_name' => $base_product->name,
+                                'product_id' => $base_product->id,
+                                'wc_product_id' => $wc_product_id,
+                                'variation_id' => $variation_id,
+                                'tier_key' => $tier_key,
+                                'suggestion' => 'Variation may have been deleted - try re-syncing the product',
+                            )
+                        );
+                        if ( ! isset( $skip_reasons[ $reason ] ) ) {
+                            $skip_reasons[ $reason ] = 0;
+                        }
+                        $skip_reasons[ $reason ]++;
                         continue;
                     }
                     
@@ -2602,7 +2775,23 @@ final class PLS_Sample_Data {
                         $item->save();
                         $products_added++;
                     } else {
-                        error_log( '[PLS Sample Data] Order: Failed to add product ' . $base_product->name . ' (variation ' . $variation_id . ') to order' );
+                        $reason = 'Failed to add product "' . $base_product->name . '" (variation #' . $variation_id . ') to order';
+                        $action_log[] = array( 
+                            'message' => '❌ Order #' . ( $order_index + 1 ) . ' item: ' . $reason, 
+                            'type' => 'error',
+                            'details' => array(
+                                'product_name' => $base_product->name,
+                                'product_id' => $base_product->id,
+                                'wc_product_id' => $wc_product_id,
+                                'variation_id' => $variation_id,
+                                'quantity' => $item_data['quantity'],
+                                'suggestion' => 'Check variation is valid and in stock',
+                            )
+                        );
+                        if ( ! isset( $skip_reasons[ $reason ] ) ) {
+                            $skip_reasons[ $reason ] = 0;
+                        }
+                        $skip_reasons[ $reason ]++;
                     }
                 }
             }
@@ -2636,39 +2825,62 @@ final class PLS_Sample_Data {
                 try {
                     $order->save();
                     $orders_created++;
+                    $action_log[] = array( 'message' => '✓ Created order #' . $order->get_id() . ' with ' . $products_added . ' product(s), status: ' . $order_data['status'], 'type' => 'success' );
                     error_log( '[PLS Sample Data] Order: Created order #' . $order->get_id() . ' with ' . $products_added . ' product(s), status: ' . $order_data['status'] );
                 } catch ( Exception $e ) {
-                    error_log( '[PLS Sample Data] Order: Exception saving order: ' . $e->getMessage() );
+                    $reason = 'Exception saving order: ' . $e->getMessage();
+                    $action_log[] = array( 'message' => '❌ Order #' . ( $order_index + 1 ) . ': ' . $reason, 'type' => 'error' );
+                    error_log( '[PLS Sample Data] Order: ' . $reason );
                     // Try to delete the order if save failed
                     try {
                         $order->delete( true );
                     } catch ( Exception $delete_error ) {
                         error_log( '[PLS Sample Data] Order: Could not delete failed order: ' . $delete_error->getMessage() );
                     }
+                    if ( ! isset( $skip_reasons[ $reason ] ) ) {
+                        $skip_reasons[ $reason ] = 0;
+                    }
+                    $skip_reasons[ $reason ]++;
                     $orders_skipped++;
                 } catch ( Error $e ) {
-                    error_log( '[PLS Sample Data] Order: Fatal error saving order: ' . $e->getMessage() );
+                    $reason = 'Fatal error saving order: ' . $e->getMessage();
+                    $action_log[] = array( 'message' => '❌ Order #' . ( $order_index + 1 ) . ': ' . $reason, 'type' => 'error' );
+                    error_log( '[PLS Sample Data] Order: ' . $reason );
                     // Try to delete the order if save failed
                     try {
                         $order->delete( true );
                     } catch ( Exception $delete_error ) {
                         error_log( '[PLS Sample Data] Order: Could not delete failed order: ' . $delete_error->getMessage() );
                     }
+                    if ( ! isset( $skip_reasons[ $reason ] ) ) {
+                        $skip_reasons[ $reason ] = 0;
+                    }
+                    $skip_reasons[ $reason ]++;
                     $orders_skipped++;
                 }
             } else {
                 // Delete the empty order
+                $reason = 'No products could be added to order';
                 try {
                     $order->delete( true );
                     $orders_skipped++;
-                    error_log( '[PLS Sample Data] Order: Deleting empty order #' . $order->get_id() . ' (no products could be added)' );
+                    $action_log[] = array( 'message' => '⚠ Order #' . ( $order_index + 1 ) . ': ' . $reason . ' - order deleted', 'type' => 'warning' );
+                    error_log( '[PLS Sample Data] Order: Deleting empty order #' . $order->get_id() . ' (' . $reason . ')' );
                 } catch ( Exception $e ) {
-                    error_log( '[PLS Sample Data] Order: Exception deleting empty order: ' . $e->getMessage() );
                     $orders_skipped++;
+                    $action_log[] = array( 'message' => '❌ Order #' . ( $order_index + 1 ) . ': Exception deleting empty order: ' . $e->getMessage(), 'type' => 'error' );
+                    error_log( '[PLS Sample Data] Order: Exception deleting empty order: ' . $e->getMessage() );
                 }
+                if ( ! isset( $skip_reasons[ $reason ] ) ) {
+                    $skip_reasons[ $reason ] = 0;
+                }
+                $skip_reasons[ $reason ]++;
             }
             } catch ( Exception $e ) {
-                error_log( '[PLS Sample Data] Order #' . ( $order_index + 1 ) . ': Exception processing order: ' . $e->getMessage() );
+                $reason = 'Exception processing order: ' . $e->getMessage();
+                $action_log[] = array( 'message' => '❌ Order #' . ( $order_index + 1 ) . ': ' . $reason, 'type' => 'error' );
+                $action_log[] = array( 'message' => 'Stack trace: ' . $e->getTraceAsString(), 'type' => 'error' );
+                error_log( '[PLS Sample Data] Order #' . ( $order_index + 1 ) . ': ' . $reason );
                 error_log( '[PLS Sample Data] Order #' . ( $order_index + 1 ) . ': Stack trace: ' . $e->getTraceAsString() );
                 // Try to delete order if it was created
                 if ( isset( $order ) && $order instanceof WC_Order ) {
@@ -2678,10 +2890,17 @@ final class PLS_Sample_Data {
                         // Ignore delete errors
                     }
                 }
+                if ( ! isset( $skip_reasons[ $reason ] ) ) {
+                    $skip_reasons[ $reason ] = 0;
+                }
+                $skip_reasons[ $reason ]++;
                 $orders_skipped++;
                 continue;
             } catch ( Error $e ) {
-                error_log( '[PLS Sample Data] Order #' . ( $order_index + 1 ) . ': Fatal error processing order: ' . $e->getMessage() );
+                $reason = 'Fatal error processing order: ' . $e->getMessage();
+                $action_log[] = array( 'message' => '❌ Order #' . ( $order_index + 1 ) . ': ' . $reason, 'type' => 'error' );
+                $action_log[] = array( 'message' => 'Stack trace: ' . $e->getTraceAsString(), 'type' => 'error' );
+                error_log( '[PLS Sample Data] Order #' . ( $order_index + 1 ) . ': ' . $reason );
                 error_log( '[PLS Sample Data] Order #' . ( $order_index + 1 ) . ': Stack trace: ' . $e->getTraceAsString() );
                 // Try to delete order if it was created
                 if ( isset( $order ) && $order instanceof WC_Order ) {
@@ -2691,15 +2910,34 @@ final class PLS_Sample_Data {
                         // Ignore delete errors
                     }
                 }
+                if ( ! isset( $skip_reasons[ $reason ] ) ) {
+                    $skip_reasons[ $reason ] = 0;
+                }
+                $skip_reasons[ $reason ]++;
                 $orders_skipped++;
                 continue;
             }
         }
 
+        // Add summary with breakdown
+        $action_log[] = array( 'message' => '-------------------------------------------------------------------', 'type' => 'info' );
+        $action_log[] = array( 'message' => '✓ Created ' . $orders_created . ' WooCommerce orders', 'type' => 'success' );
+        if ( $orders_skipped > 0 ) {
+            $action_log[] = array( 'message' => '⚠ Skipped ' . $orders_skipped . ' orders', 'type' => 'warning' );
+            if ( ! empty( $skip_reasons ) ) {
+                $action_log[] = array( 'message' => 'Skip reasons breakdown:', 'type' => 'info' );
+                foreach ( $skip_reasons as $reason => $count ) {
+                    $action_log[] = array( 'message' => '  - ' . $reason . ': ' . $count . ' time(s)', 'type' => 'warning' );
+                }
+            }
+        }
+        $action_log[] = array( 'message' => '-------------------------------------------------------------------', 'type' => 'info' );
+
         return array(
             'orders_created' => $orders_created,
             'orders_skipped' => $orders_skipped,
-            'message' => sprintf( 'Created %d orders, skipped %d empty orders', $orders_created, $orders_skipped ),
+            'skip_reasons' => $skip_reasons,
+            'message' => sprintf( 'Created %d orders, skipped %d orders', $orders_created, $orders_skipped ),
         );
     }
 
@@ -2782,11 +3020,16 @@ final class PLS_Sample_Data {
             error_log( '[PLS Sample Data] Step 1: Creating WooCommerce orders...' );
             
             wp_cache_flush(); // Clear all caches to ensure fresh data
-            $orders_result = self::add_woocommerce_orders();
+            $orders_result = self::add_woocommerce_orders( $action_log );
             
             if ( is_array( $orders_result ) ) {
                 $orders_created = $orders_result['orders_created'] ?? 0;
                 $orders_skipped = $orders_result['orders_skipped'] ?? 0;
+                $skip_reasons = $orders_result['skip_reasons'] ?? array();
+                
+                // Log summary
+                $action_log[] = array( 'message' => '✓ Created ' . $orders_created . ' WooCommerce orders (' . $orders_skipped . ' skipped)', 'type' => $orders_created > 0 ? 'success' : 'warning' );
+                error_log( '[PLS Sample Data] ✓ Created ' . $orders_created . ' WooCommerce orders (' . $orders_skipped . ' skipped)' );
                 $action_log[] = array( 'message' => '✓ Created ' . $orders_created . ' WooCommerce orders (' . $orders_skipped . ' skipped).', 'type' => 'success' );
                 error_log( '[PLS Sample Data] ✓ WooCommerce orders added: ' . $orders_created . ' created, ' . $orders_skipped . ' skipped' );
             } else {

@@ -127,6 +127,11 @@
             this.updateProgress(this.categories.length, this.categories.length);
             this.showSummary();
             
+            // Calculate total before using it
+            const total = this.categories.reduce((sum, cat) => {
+                return sum + (this.results[cat]?.length || 0);
+            }, 0);
+            
             // Store complete results for download
             this.allTestResults = {
                 timestamp: new Date().toISOString(),

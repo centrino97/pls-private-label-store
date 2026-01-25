@@ -38,24 +38,55 @@ final class PLS_System_Test {
      * @return array Test results by category.
      */
     public static function run_all_tests() {
-        $results = array(
-            'pls_info'          => self::test_pls_info(),
-            'server_config'     => self::test_server_config(),
-            'wc_settings'       => self::test_wc_settings(),
-            'user_roles'        => self::test_user_roles(),
-            'database'          => self::test_database(),
-            'product_options'   => self::test_product_options(),
-            'products_sync'     => self::test_products_sync(),
-            'variations'        => self::test_variations(),
-            'bundles'           => self::test_bundles(),
-            'wc_orders'         => self::test_wc_orders(),
-            'custom_orders'     => self::test_custom_orders(),
-            'commissions'       => self::test_commissions(),
-            'revenue'           => self::test_revenue(),
-            'frontend_display'  => self::test_frontend_display(),
+        $results = array();
+        
+        // Run each test with error handling to ensure all tests execute even if one fails
+        $test_methods = array(
+            'pls_info'          => 'test_pls_info',
+            'server_config'     => 'test_server_config',
+            'wc_settings'       => 'test_wc_settings',
+            'user_roles'        => 'test_user_roles',
+            'database'          => 'test_database',
+            'product_options'   => 'test_product_options',
+            'products_sync'     => 'test_products_sync',
+            'variations'        => 'test_variations',
+            'bundles'           => 'test_bundles',
+            'wc_orders'         => 'test_wc_orders',
+            'custom_orders'     => 'test_custom_orders',
+            'commissions'       => 'test_commissions',
+            'revenue'           => 'test_revenue',
+            'frontend_display'  => 'test_frontend_display',
         );
+        
+        foreach ( $test_methods as $key => $method ) {
+            try {
+                $results[ $key ] = self::$method();
+            } catch ( Exception $e ) {
+                // Log error but continue with other tests
+                error_log( '[PLS System Test] Test ' . $key . ' failed: ' . $e->getMessage() );
+                $results[ $key ] = array(
+                    self::result(
+                        'Test Execution Error',
+                        'fail',
+                        'Test failed with error: ' . $e->getMessage() . '. File: ' . $e->getFile() . ':' . $e->getLine(),
+                        array( 'error' => $e->getMessage(), 'file' => $e->getFile(), 'line' => $e->getLine() )
+                    )
+                );
+            } catch ( Error $e ) {
+                // Log fatal error but continue with other tests
+                error_log( '[PLS System Test] Fatal error in test ' . $key . ': ' . $e->getMessage() );
+                $results[ $key ] = array(
+                    self::result(
+                        'Test Execution Fatal Error',
+                        'fail',
+                        'Fatal error: ' . $e->getMessage() . '. File: ' . $e->getFile() . ':' . $e->getLine(),
+                        array( 'error' => $e->getMessage(), 'file' => $e->getFile(), 'line' => $e->getLine() )
+                    )
+                );
+            }
+        }
 
-        // Calculate summary
+        // Calculate summary - always return results even if some tests failed
         $results['summary'] = self::calculate_summary( $results );
 
         return $results;
@@ -1673,32 +1704,47 @@ final class PLS_System_Test {
             'PLS_Frontend_Display class is loaded.'
         );
 
-        // Check frontend display settings
-        $settings = PLS_Frontend_Display::get_settings();
+        // Check if hooks are actually registered instead of reading settings
+        // Auto-injection was disabled in v4.5.2, so we check if hooks are registered
+        $has_auto_injection = has_action('woocommerce_after_single_product_summary', array('PLS_Frontend_Display', 'inject_pls_content'))
+            || has_action('woocommerce_single_product_summary', array('PLS_Frontend_Display', 'inject_pls_content'))
+            || has_filter('woocommerce_product_tabs', array('PLS_Frontend_Display', 'add_pls_tab'));
         
         $results[] = self::result(
             'Auto-Injection Enabled',
-            'pass',
-            $settings['auto_inject_enabled'] ? 'Enabled - PLS content will auto-display on product pages' : 'Disabled - Use shortcodes or Elementor widgets instead',
-            array( 'enabled' => $settings['auto_inject_enabled'] )
+            $has_auto_injection ? 'warning' : 'pass',
+            $has_auto_injection ? 'Enabled - PLS content will auto-display on product pages' : 'Disabled - Use shortcodes (pls_single_product, pls_single_category, pls_shop_page) instead',
+            array( 'enabled' => $has_auto_injection )
         );
 
-        $position_labels = array(
-            'after_summary'    => 'After Product Summary',
-            'after_add_to_cart' => 'After Add to Cart Button',
-            'before_tabs'      => 'Before Product Tabs',
-            'in_tabs'          => 'As a Product Tab',
-        );
-        $position_label = isset( $position_labels[ $settings['injection_position'] ] ) 
-            ? $position_labels[ $settings['injection_position'] ] 
-            : $settings['injection_position'];
+        // Only show injection position if auto-injection is actually enabled
+        if ( $has_auto_injection ) {
+            $settings = PLS_Frontend_Display::get_settings();
+            $position_labels = array(
+                'after_summary'    => 'After Product Summary',
+                'after_add_to_cart' => 'After Add to Cart Button',
+                'before_tabs'      => 'Before Product Tabs',
+                'in_tabs'          => 'As a Product Tab',
+            );
+            $position_label = isset( $position_labels[ $settings['injection_position'] ] ) 
+                ? $position_labels[ $settings['injection_position'] ] 
+                : $settings['injection_position'];
 
-        $results[] = self::result(
-            'Injection Position',
-            'pass',
-            "Position: {$position_label}",
-            array( 'position' => $settings['injection_position'] )
-        );
+            $results[] = self::result(
+                'Injection Position',
+                'pass',
+                "Position: {$position_label}",
+                array( 'position' => $settings['injection_position'] )
+            );
+        } else {
+            // Auto-injection is disabled, so position doesn't matter
+            $results[] = self::result(
+                'Injection Position',
+                'skip',
+                'N/A - Auto-injection is disabled (using shortcodes instead)',
+                array()
+            );
+        }
 
         // Check CSS file exists
         $css_file = PLS_PLS_DIR . 'assets/css/frontend-display.css';
@@ -1757,30 +1803,54 @@ final class PLS_System_Test {
 
         // Check content display settings
         $content_enabled = array();
-        if ( $settings['show_configurator'] ) $content_enabled[] = 'Configurator';
-        if ( $settings['show_description'] ) $content_enabled[] = 'Description';
-        if ( $settings['show_ingredients'] ) $content_enabled[] = 'Ingredients';
-        if ( $settings['show_bundles'] ) $content_enabled[] = 'Bundles';
+        // Content sections are always available via shortcodes, regardless of auto-injection settings
+        if ( ! $has_auto_injection ) {
+            $results[] = self::result(
+                'Content Sections',
+                'pass',
+                'All sections available via shortcodes (pls_single_product, pls_single_category, pls_shop_page)',
+                array( 'sections' => array( 'Configurator', 'Description', 'Ingredients', 'Bundles' ) )
+            );
+        } else {
+            // Only check settings if auto-injection is enabled
+            $settings = PLS_Frontend_Display::get_settings();
+            $content_enabled = array();
+            if ( $settings['show_configurator'] ) $content_enabled[] = 'Configurator';
+            if ( $settings['show_description'] ) $content_enabled[] = 'Description';
+            if ( $settings['show_ingredients'] ) $content_enabled[] = 'Ingredients';
+            if ( $settings['show_bundles'] ) $content_enabled[] = 'Bundles';
 
-        $results[] = self::result(
-            'Content Sections',
-            count( $content_enabled ) > 0 ? 'pass' : 'warning',
-            count( $content_enabled ) . ' sections enabled: ' . implode( ', ', $content_enabled ),
-            array( 'sections' => $content_enabled ),
-            count( $content_enabled ) === 0 ? 'Enable at least one content section in Settings.' : ''
-        );
+            $results[] = self::result(
+                'Content Sections',
+                count( $content_enabled ) > 0 ? 'pass' : 'warning',
+                count( $content_enabled ) . ' sections enabled: ' . implode( ', ', $content_enabled ),
+                array( 'sections' => $content_enabled ),
+                count( $content_enabled ) === 0 ? 'Enable at least one content section in Settings.' : ''
+            );
+        }
 
-        // Check shop page badges
-        $badges_enabled = array();
-        if ( $settings['show_tier_badges'] ) $badges_enabled[] = 'Tier Badges';
-        if ( $settings['show_starting_price'] ) $badges_enabled[] = 'Starting Price';
+        // Shop page badges are only relevant if auto-injection is enabled
+        if ( ! $has_auto_injection ) {
+            $results[] = self::result(
+                'Shop Page Badges',
+                'skip',
+                'N/A - Auto-injection is disabled (badges not auto-displayed)',
+                array()
+            );
+        } else {
+            $settings = PLS_Frontend_Display::get_settings();
+            $badges_enabled = array();
+            if ( $settings['show_tier_badges'] ) $badges_enabled[] = 'Tier Badges';
+            if ( $settings['show_starting_price'] ) $badges_enabled[] = 'Starting Price';
 
-        $results[] = self::result(
-            'Shop Page Badges',
-            count( $badges_enabled ) > 0 ? 'pass' : 'warning',
-            count( $badges_enabled ) . ' badges enabled: ' . implode( ', ', $badges_enabled ),
-            array( 'badges' => $badges_enabled )
-        );
+            $results[] = self::result(
+                'Shop Page Badges',
+                count( $badges_enabled ) > 0 ? 'pass' : 'warning',
+                count( $badges_enabled ) > 0 ? count( $badges_enabled ) . ' badges enabled: ' . implode( ', ', $badges_enabled ) : 'No badges enabled',
+                array( 'badges' => $badges_enabled ),
+                count( $badges_enabled ) === 0 ? 'Enable badges in Settings to show tier information on shop pages.' : ''
+            );
+        }
 
         // Test that we can access a product for display
         if ( class_exists( 'WooCommerce' ) ) {
