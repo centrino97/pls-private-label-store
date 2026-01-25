@@ -2809,7 +2809,7 @@ final class PLS_Sample_Data {
      * @param array  $action_log Action log array.
      * @return string|false Log file path or false on failure.
      */
-    private static function save_log_file( $operation_type, $action_log ) {
+    public static function save_log_file( $operation_type, $action_log ) {
         $upload_dir = wp_upload_dir();
         $log_dir = $upload_dir['basedir'] . '/pls-logs';
         
