@@ -1953,20 +1953,23 @@ final class PLS_Sample_Data {
             $orders_data[] = $recent_order;
         }
 
-        foreach ( $orders_data as $order_data ) {
-            // Create order with proper status (wc_create_order handles status correctly)
-            $order = wc_create_order( array( 
-                'status' => $order_data['status'],
-                'created_via' => 'pls-sample-data', // Track how order was created
-            ) );
-            
-            if ( is_wp_error( $order ) ) {
-                error_log( '[PLS Sample Data] Order: Failed to create order: ' . $order->get_error_message() );
-                continue;
-            }
+        foreach ( $orders_data as $order_index => $order_data ) {
+            $order = null;
+            try {
+                // Create order with proper status (wc_create_order handles status correctly)
+                $order = wc_create_order( array( 
+                    'status' => $order_data['status'],
+                    'created_via' => 'pls-sample-data', // Track how order was created
+                ) );
+                
+                if ( is_wp_error( $order ) ) {
+                    error_log( '[PLS Sample Data] Order #' . ( $order_index + 1 ) . ': Failed to create order: ' . $order->get_error_message() );
+                    $orders_skipped++;
+                    continue;
+                }
 
-            // Set order date
-            $order->set_date_created( strtotime( $order_data['date'] ) );
+                // Set order date
+                $order->set_date_created( strtotime( $order_data['date'] ) );
 
             // Try to get or create customer for better data integrity (WooCommerce best practice)
             $customer_email = $order_data['customer']['email'];
@@ -2361,6 +2364,7 @@ final class PLS_Sample_Data {
             }
             } catch ( Exception $e ) {
                 error_log( '[PLS Sample Data] Order #' . ( $order_index + 1 ) . ': Exception processing order: ' . $e->getMessage() );
+                error_log( '[PLS Sample Data] Order #' . ( $order_index + 1 ) . ': Stack trace: ' . $e->getTraceAsString() );
                 // Try to delete order if it was created
                 if ( isset( $order ) && $order instanceof WC_Order ) {
                     try {
@@ -2373,6 +2377,7 @@ final class PLS_Sample_Data {
                 continue;
             } catch ( Error $e ) {
                 error_log( '[PLS Sample Data] Order #' . ( $order_index + 1 ) . ': Fatal error processing order: ' . $e->getMessage() );
+                error_log( '[PLS Sample Data] Order #' . ( $order_index + 1 ) . ': Stack trace: ' . $e->getTraceAsString() );
                 // Try to delete order if it was created
                 if ( isset( $order ) && $order instanceof WC_Order ) {
                     try {
