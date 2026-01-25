@@ -410,6 +410,10 @@ final class PLS_WC_Sync {
             ) );
         }
         wp_set_object_terms( $product->get_id(), $pls_category_ids, 'product_cat', false );
+        
+        // Clear category cache immediately so detection reads fresh data
+        clean_object_term_cache( $product->get_id(), 'product_cat' );
+        wp_cache_delete( $product->get_id(), 'product_cat_relationships' );
 
         $pack_attr = self::ensure_pack_tier_attribute();
         if ( ! $pack_attr ) {
