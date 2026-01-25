@@ -27,6 +27,7 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * **FIXED:** Pack Tier attribute creation - Now properly created during sample data generation with correct option_type and is_primary flags
 * **FIXED:** Order detection - Orders and Revenue pages now correctly detect orders containing PLS product variations
 * **FIXED:** Variation detection - All order filtering now includes variation IDs, not just parent product IDs
+* **FIXED:** Bundle detection - Orders, Revenue, and Dashboard pages now include bundle product IDs in order detection
 * **IMPROVED:** Sample data timeout - Increased AJAX and PHP timeouts to 5 minutes for long-running operations
 
 = 2.3.3 =
