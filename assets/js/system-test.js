@@ -255,15 +255,12 @@
                     this.updateModalStatus('success', 'Generation completed successfully!');
                     
                     if (response.data?.log_file_path) {
-                        this.addLogEntry('Log file saved. Use "View Last Log" to see details.', 'info');
+                        this.addLogEntry('Log file saved. Click "View Last Log" button below to download before closing.', 'info');
                     }
                     
-                    // Show close button and auto-close after 3 seconds
+                    // Show close button - DON'T auto-refresh so user can download log first
                     $('#pls-modal-close').show();
-                    setTimeout(() => {
-                        this.hideGenerationModal();
-                        location.reload();
-                    }, 3000);
+                    // User can manually close modal or click "View Last Log" to download log file
                 } else {
                     // Display error log entries
                     if (response.data?.action_log && Array.isArray(response.data.action_log)) {

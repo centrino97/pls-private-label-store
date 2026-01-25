@@ -295,6 +295,10 @@ final class PLS_Sample_Data {
         
         try {
             self::cleanup();
+            
+            // Save log file before returning
+            $log_file_path = self::save_log_file( 'delete_sample_data', $action_log );
+            
             $action_log[] = array( 'message' => '✓ All sample data deleted successfully.', 'type' => 'success' );
             error_log( '[PLS Sample Data] ✓ Sample data deletion completed.' );
             
@@ -302,15 +306,20 @@ final class PLS_Sample_Data {
                 'success'    => true,
                 'message'    => 'Sample data deleted successfully.',
                 'action_log' => $action_log,
+                'log_file_path' => $log_file_path,
             );
         } catch ( Exception $e ) {
             $action_log[] = array( 'message' => '✗ Error: ' . $e->getMessage(), 'type' => 'error' );
             error_log( '[PLS Sample Data] ERROR: ' . $e->getMessage() );
             
+            // Save log file even on error
+            $log_file_path = self::save_log_file( 'delete_sample_data', $action_log );
+            
             return array(
                 'success'    => false,
                 'message'    => 'Error deleting sample data: ' . $e->getMessage(),
                 'action_log' => $action_log,
+                'log_file_path' => $log_file_path,
             );
         }
     }
@@ -409,10 +418,10 @@ final class PLS_Sample_Data {
         }
         error_log( '[PLS Sample Data] Cleanup: Deleted ' . $orders_deleted . ' sample WooCommerce orders.' );
 
-        // Step 2: Delete ALL WooCommerce products/variations that have PLS markers (read directly from WooCommerce for sync)
+        // Step 2: Delete ALL WooCommerce products/variations that have PLS markers OR were created by sample data
         error_log( '[PLS Sample Data] Cleanup: Reading ALL WooCommerce products directly for sync...' );
         
-        // Get all products with PLS meta markers (read directly from WooCommerce)
+        // Get all products with PLS meta markers OR created via sample data (read directly from WooCommerce)
         $all_wc_products = get_posts( array(
             'post_type' => 'product',
             'posts_per_page' => -1,
@@ -427,14 +436,34 @@ final class PLS_Sample_Data {
                     'key' => '_pls_bundle_id',
                     'compare' => 'EXISTS',
                 ),
+                array(
+                    'key' => '_created_via',
+                    'value' => 'pls-sample-data',
+                    'compare' => '=',
+                ),
             ),
             'fields' => 'ids',
         ) );
         
+        // Also check for products that might not have meta but are in PLS database
+        global $wpdb;
+        $pls_product_ids = $wpdb->get_col( "SELECT DISTINCT wc_product_id FROM {$wpdb->prefix}pls_base_product WHERE wc_product_id IS NOT NULL AND wc_product_id > 0" );
+        $pls_bundle_ids = $wpdb->get_col( "SELECT DISTINCT wc_product_id FROM {$wpdb->prefix}pls_bundle WHERE wc_product_id IS NOT NULL AND wc_product_id > 0" );
+        $all_pls_wc_ids = array_merge( $pls_product_ids, $pls_bundle_ids );
+        
+        // Merge and deduplicate
+        $all_wc_products = array_unique( array_merge( $all_wc_products, $all_pls_wc_ids ) );
+        
         $wc_products_deleted = 0;
         foreach ( $all_wc_products as $wc_product_id ) {
+            if ( ! $wc_product_id ) {
+                continue;
+            }
+            
             $wc_product = wc_get_product( $wc_product_id );
             if ( ! $wc_product ) {
+                // Product might already be deleted, try to force delete post
+                wp_delete_post( $wc_product_id, true );
                 continue;
             }
             
@@ -449,15 +478,26 @@ final class PLS_Sample_Data {
             wp_delete_post( $wc_product_id, true );
             $wc_products_deleted++;
         }
-        error_log( '[PLS Sample Data] Cleanup: Deleted ' . $wc_products_deleted . ' WooCommerce products (read directly from WC).' );
+        error_log( '[PLS Sample Data] Cleanup: Deleted ' . $wc_products_deleted . ' WooCommerce products (read directly from WC + PLS database).' );
 
-        // Step 3: Delete ALL WooCommerce variations that have PLS markers (orphaned variations)
+        // Step 3: Delete ALL WooCommerce variations that have PLS markers OR created via sample data (orphaned variations)
         error_log( '[PLS Sample Data] Cleanup: Checking for orphaned WooCommerce variations...' );
         $all_wc_variations = get_posts( array(
             'post_type' => 'product_variation',
             'posts_per_page' => -1,
             'post_status' => 'any',
-            'meta_key' => '_pls_base_product_id',
+            'meta_query' => array(
+                'relation' => 'OR',
+                array(
+                    'key' => '_pls_base_product_id',
+                    'compare' => 'EXISTS',
+                ),
+                array(
+                    'key' => '_created_via',
+                    'value' => 'pls-sample-data',
+                    'compare' => '=',
+                ),
+            ),
             'fields' => 'ids',
         ) );
         
