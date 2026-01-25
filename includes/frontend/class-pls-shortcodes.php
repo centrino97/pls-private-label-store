@@ -20,6 +20,11 @@ final class PLS_Shortcodes {
         add_shortcode( 'pls_bundle', array( __CLASS__, 'bundle_shortcode' ) );
         add_shortcode( 'pls_product_page', array( __CLASS__, 'product_page_shortcode' ) );
         
+        // New simplified shortcodes for Elementor templates
+        add_shortcode( 'pls_single_product', array( __CLASS__, 'single_product_shortcode' ) );
+        add_shortcode( 'pls_single_category', array( __CLASS__, 'single_category_shortcode' ) );
+        add_shortcode( 'pls_shop_page', array( __CLASS__, 'shop_page_shortcode' ) );
+        
         // Preview endpoint for admin preview
         add_action( 'template_redirect', array( __CLASS__, 'handle_preview_request' ) );
     }
@@ -80,8 +85,8 @@ final class PLS_Shortcodes {
             <div style="padding: 20px; background: #f0f0f1; min-height: 100vh;">
                 <div style="max-width: 1200px; margin: 0 auto; background: #fff; padding: 40px; border-radius: 8px;">
                     <?php
-                    // Render using actual shortcode
-                    echo do_shortcode( '[pls_product_page product_id="' . $product_id . '"]' );
+                    // Render using new simplified shortcode
+                    echo do_shortcode( '[pls_single_product product_id="' . $product_id . '"]' );
                     ?>
                 </div>
             </div>
@@ -139,52 +144,56 @@ final class PLS_Shortcodes {
                     <?php endif; ?>
                     
                     <?php
-                    // Show products in this category using WooCommerce
-                    $args = array(
-                        'post_type' => 'product',
-                        'posts_per_page' => 12,
-                        'tax_query' => array(
-                            array(
-                                'taxonomy' => 'product_cat',
-                                'field' => 'term_id',
-                                'terms' => $category_id,
-                            ),
-                        ),
-                    );
-                    $products = new WP_Query( $args );
-                    
-                    if ( $products->have_posts() ) :
-                        echo '<div class="products" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; margin-top: 30px;">';
-                        while ( $products->have_posts() ) : $products->the_post();
-                            global $product;
-                            ?>
-                            <div class="product-item" style="border: 1px solid #ddd; padding: 15px; border-radius: 8px;">
-                                <?php if ( $product->get_image_id() ) : ?>
-                                    <div style="margin-bottom: 10px;">
-                                        <?php echo $product->get_image( 'medium' ); ?>
-                                    </div>
-                                <?php endif; ?>
-                                <h3 style="margin: 0 0 10px 0;">
-                                    <a href="<?php echo esc_url( $product->get_permalink() ); ?>">
-                                        <?php echo esc_html( $product->get_name() ); ?>
-                                    </a>
-                                </h3>
-                                <div class="price" style="font-size: 18px; font-weight: 600; color: #2271b1;">
-                                    <?php echo $product->get_price_html(); ?>
-                                </div>
-                                <?php if ( $product->is_type( 'variable' ) ) : ?>
-                                    <div style="margin-top: 10px;">
-                                        <?php echo do_shortcode( '[pls_product_page product_id="' . $product->get_id() . '"]' ); ?>
-                                    </div>
-                                <?php endif; ?>
-                            </div>
-                            <?php
-                        endwhile;
-                        echo '</div>';
-                        wp_reset_postdata();
-                    else :
-                        echo '<p>' . esc_html__( 'No products found in this category.', 'pls-private-label-store' ) . '</p>';
-                    endif;
+                    // Use new category shortcode for preview
+                    echo do_shortcode( '[pls_single_category]' );
+                    ?>
+                </div>
+            </div>
+            <?php wp_footer(); ?>
+        </body>
+        </html>
+        <?php
+        exit;
+    }
+
+    /**
+     * Render shop page preview.
+     */
+    private static function render_shop_preview() {
+        // Verify nonce
+        if ( ! isset( $_GET['pls_preview_nonce'] ) || ! wp_verify_nonce( $_GET['pls_preview_nonce'], 'pls_admin_nonce' ) ) {
+            wp_die( __( 'Invalid preview request.', 'pls-private-label-store' ) );
+        }
+
+        // Check permissions
+        if ( ! current_user_can( PLS_Capabilities::CAP_PRODUCTS ) ) {
+            wp_die( __( 'Insufficient permissions.', 'pls-private-label-store' ) );
+        }
+
+        // Set up query for shop page
+        global $wp_query;
+        $wp_query->is_shop = true;
+        $wp_query->is_archive = true;
+        $wp_query->is_post_type_archive = true;
+        $wp_query->post_type = 'product';
+
+        // Render preview
+        ?>
+        <!DOCTYPE html>
+        <html <?php language_attributes(); ?>>
+        <head>
+            <meta charset="<?php bloginfo( 'charset' ); ?>">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title><?php esc_html_e( 'Preview: Shop Page', 'pls-private-label-store' ); ?></title>
+            <?php wp_head(); ?>
+        </head>
+        <body>
+            <div style="padding: 20px; background: #f0f0f1; min-height: 100vh;">
+                <div style="max-width: 1200px; margin: 0 auto; background: #fff; padding: 40px; border-radius: 8px;">
+                    <h1><?php esc_html_e( 'Shop', 'pls-private-label-store' ); ?></h1>
+                    <?php
+                    // Render shop page using shortcode
+                    echo do_shortcode( '[pls_shop_page]' );
                     ?>
                 </div>
             </div>
@@ -630,5 +639,135 @@ final class PLS_Shortcodes {
         </div>
         <?php
         return ob_get_clean();
+    }
+
+    /**
+     * Simplified single product shortcode for Elementor templates.
+     * 
+     * Usage: [pls_single_product show_configurator="yes" show_description="yes" show_ingredients="yes" show_bundles="yes"]
+     * 
+     * Auto-detects current product on single product pages.
+     * Uses full PLS_Frontend_Display render methods for complete data display.
+     * Perfect for use in Elementor Theme Builder templates.
+     *
+     * @param array $atts Shortcode attributes.
+     * @return string
+     */
+    public static function single_product_shortcode( $atts ) {
+        $atts = shortcode_atts(
+            array(
+                'product_id'        => 0,
+                'show_configurator' => 'yes',
+                'show_description'  => 'yes',
+                'show_ingredients'   => 'yes',
+                'show_bundles'       => 'yes',
+            ),
+            $atts,
+            'pls_single_product'
+        );
+
+        // Auto-detect product ID from current WooCommerce product
+        $product_id = absint( $atts['product_id'] );
+        if ( ! $product_id ) {
+            global $product;
+            if ( $product instanceof WC_Product ) {
+                $product_id = $product->get_id();
+            }
+        }
+
+        if ( ! $product_id ) {
+            return '<div class="pls-note">' . esc_html__( 'Product not found. This shortcode works on single product pages.', 'pls-private-label-store' ) . '</div>';
+        }
+
+        // Get WooCommerce product
+        $wc_product = wc_get_product( $product_id );
+        if ( ! $wc_product ) {
+            return '<div class="pls-note">' . esc_html__( 'WooCommerce product not found.', 'pls-private-label-store' ) . '</div>';
+        }
+
+        // Check if this is a PLS product
+        global $wpdb;
+        $base_product = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT * FROM {$wpdb->prefix}pls_base_product WHERE wc_product_id = %d LIMIT 1",
+                $product_id
+            ),
+            OBJECT
+        );
+
+        if ( ! $base_product ) {
+            return '<div class="pls-note">' . esc_html__( 'PLS product not found. This product may need to be synced from PLS admin.', 'pls-private-label-store' ) . '</div>';
+        }
+
+        // Enqueue required assets
+        wp_enqueue_style( 'pls-frontend-display' );
+        wp_enqueue_script( 'pls-offers' );
+
+        // Use PLS_Frontend_Display to get full content with all data
+        $options = array(
+            'show_configurator' => 'yes' === $atts['show_configurator'],
+            'show_description'  => 'yes' === $atts['show_description'],
+            'show_ingredients'   => 'yes' === $atts['show_ingredients'],
+            'show_bundles'       => 'yes' === $atts['show_bundles'],
+        );
+
+        $content = PLS_Frontend_Display::get_pls_content( $product_id, $options );
+        
+        if ( empty( $content ) ) {
+            return '<div class="pls-note">' . esc_html__( 'No PLS content available for this product.', 'pls-private-label-store' ) . '</div>';
+        }
+
+        return '<div class="pls-single-product" data-product-id="' . esc_attr( $product_id ) . '">' . $content . '</div>';
+    }
+
+    /**
+     * Single category shortcode for Elementor templates.
+     * 
+     * Usage: [pls_single_category show_tier_badges="yes" show_starting_price="yes"]
+     * 
+     * Displays PLS-specific enhancements for category/archive pages.
+     * Perfect for use in Elementor Theme Builder category templates.
+     *
+     * @param array $atts Shortcode attributes.
+     * @return string
+     */
+    public static function single_category_shortcode( $atts ) {
+        $atts = shortcode_atts(
+            array(
+                'show_tier_badges'   => 'yes',
+                'show_starting_price' => 'yes',
+            ),
+            $atts,
+            'pls_single_category'
+        );
+
+        // Only works on category/archive pages
+        if ( ! is_product_category() && ! is_shop() && ! is_product_tag() && ! is_product_taxonomy() ) {
+            return '<div class="pls-note">' . esc_html__( 'This shortcode works on category, shop, and archive pages.', 'pls-private-label-store' ) . '</div>';
+        }
+
+        // Enqueue required styles
+        wp_enqueue_style( 'pls-frontend-display' );
+
+        // This shortcode enables the tier badges and starting prices via WooCommerce hooks
+        // The actual display is handled by PLS_Frontend_Display hooks
+        // We just need to ensure the hooks are active
+        
+        // Add inline CSS to show/hide elements based on attributes
+        $css = '';
+        if ( 'no' === $atts['show_tier_badges'] ) {
+            $css .= '.pls-product-badge { display: none !important; }';
+        }
+        if ( 'no' === $atts['show_starting_price'] ) {
+            $css .= '.pls-starting-price { display: none !important; }';
+        }
+
+        if ( $css ) {
+            wp_add_inline_style( 'pls-frontend-display', $css );
+        }
+
+        // Return empty string - the hooks handle the display
+        // But add a wrapper div for potential future enhancements
+        return '<div class="pls-single-category" data-show-tier-badges="' . esc_attr( $atts['show_tier_badges'] ) . '" data-show-starting-price="' . esc_attr( $atts['show_starting_price'] ) . '"></div>';
     }
 }

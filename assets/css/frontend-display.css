@@ -491,3 +491,28 @@
         background: var(--pls-gray-900);
     }
 }
+
+/* ==========================================================================
+   Shortcode Section Visibility Control
+   ========================================================================== */
+
+/* Hide sections based on shortcode attributes */
+.pls-single-product.pls-hide-configurator .pls-product-page__configurator,
+.pls-single-product.pls-hide-configurator .pls-auto-inject__configurator {
+    display: none !important;
+}
+
+.pls-single-product.pls-hide-description .pls-product-info__description,
+.pls-single-product.pls-hide-description .pls-auto-inject__description {
+    display: none !important;
+}
+
+.pls-single-product.pls-hide-ingredients .pls-product-info__ingredients,
+.pls-single-product.pls-hide-ingredients .pls-auto-inject__ingredients {
+    display: none !important;
+}
+
+.pls-single-product.pls-hide-bundles .pls-product-page__bundles,
+.pls-single-product.pls-hide-bundles .pls-auto-inject__bundles {
+    display: none !important;
+}

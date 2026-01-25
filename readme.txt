@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 4.2.0
+Stable tag: 4.3.1
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,20 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 4.3.1 =
+* **NEW:** Shop page shortcode `[pls_shop_page]` for browsing all PLS products in Elementor templates
+* **NEW:** Shop page preview functionality for testing templates
+* **IMPROVED:** `[pls_single_product]` now uses full PLS_Frontend_Display render methods for complete data (visual tier cards, all product info)
+* **IMPROVED:** Preview functionality updated to use new simplified shortcodes
+* **IMPROVED:** Better integration with WooCommerce product loop for shop/category displays
+
+= 4.3.0 =
+* **NEW:** Simplified Elementor shortcodes - `[pls_single_product]` and `[pls_single_category]` for easy integration with Elementor Theme Builder templates
+* **NEW:** `[pls_single_product]` - Auto-detects current product, configurable sections (configurator, description, ingredients, bundles)
+* **NEW:** `[pls_single_category]` - Enhances category/archive pages with tier badges and starting prices
+* **IMPROVED:** Better Elementor template integration - shortcodes work seamlessly in Elementor Shortcode widgets
+* **IMPROVED:** Section visibility control via shortcode attributes for flexible layouts
+
 = 4.2.0 =
 * **FIXED:** Step-by-step import now ensures products are synced to WooCommerce before creating orders
 * **FIXED:** Missing WooCommerce orders in step-by-step import - Products are now automatically synced in step 7 before order creation

@@ -187,6 +187,71 @@ final class PLS_Frontend_Display {
     }
 
     /**
+     * Get PLS content as string for shortcode use.
+     * 
+     * @param int    $product_id Product ID.
+     * @param array  $options Display options (show_configurator, show_description, show_ingredients, show_bundles).
+     * @return string HTML content.
+     */
+    public static function get_pls_content( $product_id, $options = array() ) {
+        $defaults = array(
+            'show_configurator' => true,
+            'show_description'  => true,
+            'show_ingredients'   => true,
+            'show_bundles'       => true,
+        );
+        $options = wp_parse_args( $options, $defaults );
+
+        $product = wc_get_product( $product_id );
+        if ( ! $product instanceof WC_Product ) {
+            return '';
+        }
+
+        // Check if this is a PLS product
+        global $wpdb;
+        $base_product = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT * FROM {$wpdb->prefix}pls_base_product WHERE wc_product_id = %d LIMIT 1",
+                $product_id
+            ),
+            OBJECT
+        );
+
+        if ( ! $base_product ) {
+            return '';
+        }
+
+        $profile = PLS_Repo_Product_Profile::get( $base_product->id );
+
+        ob_start();
+        echo '<div class="pls-auto-inject" id="pls-product-content">';
+
+        // Configurator section (pack tier selector with visual cards)
+        if ( $options['show_configurator'] && $product->is_type( 'variable' ) ) {
+            self::render_configurator( $product );
+        }
+
+        // Product info section
+        if ( $profile ) {
+            if ( $options['show_description'] && ! empty( $profile->long_description ) ) {
+                self::render_description( $profile );
+            }
+
+            if ( $options['show_ingredients'] && ! empty( $profile->ingredients_list ) ) {
+                self::render_ingredients( $profile );
+            }
+        }
+
+        // Bundle offers section
+        if ( $options['show_bundles'] ) {
+            self::render_bundles();
+        }
+
+        echo '</div>'; // .pls-auto-inject
+        return ob_get_clean();
+    }
+
+    /**
      * Render the pack tier configurator.
      *
      * @param WC_Product $product The product.
