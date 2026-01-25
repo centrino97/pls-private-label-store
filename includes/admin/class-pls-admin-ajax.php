@@ -618,7 +618,10 @@ final class PLS_Admin_Ajax {
         $slug_matches = $wc_product->get_slug() === $base->slug;
         $status_matches = $wc_status === $pls_status;
 
-        // Compare categories
+        // Compare categories - clear cache first to ensure fresh data
+        clean_object_term_cache( $base->wc_product_id, 'product_cat' );
+        wp_cache_delete( $base->wc_product_id, 'product_cat_relationships' );
+        
         $pls_categories = ! empty( $base->category_path ) ? array_map( 'absint', explode( ',', $base->category_path ) ) : array();
         $pls_categories = array_filter( $pls_categories );
         sort( $pls_categories );
