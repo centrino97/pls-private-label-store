@@ -3810,6 +3810,21 @@ final class PLS_Admin_Ajax {
                 break;
 
             case 'wc_orders':
+                // Ensure products are synced to WooCommerce before creating orders
+                // This is critical - orders need WooCommerce products to exist
+                $action_log[] = array( 'message' => __( 'Syncing products to WooCommerce before creating orders...', 'pls-private-label-store' ), 'type' => 'info' );
+                $sync_result = PLS_Sample_Data::sync_to_woocommerce();
+                if ( is_array( $sync_result ) ) {
+                    $products_synced = $sync_result['products_synced'] ?? 0;
+                    $action_log[] = array( 'message' => sprintf( __( 'Synced %d products to WooCommerce.', 'pls-private-label-store' ), $products_synced ), 'type' => 'success' );
+                } else {
+                    $action_log[] = array( 'message' => __( 'Products synced to WooCommerce.', 'pls-private-label-store' ), 'type' => 'success' );
+                }
+                
+                // Clear cache to ensure fresh product data
+                wp_cache_flush();
+                
+                // Now create orders
                 $orders_result = PLS_Sample_Data::add_woocommerce_orders();
                 if ( is_array( $orders_result ) ) {
                     $orders_created = $orders_result['orders_created'] ?? 0;

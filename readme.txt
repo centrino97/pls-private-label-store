@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.1.0
+Stable tag: 4.2.0
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,12 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 4.2.0 =
+* **FIXED:** Step-by-step import now ensures products are synced to WooCommerce before creating orders
+* **FIXED:** Missing WooCommerce orders in step-by-step import - Products are now automatically synced in step 7 before order creation
+* **IMPROVED:** Better error handling and logging for order creation process
+* **IMPROVED:** Clear feedback messages during import process
+
 = 3.1.0 =
 * **NEW:** Multistep Data Import Wizard - Guided 10-step import process with validation at each stage
 * **NEW:** Data Import page with prerequisites check, step-by-step import, and progress tracking
