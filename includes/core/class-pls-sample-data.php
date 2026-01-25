@@ -669,7 +669,7 @@ final class PLS_Sample_Data {
         // Package Type
         $package_type_id = PLS_Repo_Attributes::insert_attr( array(
             'label' => 'Package Type',
-            'option_type' => 'product_option',
+            'option_type' => 'product-option',
             'is_variation' => 1,
         ) );
 
@@ -699,7 +699,7 @@ final class PLS_Sample_Data {
             $package_color_id = PLS_Repo_Attributes::insert_attr( array(
                 'label' => 'Package Color',
                 'attr_key' => 'package-color',
-                'option_type' => 'product_option',
+                'option_type' => 'product-option',
                 'is_variation' => 1,
             ) );
         }
@@ -736,7 +736,7 @@ final class PLS_Sample_Data {
             $package_cap_id = PLS_Repo_Attributes::insert_attr( array(
                 'label' => 'Package Cap',
                 'attr_key' => 'package-cap',
-                'option_type' => 'product_option',
+                'option_type' => 'product-option',
                 'is_variation' => 0,
             ) );
         }
@@ -777,7 +777,7 @@ final class PLS_Sample_Data {
             $label_app_id = PLS_Repo_Attributes::insert_attr( array(
                 'label' => 'Label Application',
                 'attr_key' => 'label-application',
-                'option_type' => 'product_option',
+                'option_type' => 'product-option',
                 'is_variation' => 0,
             ) );
         }
@@ -818,7 +818,7 @@ final class PLS_Sample_Data {
             $fragrance_id = PLS_Repo_Attributes::insert_attr( array(
                 'label' => 'Fragrance',
                 'attr_key' => 'fragrance',
-                'option_type' => 'product_option',
+                'option_type' => 'product-option',
                 'is_variation' => 0,
             ) );
         }
@@ -858,7 +858,7 @@ final class PLS_Sample_Data {
             $custom_bottle_id = PLS_Repo_Attributes::insert_attr( array(
                 'label' => 'Custom Printed Bottles',
                 'attr_key' => 'custom-bottles',
-                'option_type' => 'product_option',
+                'option_type' => 'product-option',
                 'is_variation' => 0,
             ) );
         }
@@ -887,7 +887,7 @@ final class PLS_Sample_Data {
             $box_packaging_id = PLS_Repo_Attributes::insert_attr( array(
                 'label' => 'External Box Packaging',
                 'attr_key' => 'box-packaging',
-                'option_type' => 'product_option',
+                'option_type' => 'product-option',
                 'is_variation' => 0,
             ) );
         }

@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 2.6.0
+Stable tag: 2.7.0
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,14 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 2.7.0 =
+* **CRITICAL FIX:** Product Options now display correctly - Fixed option_type mismatch (product_option -> product-option)
+* **AUTO-REPAIR:** Migration automatically fixes existing broken option_type data on version change
+* **IMPROVED:** Hot-reload capability - No deactivate/reactivate needed, fixes apply on page load
+* **IMPROVED:** Pack Tier verification during migration ensures primary attribute is set correctly
+* **IMPROVED:** Attributes automatically re-synced to WooCommerce during migration
+* **FIXED:** Commission calculation helper functions now available globally (not just in admin screens)
+
 = 2.6.0 =
 * **MAJOR:** Architectural Simplification - ALL WooCommerce products are now PLS products (no PLS filtering needed)
 * **MAJOR:** Automatic Product Sync - Products automatically sync to WooCommerce on save, no user intervention required

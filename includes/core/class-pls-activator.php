@@ -68,6 +68,13 @@ final class PLS_Activator {
             require_once PLS_PLS_DIR . 'includes/core/class-pls-migration-v230.php';
             PLS_Migration_v230::run();
         }
+        
+        // Run v2.7.0 migration if upgrading from earlier version
+        // Fixes option_type mismatch (product_option -> product-option) and re-syncs attributes
+        if ( version_compare( $stored_version, '2.7.0', '<' ) ) {
+            require_once PLS_PLS_DIR . 'includes/core/class-pls-migration-v270.php';
+            PLS_Migration_v270::run();
+        }
     }
 
     private static function maybe_create_tables() {
