@@ -64,6 +64,7 @@ if ( empty( $pack_defaults ) ) {
 }
 $skin_options  = array( 'Normal', 'Oily', 'Dry', 'Combination', 'Sensitive' );
 
+// Always reconcile by reading from WooCommerce directly (backend sync - WooCommerce is source of truth)
 $products        = PLS_Admin_Ajax::reconcile_orphaned_products( PLS_Repo_Base_Product::all() );
 $product_payload = array();
 

@@ -1536,6 +1536,17 @@ final class PLS_Admin_Ajax {
      * @return string|WP_Error
      */
     private static function sync_single_product( $base_id ) {
+        // Always verify against WooCommerce first (backend sync - WooCommerce is source of truth)
+        $base = PLS_Repo_Base_Product::get( $base_id );
+        if ( $base && $base->wc_product_id ) {
+            $wc_product = wc_get_product( $base->wc_product_id );
+            if ( ! $wc_product ) {
+                // Product doesn't exist in WooCommerce - clear reference
+                error_log( '[PLS Sync] WooCommerce product ' . $base->wc_product_id . ' not found, clearing reference for PLS product ' . $base_id );
+                PLS_Repo_Base_Product::set_wc_product_id( $base_id, null );
+            }
+        }
+        
         $result = PLS_WC_Sync::sync_base_product_to_wc( $base_id );
         if ( is_wp_error( $result ) ) {
             return $result;

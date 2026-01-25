@@ -786,16 +786,29 @@ final class PLS_WC_Sync {
     }
 
     /**
-     * Sync all base products.
+     * Sync all base products - reads from WooCommerce first to ensure sync (backend-based).
      */
     public static function sync_all_base_products() {
-        $bases = PLS_Repo_Base_Product::all();
+        // First, reconcile by reading ALL WooCommerce products directly (WooCommerce is source of truth)
+        require_once PLS_PLS_DIR . 'includes/admin/class-pls-admin-ajax.php';
+        $bases = PLS_Admin_Ajax::reconcile_orphaned_products( PLS_Repo_Base_Product::all() );
+        
         if ( empty( $bases ) ) {
             return __( 'No base products to sync.', 'pls-private-label-store' );
         }
 
         $messages = array();
         foreach ( $bases as $base ) {
+            // Always verify against WooCommerce before syncing
+            if ( $base->wc_product_id ) {
+                $wc_product = wc_get_product( $base->wc_product_id );
+                if ( ! $wc_product ) {
+                    // Product doesn't exist in WooCommerce - clear reference and create new
+                    PLS_Repo_Base_Product::set_wc_product_id( $base->id, null );
+                    $base->wc_product_id = null;
+                }
+            }
+            
             $result = self::sync_base_product_to_wc( $base->id );
             if ( is_wp_error( $result ) ) {
                 $messages[] = $result->get_error_message();
