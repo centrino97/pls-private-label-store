@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 2.4.2
+Stable tag: 2.5.0
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,17 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 2.5.0 =
+* **MAJOR:** Pack Tier as Primary Attribute - Pack Tier is now guaranteed to be created and marked as primary during sample data generation
+* **MAJOR:** Predefined Product Options - All product options are now created as predefined attributes for fast domain user setup
+* **FIXED:** Pack Tier Attribute Creation - Pack Tier attribute is now properly verified and marked as primary with consistent option_type
+* **FIXED:** Sync Verification - Enhanced sync process now verifies each product is variable and has variations, with automatic retry
+* **NEW:** Sync Integrity Verification - New verify_sync_integrity() method ensures all products sync correctly after data generation
+* **IMPROVED:** Automatic Retry - Products that sync but lack variations are automatically re-synced
+* **IMPROVED:** WooCommerce/PLS Sync - Ensures WooCommerce and PLS products and orders stay in sync after generating data
+* **IMPROVED:** Variation Creation - All products now have pack tier variations created correctly
+* **IMPROVED:** Cleanup Compatibility - Cleanup code now handles both 'pack_tier' and 'pack-tier' option types
+
 = 2.4.2 =
 * **MAJOR:** Complete backend sync - Entire plugin now reads from WooCommerce directly as source of truth
 * **IMPROVED:** Product reconciliation - Reads ALL WooCommerce products with PLS markers and syncs to PLS records

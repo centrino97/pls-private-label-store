@@ -83,7 +83,26 @@ final class PLS_Sample_Data {
                 if ( ! empty( $sync_result['errors'] ) ) {
                     error_log( '[PLS Sample Data] ⚠ Sync errors: ' . count( $sync_result['errors'] ) );
                     foreach ( $sync_result['errors'] as $error ) {
-                        error_log( '[PLS Sample Data]   - ' . $error['type'] . ': ' . ( isset( $error['message'] ) ? $error['message'] : 'Unknown error' ) );
+                        error_log( '[PLS Sample Data]   - ' . $error['type'] . ': ' . ( isset( $error['message'] ) ? $error['message'] : ( isset( $error['error'] ) ? $error['error'] : 'Unknown error' ) ) );
+                    }
+                }
+                
+                // Step 7.5: Verify sync integrity
+                error_log( '[PLS Sample Data] Step 7.5: Verifying sync integrity...' );
+                $verify_result = self::verify_sync_integrity();
+                if ( is_array( $verify_result ) ) {
+                    if ( $verify_result['all_synced'] ) {
+                        error_log( '[PLS Sample Data] ✓ Sync verification passed: All products and orders are in sync' );
+                    } else {
+                        error_log( '[PLS Sample Data] ⚠ Sync verification found issues: ' . $verify_result['message'] );
+                        if ( ! empty( $verify_result['missing_variations'] ) ) {
+                            error_log( '[PLS Sample Data]   - Products missing variations: ' . count( $verify_result['missing_variations'] ) );
+                            // Retry sync for products missing variations
+                            error_log( '[PLS Sample Data]   - Re-syncing products with missing variations...' );
+                            foreach ( $verify_result['missing_variations'] as $product_id ) {
+                                PLS_WC_Sync::sync_base_product_to_wc( $product_id );
+                            }
+                        }
                     }
                 }
             } else {
@@ -245,19 +264,19 @@ final class PLS_Sample_Data {
         $commissions_table = $wpdb->prefix . 'pls_order_commission';
         $wpdb->query( "TRUNCATE TABLE {$commissions_table}" );
 
-        // Delete all attributes except Pack Tier
+        // Delete all attributes except Pack Tier (check both 'pack_tier' and 'pack-tier' for compatibility)
         $attributes_table = $wpdb->prefix . 'pls_attribute';
-        $pack_tier_attr = $wpdb->get_row( "SELECT * FROM {$attributes_table} WHERE option_type = 'pack_tier' LIMIT 1" );
+        $pack_tier_attr = $wpdb->get_row( "SELECT * FROM {$attributes_table} WHERE (option_type = 'pack_tier' OR option_type = 'pack-tier') LIMIT 1" );
         
-        $wpdb->query( "DELETE FROM {$attributes_table} WHERE option_type != 'pack_tier'" );
+        $wpdb->query( "DELETE FROM {$attributes_table} WHERE option_type != 'pack_tier' AND option_type != 'pack-tier'" );
 
         // Delete all attribute values except Pack Tier values
         $values_table = $wpdb->prefix . 'pls_attribute_value';
         if ( $pack_tier_attr ) {
             $wpdb->query( $wpdb->prepare( "DELETE FROM {$values_table} WHERE attribute_id != %d", $pack_tier_attr->id ) );
         } else {
-            // Keep pack tier values if they exist
-            $pack_tier_attrs = $wpdb->get_col( "SELECT id FROM {$attributes_table} WHERE option_type = 'pack_tier' OR option_type = 'pack-tier'" );
+            // Keep pack tier values if they exist (check both 'pack_tier' and 'pack-tier' for compatibility)
+            $pack_tier_attrs = $wpdb->get_col( "SELECT id FROM {$attributes_table} WHERE option_type = 'pack_tier' OR option_type = 'pack-tier' OR attr_key = 'pack-tier'" );
             if ( ! empty( $pack_tier_attrs ) ) {
                 $placeholders = implode( ',', array_fill( 0, count( $pack_tier_attrs ), '%d' ) );
                 $wpdb->query( $wpdb->prepare( "DELETE FROM {$values_table} WHERE attribute_id NOT IN ({$placeholders})", ...$pack_tier_attrs ) );
@@ -451,6 +470,49 @@ final class PLS_Sample_Data {
         // Ensure Pack Tier attribute exists first (required for variations)
         require_once PLS_PLS_DIR . 'includes/core/class-pls-default-attributes.php';
         PLS_Default_Attributes::create_defaults();
+        
+        // Verify Pack Tier attribute is created and marked as primary
+        $pack_tier_attr = $wpdb->get_row(
+            "SELECT * FROM {$attributes_table} WHERE (option_type = 'pack_tier' OR option_type = 'pack-tier') AND is_primary = 1 LIMIT 1"
+        );
+        
+        if ( ! $pack_tier_attr ) {
+            // Try to find any pack tier attribute and mark it as primary
+            $pack_tier_attr = $wpdb->get_row(
+                "SELECT * FROM {$attributes_table} WHERE option_type = 'pack_tier' OR option_type = 'pack-tier' OR attr_key = 'pack-tier' LIMIT 1"
+            );
+            
+            if ( $pack_tier_attr ) {
+                // Mark as primary and ensure correct option_type
+                $wpdb->update(
+                    $attributes_table,
+                    array(
+                        'is_primary' => 1,
+                        'option_type' => 'pack_tier',
+                    ),
+                    array( 'id' => $pack_tier_attr->id ),
+                    array( '%d', '%s' ),
+                    array( '%d' )
+                );
+                error_log( '[PLS Sample Data] Pack Tier attribute marked as primary (ID: ' . $pack_tier_attr->id . ')' );
+            } else {
+                // Create Pack Tier attribute if it doesn't exist
+                error_log( '[PLS Sample Data] Creating Pack Tier attribute...' );
+                $pack_tier_attr_id = PLS_Default_Attributes::create_pack_tier_attribute();
+                if ( $pack_tier_attr_id ) {
+                    error_log( '[PLS Sample Data] Pack Tier attribute created (ID: ' . $pack_tier_attr_id . ')' );
+                } else {
+                    error_log( '[PLS Sample Data] ERROR: Failed to create Pack Tier attribute!' );
+                }
+            }
+        } else {
+            error_log( '[PLS Sample Data] Pack Tier attribute verified as primary (ID: ' . $pack_tier_attr->id . ')' );
+        }
+        
+        // Ensure pack tier attribute ID is stored in options
+        if ( isset( $pack_tier_attr->id ) ) {
+            update_option( 'pls_pack_tier_attribute_id', $pack_tier_attr->id );
+        }
         
         // Ensure ingredient sync class is loaded
         require_once PLS_PLS_DIR . 'includes/core/class-pls-ingredient-sync.php';
@@ -1495,6 +1557,34 @@ final class PLS_Sample_Data {
                 }
             } else {
                 $sync_summary['products_synced']++;
+                
+                // Verify sync: ensure product has WC ID and is variable with variations
+                $synced_product = PLS_Repo_Base_Product::get( $product->id );
+                if ( $synced_product && $synced_product->wc_product_id ) {
+                    $wc_product = wc_get_product( $synced_product->wc_product_id );
+                    if ( $wc_product ) {
+                        // Verify it's a variable product
+                        if ( ! $wc_product->is_type( 'variable' ) ) {
+                            error_log( '[PLS Sample Data] Warning: Product "' . $product->name . '" synced but is not variable type. Re-syncing...' );
+                            // Retry sync once
+                            $retry_result = PLS_WC_Sync::sync_base_product_to_wc( $product->id );
+                            if ( is_wp_error( $retry_result ) ) {
+                                error_log( '[PLS Sample Data] Re-sync failed for "' . $product->name . '": ' . $retry_result->get_error_message() );
+                            }
+                        } else {
+                            // Verify variations exist
+                            $variations = $wc_product->get_children();
+                            if ( empty( $variations ) ) {
+                                error_log( '[PLS Sample Data] Warning: Product "' . $product->name . '" has no variations. Re-syncing...' );
+                                // Retry sync once
+                                $retry_result = PLS_WC_Sync::sync_base_product_to_wc( $product->id );
+                                if ( is_wp_error( $retry_result ) ) {
+                                    error_log( '[PLS Sample Data] Re-sync failed for "' . $product->name . '": ' . $retry_result->get_error_message() );
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -1551,6 +1641,71 @@ final class PLS_Sample_Data {
         }
 
         return $sync_summary;
+    }
+
+    /**
+     * Verify sync integrity - ensure all products are synced and have variations.
+     *
+     * @return array Verification results.
+     */
+    private static function verify_sync_integrity() {
+        if ( ! self::is_woocommerce_active() ) {
+            return array( 'all_synced' => false, 'message' => 'WooCommerce not active' );
+        }
+
+        require_once PLS_PLS_DIR . 'includes/wc/class-pls-wc-sync.php';
+
+        $products = PLS_Repo_Base_Product::all();
+        $missing_wc_products = array();
+        $missing_variations = array();
+        $not_variable = array();
+
+        foreach ( $products as $product ) {
+            if ( ! $product->wc_product_id ) {
+                $missing_wc_products[] = $product->id;
+                continue;
+            }
+
+            $wc_product = wc_get_product( $product->wc_product_id );
+            if ( ! $wc_product ) {
+                $missing_wc_products[] = $product->id;
+                continue;
+            }
+
+            if ( ! $wc_product->is_type( 'variable' ) ) {
+                $not_variable[] = $product->id;
+                continue;
+            }
+
+            $variations = $wc_product->get_children();
+            if ( empty( $variations ) ) {
+                $missing_variations[] = $product->id;
+            }
+        }
+
+        $all_synced = empty( $missing_wc_products ) && empty( $missing_variations ) && empty( $not_variable );
+
+        $message = '';
+        if ( ! empty( $missing_wc_products ) ) {
+            $message .= count( $missing_wc_products ) . ' products missing WC products. ';
+        }
+        if ( ! empty( $not_variable ) ) {
+            $message .= count( $not_variable ) . ' products are not variable type. ';
+        }
+        if ( ! empty( $missing_variations ) ) {
+            $message .= count( $missing_variations ) . ' products missing variations. ';
+        }
+        if ( $all_synced ) {
+            $message = 'All products are synced correctly.';
+        }
+
+        return array(
+            'all_synced' => $all_synced,
+            'message' => trim( $message ),
+            'missing_wc_products' => $missing_wc_products,
+            'not_variable' => $not_variable,
+            'missing_variations' => $missing_variations,
+        );
     }
 
     /**

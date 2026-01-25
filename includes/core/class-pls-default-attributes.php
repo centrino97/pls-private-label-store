@@ -44,7 +44,7 @@ final class PLS_Default_Attributes {
      *
      * @return int Attribute ID
      */
-    private static function create_pack_tier_attribute() {
+    public static function create_pack_tier_attribute() {
         global $wpdb;
 
         // Check if Pack Tier attribute already exists
@@ -61,14 +61,14 @@ final class PLS_Default_Attributes {
             return $existing->id;
         }
 
-        // Create attribute
+        // Create attribute - use 'pack_tier' as option_type for consistency
         $attr_id = PLS_Repo_Attributes::insert_attr(
             array(
                 'label'            => 'Pack Tier',
                 'attr_key'         => 'pack-tier',
                 'is_variation'     => 1,
                 'sort_order'       => 0,
-                'option_type'      => 'pack-tier',
+                'option_type'      => 'pack_tier',
                 'is_primary'       => 1,
             )
         );
