@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 2.9.0
+Stable tag: 3.0.3
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,56 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 3.0.3 =
+* **Maintenance & Cleanup**
+* **FIXED:** Version consistency - All version numbers now match across plugin file, UUPD, and readme
+* **FIXED:** UUPD download URL now correctly points to v3.0.3 release
+* **CLEANUP:** Removed outdated release notes and temporary documentation files
+* **CLEANUP:** Removed temporary test scripts and verification tools
+* **IMPROVED:** Codebase cleanup - Removed 12 unneeded documentation and script files
+
+= 3.0.2 =
+* **UX Improvements**
+* **NEW:** Interactive tier cards - Click to select pack tier variations
+* **NEW:** Auto-hide default WooCommerce variation selector when tier cards are present
+* **IMPROVED:** Visual feedback - Cards highlight when selected
+* **IMPROVED:** Better integration with WooCommerce variation system
+* **IMPROVED:** Smooth scroll to add-to-cart after selection
+
+= 3.0.1 =
+* **Bug Fixes**
+* **FIXED:** Sample data generation - Added missing `get()` method to PLS_Repo_Product_Profile for compatibility
+* **NEW:** Delete Sample Data button on System Test page with status display
+
+= 3.0.0 =
+* **Frontend Auto-Injection (Zero-Setup Product Pages)**
+* **NEW:** Auto-inject PLS content on WooCommerce product pages without Elementor or shortcodes
+* **NEW:** Pack Tier Configurator with visual cards showing units, prices, and price-per-unit
+* **NEW:** Tier badges on shop/category pages ("From X units" and "As low as $X/unit")
+* **NEW:** Settings to enable/disable auto-injection and choose position (after summary, after cart, before tabs, as tab)
+* **NEW:** Configurable content sections (configurator, description, ingredients, bundles)
+* **NEW:** Full CSS with accessibility support (focus states, reduced motion, high contrast)
+* **System Tests & Diagnostics**
+* **NEW:** Enhanced System Test - Server config (PHP, memory, extensions), WC settings (currency, gateways, shipping), user roles & capabilities verification
+* **NEW:** Version display with UUPD match check
+* **NEW:** Frontend Display tests - CSS/JS file checks, settings validation, test product display
+* **Custom Orders**
+* **NEW:** Convert Custom Order to WooCommerce Order with button and status selection (Pending, On Hold, Draft)
+* **NEW:** Sampling Tracking - Status workflow (Not Sent → Sent → Received → Approved/Rejected), cost, dates, tracking, feedback fields
+* **NEW:** Bidirectional linking between custom orders and WC orders
+* **SEO & Plugin Integration**
+* **NEW:** Yoast SEO - Auto meta generation, sitemap inclusion, schema markup, breadcrumbs, custom variables (%%pls_product_tier%%, %%pls_product_ingredients%%)
+* **NEW:** LiteSpeed Cache - Purge on product sync, ESI compatibility
+* **NEW:** Brevo - Email notifications for custom order creation
+* **Admin & Preview**
+* **NEW:** Live Preview - Split-screen/fullscreen modal for products and categories using actual WooCommerce pages
+* **NEW:** Domain-based user role assignment (@bodoci.com)
+* **NEW:** Category preview button
+* **Database**
+* Migration v3.0.0 adds 7 new columns to pls_custom_order table (wc_order_id, sample_status, sample_cost, sample_sent_date, sample_tracking, sample_feedback, converted_at)
+* **Development**
+* Updated development workflow with MCP browser testing instructions
+
 = 2.9.0 =
 * **CRITICAL FIX:** Pack Tier WooCommerce term linking - Fixed circular dependency that prevented variations from being created
 * **CRITICAL FIX:** Sample data now creates WooCommerce orders successfully (was skipping 43 orders due to missing variations)
