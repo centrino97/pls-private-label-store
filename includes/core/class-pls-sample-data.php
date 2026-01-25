@@ -2665,9 +2665,33 @@ final class PLS_Sample_Data {
                         continue;
                     }
                     
-                    $item = $order->add_product( $variation, $item_data['quantity'] );
+                    $item_id = $order->add_product( $variation, $item_data['quantity'] );
                     
-                    if ( $item ) {
+                    if ( $item_id ) {
+                        // Get the item object - add_product() returns item ID, not object
+                        $item = $order->get_item( $item_id );
+                        
+                        if ( ! $item ) {
+                            $reason = 'Failed to retrieve order item after adding product "' . $base_product->name . '" (variation #' . $variation_id . ')';
+                            $action_log[] = array( 
+                                'message' => '❌ Order #' . ( $order_index + 1 ) . ' item: ' . $reason, 
+                                'type' => 'error',
+                                'details' => array(
+                                    'product_name' => $base_product->name,
+                                    'product_id' => $base_product->id,
+                                    'wc_product_id' => $wc_product_id,
+                                    'variation_id' => $variation_id,
+                                    'item_id' => $item_id,
+                                    'suggestion' => 'Order item may not have been created properly',
+                                )
+                            );
+                            if ( ! isset( $skip_reasons[ $reason ] ) ) {
+                                $skip_reasons[ $reason ] = 0;
+                            }
+                            $skip_reasons[ $reason ]++;
+                            continue;
+                        }
+                        
                         // Get product profile to access product options
                         $product_profile = PLS_Repo_Product_Profile::get_for_base( $base_product->id );
                         
