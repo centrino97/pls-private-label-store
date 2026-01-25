@@ -2469,7 +2469,19 @@ final class PLS_Sample_Data {
                 }
                 
                 if ( ! $variation_id ) {
-                    error_log( '[PLS Sample Data] Order: No variations available for ' . $base_product->name );
+                    error_log( '[PLS Sample Data] Order: No variations available for ' . $base_product->name . ' (WC #' . $wc_product_id . ')' );
+                    error_log( '[PLS Sample Data] Order: Product has ' . count( $variations ) . ' variations, but none matched tier ' . $tier_key . ' (target units: ' . ( $target_units ?: 'unknown' ) . ')' );
+                    if ( ! empty( $variations ) ) {
+                        error_log( '[PLS Sample Data] Order: Available variation IDs: ' . implode( ', ', $variations ) );
+                        foreach ( $variations as $var_id ) {
+                            $var = wc_get_product( $var_id );
+                            if ( $var ) {
+                                $var_units = get_post_meta( $var_id, '_pls_units', true );
+                                $var_attrs = $var->get_attributes();
+                                error_log( '[PLS Sample Data] Order: Variation #' . $var_id . ' - Units: ' . ( $var_units ?: 'none' ) . ', Attributes: ' . json_encode( $var_attrs ) );
+                            }
+                        }
+                    }
                     continue;
                 }
 

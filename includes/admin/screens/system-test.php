@@ -274,6 +274,9 @@ $test_categories = array(
                 <span class="health-label">System Health:</span>
                 <span class="health-value" id="health-score">0%</span>
             </div>
+            <button type="button" class="button button-secondary" id="pls-download-test-results" style="margin-left: auto;">
+                <span class="dashicons dashicons-download"></span> Download Test Results
+            </button>
         </div>
         <div class="summary-stats">
             <span class="stat-passed"><span class="dashicons dashicons-yes-alt"></span> <span id="stat-passed">0</span> Passed</span>

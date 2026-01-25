@@ -29,6 +29,7 @@
         isRunning: false,
         currentCategory: 0,
         results: {},
+        allTestResults: null, // Store complete test results for download
 
         /**
          * Initialize the system test page.
@@ -67,6 +68,9 @@
             // Log viewing
             $('#pls-view-last-log').on('click', () => this.viewLastLog());
             $('#pls-copy-log').on('click', () => this.copyLog());
+            
+            // Test results download
+            $('#pls-download-test-results').on('click', () => this.downloadTestResults());
             
             // Modal close
             $('#pls-modal-close').on('click', () => this.hideGenerationModal());
@@ -122,6 +126,20 @@
             // Show summary
             this.updateProgress(this.categories.length, this.categories.length);
             this.showSummary();
+            
+            // Store complete results for download
+            this.allTestResults = {
+                timestamp: new Date().toISOString(),
+                categories: this.categories,
+                results: this.results,
+                summary: {
+                    passed: this.countStatus('pass'),
+                    failed: this.countStatus('fail'),
+                    warnings: this.countStatus('warning'),
+                    skipped: this.countStatus('skip'),
+                    health: total > 0 ? Math.round((this.countStatus('pass') / total) * 100) : 0
+                }
+            };
 
             this.isRunning = false;
             $('#pls-run-all-tests').removeClass('is-loading');
@@ -380,6 +398,89 @@
                 "'": '&#039;'
             };
             return text.replace(/[&<>"']/g, m => map[m]);
+        },
+
+        /**
+         * Download test results as TXT file.
+         */
+        downloadTestResults: function() {
+            if (!this.allTestResults) {
+                alert('No test results available. Please run tests first.');
+                return;
+            }
+
+            const results = this.allTestResults;
+            const categoryLabels = {
+                'pls_info': 'PLS Info & Version',
+                'server_config': 'Server Configuration',
+                'wc_settings': 'WooCommerce Settings',
+                'user_roles': 'User Roles & Capabilities',
+                'database': 'Database',
+                'product_options': 'Product Options',
+                'products_sync': 'Products Sync',
+                'variations': 'Variations',
+                'bundles': 'Bundles',
+                'wc_orders': 'WooCommerce Orders',
+                'custom_orders': 'Custom Orders',
+                'commissions': 'Commissions',
+                'revenue': 'Revenue',
+                'frontend_display': 'Frontend Display'
+            };
+
+            let content = 'PLS System Test Results\n';
+            content += '========================\n\n';
+            content += 'Timestamp: ' + new Date(results.timestamp).toLocaleString() + '\n';
+            content += 'WordPress Version: ' + (typeof wp !== 'undefined' && wp.version ? wp.version : 'Unknown') + '\n';
+            content += '\n';
+            content += 'Summary\n';
+            content += '-------\n';
+            content += 'System Health: ' + results.summary.health + '%\n';
+            content += 'Passed: ' + results.summary.passed + '\n';
+            content += 'Failed: ' + results.summary.failed + '\n';
+            content += 'Warnings: ' + results.summary.warnings + '\n';
+            content += 'Skipped: ' + results.summary.skipped + '\n';
+            content += '\n';
+            content += '='.repeat(50) + '\n\n';
+
+            // Add results for each category
+            results.categories.forEach(category => {
+                const categoryResults = results.results[category] || [];
+                if (categoryResults.length === 0) return;
+
+                content += categoryLabels[category] || category + '\n';
+                content += '-'.repeat(50) + '\n';
+
+                categoryResults.forEach(test => {
+                    const statusIcon = {
+                        'pass': '[✓]',
+                        'fail': '[✗]',
+                        'warning': '[⚠]',
+                        'skip': '[-]'
+                    }[test.status] || '[?]';
+
+                    content += statusIcon + ' ' + test.name + '\n';
+                    if (test.message) {
+                        content += '   ' + test.message + '\n';
+                    }
+                    if (test.fix) {
+                        content += '   Fix: ' + test.fix + '\n';
+                    }
+                    content += '\n';
+                });
+
+                content += '\n';
+            });
+
+            // Create blob and download
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'pls-test-results-' + new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5) + '.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
         },
 
         /**
