@@ -957,20 +957,43 @@ wp_localize_script(
       
       <!-- Preview Panel (shown in split-screen mode) -->
       <div id="pls-preview-panel" style="display: none;">
-        <div style="padding: 20px; background: #fff; height: 100%; overflow-y: auto;">
-          <div style="margin-bottom: 20px;">
-            <h3 style="margin: 0 0 10px 0;"><?php esc_html_e( 'Live Preview', 'pls-private-label-store' ); ?></h3>
-            <p class="description" style="margin: 0;">
-              <?php esc_html_e( 'Preview how your product will appear on the frontend using the shortcode.', 'pls-private-label-store' ); ?>
+        <div style="padding: 0; background: #fff; height: 100%; overflow-y: auto; display: flex; flex-direction: column;">
+          <!-- Preview Header -->
+          <div style="padding: 20px; border-bottom: 1px solid #ddd; background: #f9f9f9; flex-shrink: 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <h3 style="margin: 0; font-size: 18px; font-weight: 600;"><?php esc_html_e( 'Live Preview', 'pls-private-label-store' ); ?></h3>
+              <div style="display: flex; gap: 8px;">
+                <button type="button" class="button button-small pls-preview-refresh-btn" title="<?php esc_attr_e( 'Refresh Preview', 'pls-private-label-store' ); ?>" style="padding: 4px 8px;">
+                  <span style="font-size: 14px;">↻</span>
+                </button>
+              </div>
+            </div>
+            <p class="description" style="margin: 0; font-size: 13px; color: #666;">
+              <?php esc_html_e( 'Updates automatically as you edit', 'pls-private-label-store' ); ?>
             </p>
           </div>
-          <div id="pls-preview-content" style="background: #f9f9f9; padding: 20px; border-radius: 4px; min-height: 400px;">
-            <p class="description" style="text-align: center; padding: 40px;">
-              <?php esc_html_e( 'Click Preview to see how your product will render.', 'pls-private-label-store' ); ?>
-            </p>
+          
+          <!-- Preview Content -->
+          <div id="pls-preview-content" style="flex: 1; overflow-y: auto; padding: 20px; background: #fff; position: relative;">
+            <div id="pls-preview-loading" style="display: none; text-align: center; padding: 60px 20px;">
+              <div style="display: inline-block; width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #2271b1; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 16px;"></div>
+              <p class="description" style="margin: 0; color: #666;"><?php esc_html_e( 'Generating preview...', 'pls-private-label-store' ); ?></p>
+            </div>
+            <div id="pls-preview-placeholder" style="text-align: center; padding: 60px 20px;">
+              <p class="description" style="margin: 0; color: #666;">
+                <?php esc_html_e( 'Click Preview tab to see how your product will render.', 'pls-private-label-store' ); ?>
+              </p>
+            </div>
           </div>
         </div>
       </div>
+      
+      <style>
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      </style>
     </div>
   </div>
 </div>
