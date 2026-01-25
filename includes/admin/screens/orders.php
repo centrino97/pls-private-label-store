@@ -16,6 +16,13 @@ $pls_wc_ids   = array();
 foreach ( $pls_products as $product ) {
     if ( $product->wc_product_id ) {
         $pls_wc_ids[] = $product->wc_product_id;
+        
+        // Also include variation IDs if product is variable (for proper order detection)
+        $wc_product = wc_get_product( $product->wc_product_id );
+        if ( $wc_product && $wc_product->is_type( 'variable' ) ) {
+            $variations = $wc_product->get_children();
+            $pls_wc_ids = array_merge( $pls_wc_ids, $variations );
+        }
     }
 }
 
