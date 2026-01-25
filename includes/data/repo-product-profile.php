@@ -5,6 +5,23 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 final class PLS_Repo_Product_Profile {
 
+    /**
+     * Get product profile by base product ID.
+     * Alias for get_for_base() for convenience.
+     *
+     * @param int $base_product_id Base product ID.
+     * @return object|null Product profile object or null.
+     */
+    public static function get( $base_product_id ) {
+        return self::get_for_base( $base_product_id );
+    }
+
+    /**
+     * Get product profile by base product ID.
+     *
+     * @param int $base_product_id Base product ID.
+     * @return object|null Product profile object or null.
+     */
     public static function get_for_base( $base_product_id ) {
         global $wpdb;
         $table = PLS_Repositories::table( 'product_profile' );
