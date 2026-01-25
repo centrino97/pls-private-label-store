@@ -142,98 +142,42 @@ $product = $wc_product;
         <div class="pls-preview-note">
             <strong><?php esc_html_e( '📋 Preview Mode', 'pls-private-label-store' ); ?></strong>
             <p style="margin: 0;">
-                <?php esc_html_e( 'This preview simulates the frontend environment. Use this to see how PLS Elementor widgets will render before building your Elementor Theme Builder template.', 'pls-private-label-store' ); ?>
+                <?php esc_html_e( 'This preview shows how the product will render using the [pls_single_product] shortcode in your Elementor template.', 'pls-private-label-store' ); ?>
             </p>
         </div>
 
         <?php
-        // Simulate is_product() for widgets
+        // Simulate is_product() for shortcode
         global $wp_query;
         $original_query = $wp_query;
         $wp_query->is_product = true;
         $wp_query->is_singular = true;
         ?>
 
-        <!-- Product Title -->
-        <div class="pls-widget-section">
-            <h2><?php esc_html_e( 'Product Title', 'pls-private-label-store' ); ?></h2>
-            <h1><?php echo esc_html( $wc_product->get_name() ); ?></h1>
-        </div>
+        <!-- Render using PLS Single Product Shortcode -->
+        <?php
+        // Render using the shortcode - this is what users will use in Elementor templates
+        echo do_shortcode( '[pls_single_product product_id="' . esc_attr( $wc_product_id ) . '"]' );
+        ?>
 
-        <!-- Product Description -->
-        <?php if ( $wc_product->get_description() ) : ?>
-        <div class="pls-widget-section">
-            <h2><?php esc_html_e( 'Product Description', 'pls-private-label-store' ); ?></h2>
-            <div><?php echo wp_kses_post( $wc_product->get_description() ); ?></div>
-        </div>
-        <?php endif; ?>
-
-        <!-- PLS Configurator Widget Preview -->
-        <div class="pls-widget-section">
-            <h2><?php esc_html_e( 'PLS Configurator Widget', 'pls-private-label-store' ); ?></h2>
-            <p class="description"><?php esc_html_e( 'This is how the PLS Configurator widget will render:', 'pls-private-label-store' ); ?></p>
-            <?php
-            // Render the configurator widget
-            if ( ! $wc_product || ! $wc_product->is_type( 'variable' ) ) {
-                echo '<div class="pls-note">' . esc_html__( 'Product must be synced as a variable product to show configurator.', 'pls-private-label-store' ) . '</div>';
-            } elseif ( ! did_action( 'elementor/loaded' ) ) {
-                // Elementor not active - show basic variation form
-                echo '<div class="pls-note">' . esc_html__( 'Elementor is not active. Install and activate Elementor to see the full PLS Configurator widget preview.', 'pls-private-label-store' ) . '</div>';
-                // Show basic WooCommerce variation form as fallback
-                woocommerce_variable_add_to_cart();
-            } else {
-                // Elementor is active - try to render the widget
-                try {
-                    $widget_file = PLS_PLS_DIR . 'includes/elementor/widgets/class-pls-widget-configurator.php';
-                    if ( file_exists( $widget_file ) ) {
-                        require_once $widget_file;
-                        if ( class_exists( 'PLS_Widget_Configurator' ) ) {
-                            $widget = new \PLS_Widget_Configurator();
-                            $widget->render();
-                        } else {
-                            echo '<div class="pls-note">' . esc_html__( 'Widget class not found. Please ensure Elementor integration is properly set up.', 'pls-private-label-store' ) . '</div>';
-                        }
-                    } else {
-                        echo '<div class="pls-note">' . esc_html__( 'Widget file not found.', 'pls-private-label-store' ) . '</div>';
-                    }
-                } catch ( Exception $e ) {
-                    echo '<div class="pls-note">' . esc_html__( 'Error rendering widget: ', 'pls-private-label-store' ) . esc_html( $e->getMessage() ) . '</div>';
-                }
-            }
-            ?>
-        </div>
-
-        <!-- Product Attributes Preview -->
-        <?php if ( $wc_product->is_type( 'variable' ) ) : ?>
-        <div class="pls-widget-section">
-            <h2><?php esc_html_e( 'Product Attributes (Variations)', 'pls-private-label-store' ); ?></h2>
-            <p class="description"><?php esc_html_e( 'Available attributes for variations:', 'pls-private-label-store' ); ?></p>
-            <?php
-            $variation_attributes = $wc_product->get_variation_attributes();
-            if ( ! empty( $variation_attributes ) ) {
-                echo '<ul>';
-                foreach ( $variation_attributes as $attribute_name => $options ) {
-                    $attribute_label = wc_attribute_label( $attribute_name );
-                    echo '<li><strong>' . esc_html( $attribute_label ) . ':</strong> ' . esc_html( implode( ', ', $options ) ) . '</li>';
-                }
-                echo '</ul>';
-            } else {
-                echo '<div class="pls-note">' . esc_html__( 'No variation attributes found.', 'pls-private-label-store' ) . '</div>';
-            }
-            ?>
-        </div>
-        <?php endif; ?>
-
-        <!-- Next Steps -->
-        <div class="pls-widget-section" style="background: #e7f5e7; border-left: 4px solid #00a32a;">
-            <h2><?php esc_html_e( '🎨 Next Steps: Build Elementor Template', 'pls-private-label-store' ); ?></h2>
-            <ol style="margin: 0; padding-left: 20px;">
-                <li><?php esc_html_e( 'Go to Elementor → Theme Builder → Single Product', 'pls-private-label-store' ); ?></li>
-                <li><?php esc_html_e( 'Add the "PLS Configurator" widget to your template', 'pls-private-label-store' ); ?></li>
-                <li><?php esc_html_e( 'Add other WooCommerce widgets (Product Title, Price, Images, etc.)', 'pls-private-label-store' ); ?></li>
-                <li><?php esc_html_e( 'Use Elementor Dynamic Tags for PLS-specific data (Pack Units, etc.)', 'pls-private-label-store' ); ?></li>
-                <li><?php esc_html_e( 'Publish the template and it will apply to all variable products', 'pls-private-label-store' ); ?></li>
-            </ol>
+        <!-- Shortcode Usage Info -->
+        <div class="pls-widget-section" style="background: #e7f5e7; border-left: 4px solid #00a32a; margin-top: 40px;">
+            <h2><?php esc_html_e( '📝 Shortcode Usage', 'pls-private-label-store' ); ?></h2>
+            <p style="margin: 0 0 12px 0;">
+                <strong><?php esc_html_e( 'In your Elementor template, use:', 'pls-private-label-store' ); ?></strong>
+            </p>
+            <code style="display: block; padding: 12px; background: #fff; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 12px;">
+                [pls_single_product]
+            </code>
+            <p style="margin: 0 0 12px 0;">
+                <strong><?php esc_html_e( 'Or with options:', 'pls-private-label-store' ); ?></strong>
+            </p>
+            <code style="display: block; padding: 12px; background: #fff; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 12px;">
+                [pls_single_product show_configurator="yes" show_description="yes" show_ingredients="yes" show_bundles="yes"]
+            </code>
+            <p style="margin: 0; font-size: 13px; color: #666;">
+                <?php esc_html_e( 'The shortcode automatically detects the current product when used in Elementor Theme Builder Single Product template.', 'pls-private-label-store' ); ?>
+            </p>
         </div>
 
         <?php

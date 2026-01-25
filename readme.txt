@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 4.6.3
+Stable tag: 4.7.1
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,20 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 4.7.1 =
+* **FIXED:** Preview now uses shortcodes only - removed all Elementor widget rendering code
+* **FIXED:** Preview shows exactly what `[pls_single_product]` shortcode renders in Elementor templates
+* **REMOVED:** Elementor widget rendering from preview - no widgets in code, only shortcodes
+* **IMPROVED:** Preview matches actual frontend output when using shortcodes in Elementor templates
+
+= 4.7.0 =
+* **NEW:** Product preview now opens in side panel modal instead of new page - better workflow
+* **NEW:** Split-screen preview layout - product list on left (40%), preview content on right (60%)
+* **NEW:** Preview modal shows product info sidebar with quick actions
+* **IMPROVED:** Preview button now opens modal instead of new tab - faster and more convenient
+* **IMPROVED:** Preview content loads via AJAX for better performance
+* **NOTE:** Product page split functionality will be added in next release
+
 = 4.6.3 =
 * **FIXED:** Commission creation now works - fixed wrong order status format in query ('wc-completed' → 'completed')
 * **FIXED:** Added manual commission trigger after saving completed/processing orders to ensure commissions are created even if hook doesn't fire

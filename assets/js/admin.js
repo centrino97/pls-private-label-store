@@ -804,6 +804,77 @@
       $('#pls-custom-request-form')[0].reset();
     });
 
+    // Product Preview Modal (Side Panel)
+    $(document).on('click', '.pls-preview-product-btn', function(e){
+      e.preventDefault();
+      var productId = $(this).data('product-id');
+      var wcId = $(this).data('wc-id');
+      var productName = $(this).data('product-name');
+      
+      if (!productId || !wcId) {
+        alert('Invalid product data.');
+        return;
+      }
+      
+      // Show modal
+      var $modal = $('#pls-preview-modal');
+      $modal.show().addClass('is-active');
+      updateModalState();
+      
+      // Update title and product info
+      $('#pls-preview-title').text('Preview: ' + productName);
+      $('#pls-preview-product-info').html('<p><strong>' + productName + '</strong></p>');
+      
+      // Set live product link
+      var liveUrl = window.location.origin + '/?p=' + wcId;
+      $('#pls-preview-view-live').attr('href', liveUrl);
+      
+      // Show loading state
+      $('#pls-preview-content').html('<div style="text-align: center; padding: 40px;"><p class="description">Loading preview content...</p></div>');
+      
+      // Load preview content via AJAX
+      $.post(ajaxurl, {
+        action: 'pls_get_product_preview_content',
+        nonce: (window.PLS_Admin ? PLS_Admin.nonce : ''),
+        product_id: productId,
+        wc_id: wcId
+      }, function(resp){
+        if (resp && resp.success && resp.data && resp.data.html){
+          $('#pls-preview-content').html(resp.data.html);
+          
+          // Re-initialize any scripts that need to run
+          if (typeof PLS_Offers !== 'undefined' && window.jQuery) {
+            // Scripts should already be enqueued, but ensure they're available
+            if (typeof wc_add_to_cart_variation_params !== 'undefined') {
+              // WooCommerce variation script may need re-initialization
+              $(document.body).trigger('wc_variation_form');
+            }
+          }
+        } else {
+          $('#pls-preview-content').html('<div class="pls-note">' + 
+            (resp && resp.data && resp.data.message ? resp.data.message : 'Failed to load preview content.') + 
+            '</div>');
+        }
+      }).fail(function(){
+        $('#pls-preview-content').html('<div class="pls-note">Failed to load preview content. Please try again.</div>');
+      });
+    });
+    
+    // Close preview modal
+    $('#pls-preview-modal .pls-modal__close').on('click', function(e){
+      e.preventDefault();
+      $('#pls-preview-modal').hide().removeClass('is-active');
+      updateModalState();
+    });
+    
+    // Close preview modal on backdrop click
+    $('#pls-preview-modal').on('click', function(e){
+      if ($(e.target).hasClass('pls-preview-modal')) {
+        $(this).hide().removeClass('is-active');
+        updateModalState();
+      }
+    });
+
     $('#pls-custom-request-form').on('submit', function(e){
       e.preventDefault();
       var form = $(this);

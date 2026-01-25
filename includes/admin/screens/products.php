@@ -78,6 +78,67 @@ wp_add_inline_style( 'pls-admin', '
     background: #2271b1 !important;
     color: #fff !important;
 }
+.pls-preview-modal {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 100000 !important;
+    background: rgba(0,0,0,0.8) !important;
+}
+.pls-preview-modal .pls-modal__dialog {
+    display: flex !important;
+    flex-direction: row !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    height: 100vh !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    background: #fff !important;
+}
+.pls-preview-modal .pls-preview-sidebar {
+    width: 40% !important;
+    overflow-y: auto !important;
+    border-right: 1px solid #ddd !important;
+    background: #f9f9f9 !important;
+    padding: 20px !important;
+}
+.pls-preview-modal .pls-preview-content-panel {
+    width: 60% !important;
+    overflow-y: auto !important;
+    padding: 40px !important;
+    background: #fff !important;
+}
+.pls-preview-content-panel .pls-preview-note {
+    background: #fff3cd;
+    border-left: 4px solid #ffb900;
+    padding: 12px 16px;
+    margin-bottom: 30px;
+    border-radius: 4px;
+}
+.pls-preview-content-panel .pls-preview-note strong {
+    display: block;
+    margin-bottom: 8px;
+}
+.pls-preview-content-panel .pls-widget-section {
+    margin-bottom: 40px;
+    padding: 20px;
+    background: #f9f9f9;
+    border-radius: 4px;
+}
+.pls-preview-content-panel .pls-widget-section h2 {
+    margin-top: 0;
+    font-size: 20px;
+    color: #2271b1;
+}
+.pls-preview-content-panel .pls-note {
+    padding: 12px;
+    background: #f0f0f1;
+    border-left: 4px solid #dba617;
+    margin: 10px 0;
+    border-radius: 4px;
+}
 ' );
 
 // Get pack tier defaults from attribute system
@@ -224,12 +285,13 @@ wp_localize_script(
                     <?php esc_html_e( 'Edit', 'pls-private-label-store' ); ?>
                 </button>
                 <?php if ( ! empty( $product['wc_product_id'] ) ) : ?>
-                  <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-product-preview&product_id=' . $product['id'] . '&wc_id=' . $product['wc_product_id'] ) ); ?>" 
-                     class="button button-small pls-btn--ghost" 
-                     target="_blank"
-                     title="<?php esc_attr_e( 'Preview how this product appears on the frontend', 'pls-private-label-store' ); ?>">
+                  <button class="button button-small pls-btn--ghost pls-preview-product-btn" 
+                          data-product-id="<?php echo esc_attr( $product['id'] ); ?>"
+                          data-wc-id="<?php echo esc_attr( $product['wc_product_id'] ); ?>"
+                          data-product-name="<?php echo esc_attr( $product['name'] ); ?>"
+                          title="<?php esc_attr_e( 'Preview how this product appears on the frontend', 'pls-private-label-store' ); ?>">
                       <?php esc_html_e( 'Preview', 'pls-private-label-store' ); ?>
-                  </a>
+                  </button>
                 <?php else : ?>
                   <button class="button button-small pls-btn--ghost" 
                           disabled 

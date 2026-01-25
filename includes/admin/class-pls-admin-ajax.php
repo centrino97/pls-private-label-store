@@ -33,6 +33,7 @@ final class PLS_Admin_Ajax {
         add_action( 'wp_ajax_pls_update_label_pricing', array( __CLASS__, 'update_label_pricing' ) );
         add_action( 'wp_ajax_pls_get_product_options_data', array( __CLASS__, 'get_product_options_data' ) );
         add_action( 'wp_ajax_pls_preview_product', array( __CLASS__, 'preview_product' ) );
+        add_action( 'wp_ajax_pls_get_product_preview_content', array( __CLASS__, 'get_product_preview_content' ) );
         add_action( 'wp_ajax_pls_custom_product_request', array( __CLASS__, 'custom_product_request' ) );
         add_action( 'wp_ajax_pls_update_custom_order_status', array( __CLASS__, 'update_custom_order_status' ) );
         add_action( 'wp_ajax_pls_update_custom_order', array( __CLASS__, 'update_custom_order' ) );
@@ -2025,6 +2026,106 @@ final class PLS_Admin_Ajax {
         require_once PLS_PLS_DIR . 'includes/admin/preview-renderer.php';
         PLS_Preview_Renderer::render( $payload );
         $html = ob_get_clean();
+
+        wp_send_json_success( array( 'html' => $html ) );
+    }
+
+    /**
+     * AJAX: Get product preview content for side panel (synced products only).
+     */
+    public static function get_product_preview_content() {
+        check_ajax_referer( 'pls_admin_nonce', 'nonce' );
+
+        if ( ! current_user_can( PLS_Capabilities::CAP_PRODUCTS ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $pls_product_id = isset( $_POST['product_id'] ) ? absint( $_POST['product_id'] ) : 0;
+        $wc_product_id  = isset( $_POST['wc_id'] ) ? absint( $_POST['wc_id'] ) : 0;
+
+        if ( ! $pls_product_id || ! $wc_product_id ) {
+            wp_send_json_error( array( 'message' => __( 'Invalid product ID.', 'pls-private-label-store' ) ), 400 );
+        }
+
+        // Get PLS product
+        $pls_product = PLS_Repo_Base_Product::get( $pls_product_id );
+        if ( ! $pls_product ) {
+            wp_send_json_error( array( 'message' => __( 'Product not found.', 'pls-private-label-store' ) ), 404 );
+        }
+
+        // Get WooCommerce product
+        if ( ! function_exists( 'wc_get_product' ) ) {
+            wp_send_json_error( array( 'message' => __( 'WooCommerce is not active.', 'pls-private-label-store' ) ), 400 );
+        }
+
+        $wc_product = wc_get_product( $wc_product_id );
+        if ( ! $wc_product ) {
+            wp_send_json_error( array( 'message' => __( 'WooCommerce product not found. Please sync the product first.', 'pls-private-label-store' ) ), 404 );
+        }
+
+        // Set up global $product for widgets
+        global $product, $wp_query;
+        $product = $wc_product;
+        $original_query = $wp_query;
+        $wp_query->is_product = true;
+        $wp_query->is_singular = true;
+
+        // Enqueue frontend assets
+        wp_enqueue_style( 'pls-offers', PLS_PLS_URL . 'assets/css/offers.css', array(), PLS_PLS_VERSION );
+        wp_enqueue_script( 'pls-offers', PLS_PLS_URL . 'assets/js/offers.js', array( 'jquery' ), PLS_PLS_VERSION, true );
+        wp_localize_script(
+            'pls-offers',
+            'PLS_Offers',
+            array(
+                'ajax_url' => admin_url( 'admin-ajax.php' ),
+                'nonce'    => wp_create_nonce( 'pls_offers' ),
+            )
+        );
+
+        if ( function_exists( 'WC' ) ) {
+            wp_enqueue_script( 'wc-add-to-cart-variation' );
+        }
+
+        // Generate preview HTML content using shortcode (no widgets)
+        ob_start();
+        ?>
+        <div class="pls-preview-note">
+            <strong><?php esc_html_e( '📋 Preview Mode', 'pls-private-label-store' ); ?></strong>
+            <p style="margin: 0;">
+                <?php esc_html_e( 'This preview shows how the product will render using the [pls_single_product] shortcode in your Elementor template.', 'pls-private-label-store' ); ?>
+            </p>
+        </div>
+
+        <!-- Render using PLS Single Product Shortcode -->
+        <?php
+        // Render using the shortcode - this is what users will use in Elementor templates
+        echo do_shortcode( '[pls_single_product product_id="' . esc_attr( $wc_product_id ) . '"]' );
+        ?>
+
+        <!-- Shortcode Usage Info -->
+        <div class="pls-widget-section" style="background: #e7f5e7; border-left: 4px solid #00a32a; margin-top: 40px;">
+            <h2><?php esc_html_e( '📝 Shortcode Usage', 'pls-private-label-store' ); ?></h2>
+            <p style="margin: 0 0 12px 0;">
+                <strong><?php esc_html_e( 'In your Elementor template, use:', 'pls-private-label-store' ); ?></strong>
+            </p>
+            <code style="display: block; padding: 12px; background: #fff; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 12px;">
+                [pls_single_product]
+            </code>
+            <p style="margin: 0 0 12px 0;">
+                <strong><?php esc_html_e( 'Or with options:', 'pls-private-label-store' ); ?></strong>
+            </p>
+            <code style="display: block; padding: 12px; background: #fff; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 12px;">
+                [pls_single_product show_configurator="yes" show_description="yes" show_ingredients="yes" show_bundles="yes"]
+            </code>
+            <p style="margin: 0; font-size: 13px; color: #666;">
+                <?php esc_html_e( 'The shortcode automatically detects the current product when used in Elementor Theme Builder Single Product template.', 'pls-private-label-store' ); ?>
+            </p>
+        </div>
+        <?php
+        $html = ob_get_clean();
+
+        // Restore original query
+        $wp_query = $original_query;
 
         wp_send_json_success( array( 'html' => $html ) );
     }
