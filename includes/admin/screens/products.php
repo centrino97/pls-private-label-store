@@ -36,7 +36,7 @@ $attr_payload = PLS_Admin_Ajax::attribute_payload();
 
 // Add preview modal CSS
 wp_add_inline_style( 'pls-admin', '
-/* Product Modal - Always Fullscreen */
+/* Product Modal - Always Fullscreen - Override base admin.css */
 #pls-product-modal {
     position: fixed !important;
     top: 0 !important;
@@ -45,15 +45,21 @@ wp_add_inline_style( 'pls-admin', '
     bottom: 0 !important;
     z-index: 100000 !important;
     background: rgba(0,0,0,0.8) !important;
+    padding: 0 !important;
+    justify-content: flex-start !important;
+    align-items: flex-start !important;
 }
 #pls-product-modal .pls-modal__dialog {
     max-width: 100% !important;
     width: 100% !important;
     height: 100vh !important;
+    max-height: 100vh !important;
     margin: 0 !important;
+    padding: 0 !important;
     border-radius: 0 !important;
     display: flex !important;
     flex-direction: column !important;
+    box-shadow: none !important;
 }
 #pls-product-modal .pls-modal__head {
     flex-shrink: 0;
@@ -81,17 +87,6 @@ wp_add_inline_style( 'pls-admin', '
     width: 50% !important;
     overflow-y: auto !important;
     background: #fff !important;
-}
-
-/* Modal is ALWAYS fullscreen - no exceptions */
-#pls-product-modal .pls-modal__dialog {
-    max-width: 100% !important;
-    width: 100% !important;
-    height: 100vh !important;
-    margin: 0 !important;
-    border-radius: 0 !important;
-    display: flex !important;
-    flex-direction: column !important;
 }
 
 /* Split Screen Mode - ONLY when both Builder AND Preview are active */

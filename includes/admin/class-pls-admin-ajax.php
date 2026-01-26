@@ -2070,37 +2070,13 @@ final class PLS_Admin_Ajax {
         $wp_query->is_product = true;
         $wp_query->is_singular = true;
 
-        // Enqueue frontend assets
-        wp_enqueue_style( 'pls-offers', PLS_PLS_URL . 'assets/css/offers.css', array(), PLS_PLS_VERSION );
-        wp_enqueue_script( 'pls-offers', PLS_PLS_URL . 'assets/js/offers.js', array( 'jquery' ), PLS_PLS_VERSION, true );
-        wp_localize_script(
-            'pls-offers',
-            'PLS_Offers',
-            array(
-                'ajax_url' => admin_url( 'admin-ajax.php' ),
-                'nonce'    => wp_create_nonce( 'pls_offers' ),
-            )
-        );
-
-        if ( function_exists( 'WC' ) ) {
-            wp_enqueue_script( 'wc-add-to-cart-variation' );
-        }
-
         // Generate preview HTML content using shortcode (no widgets)
+        // Don't enqueue assets - they'll be loaded by the shortcode itself
         ob_start();
-        ?>
-        <div class="pls-preview-note">
-            <strong><?php esc_html_e( '📋 Preview Mode', 'pls-private-label-store' ); ?></strong>
-            <p style="margin: 0;">
-                <?php esc_html_e( 'This preview shows how the product will render using the [pls_single_product] shortcode in your Elementor template.', 'pls-private-label-store' ); ?>
-            </p>
-        </div>
-
-        <!-- Render using PLS Single Product Shortcode -->
-        <?php
+        
         // Render using the shortcode with all options enabled to show complete PLS data
-        echo do_shortcode( '[pls_single_product wc_id="' . esc_attr( $wc_product_id ) . '" show_configurator="yes" show_description="yes" show_ingredients="yes" show_bundles="yes"]' );
-        ?>
+        // This is fast because it just renders HTML, no full page load
+        echo do_shortcode( '[pls_single_product wc_id="' . esc_attr( $wc_product_id ) . '" show_images="yes" show_configurator="yes" show_description="yes" show_ingredients="yes" show_bundles="yes"]' );
 
         <!-- Shortcode Usage Info -->
         <div class="pls-widget-section" style="background: #e7f5e7; border-left: 4px solid #00a32a; margin-top: 40px;">

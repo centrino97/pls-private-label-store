@@ -668,12 +668,17 @@
     padding: 1.25rem 2rem;
     font-size: 1.125rem;
     font-weight: 600;
+    background: var(--pls-primary);
+    color: #fff;
+    border: none;
     border-radius: var(--pls-radius);
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     transition: all 0.2s ease;
+    cursor: pointer;
 }
 
 .pls-configure-button:hover {
+    background: var(--pls-primary-dark);
     transform: translateY(-2px);
     box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
 }

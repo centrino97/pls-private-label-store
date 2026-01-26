@@ -380,6 +380,20 @@ final class PLS_Frontend_Display {
                     <?php
                 }
                 ?>
+                
+                <!-- CTA Button: Configure & Order -->
+                <?php if ( $product->is_type( 'variable' ) ) : ?>
+                    <div class="pls-product-cta">
+                        <button type="button" class="pls-configure-button" id="pls-open-configurator">
+                            <?php esc_html_e( 'Configure & Order', 'pls-private-label-store' ); ?>
+                        </button>
+                        <div class="pls-product-trust-signals">
+                            <span class="pls-trust-badge">✓ Free Shipping</span>
+                            <span class="pls-trust-badge">✓ Secure Checkout</span>
+                            <span class="pls-trust-badge">✓ Fast Delivery</span>
+                        </div>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
         <?php

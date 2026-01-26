@@ -705,6 +705,11 @@ final class PLS_Shortcodes {
         // Enqueue required assets
         wp_enqueue_style( 'pls-frontend-display' );
         wp_enqueue_script( 'pls-offers' );
+        
+        // Enqueue WooCommerce variation scripts for add-to-cart functionality
+        if ( function_exists( 'WC' ) && $wc_product->is_type( 'variable' ) ) {
+            wp_enqueue_script( 'wc-add-to-cart-variation' );
+        }
 
         // Use PLS_Frontend_Display to get full content with all data
         $options = array(
