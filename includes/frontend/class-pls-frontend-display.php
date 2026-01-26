@@ -226,14 +226,14 @@ final class PLS_Frontend_Display {
         ob_start();
         echo '<div class="pls-product-page" id="pls-product-content" data-product-id="' . esc_attr( $product_id ) . '">';
 
-        // Product Header: Images + Short Description
+        // Product Header: Images + Short Description + CTA Button
         if ( $options['show_images'] && $profile ) {
-            self::render_product_header( $product, $profile );
+            self::render_product_header( $product, $profile, $options );
         }
 
-        // Interactive Configurator with Add-to-Cart
+        // Configurator Modal (hidden by default, opened via button)
         if ( $options['show_configurator'] && $product->is_type( 'variable' ) ) {
-            self::render_full_configurator( $product, $profile );
+            self::render_configurator_modal( $product, $profile );
         }
 
         // Product Information Sections (Tabs/Accordion)
@@ -261,8 +261,9 @@ final class PLS_Frontend_Display {
      *
      * @param WC_Product $product The product.
      * @param object     $profile The product profile.
+     * @param array      $options Display options.
      */
-    private static function render_product_header( $product, $profile ) {
+    private static function render_product_header( $product, $profile, $options = array() ) {
         $featured_image_id = ! empty( $profile->featured_image_id ) ? absint( $profile->featured_image_id ) : 0;
         $gallery_ids = ! empty( $profile->gallery_ids ) ? array_filter( array_map( 'absint', explode( ',', $profile->gallery_ids ) ) ) : array();
         
@@ -410,6 +411,7 @@ final class PLS_Frontend_Display {
         ?>
         <div class="pls-configurator-section">
             <h2 class="pls-configurator-title"><?php esc_html_e( 'Configure Your Order', 'pls-private-label-store' ); ?></h2>
+            <p class="pls-configurator-subtitle"><?php esc_html_e( 'Select your pack size and customize your order', 'pls-private-label-store' ); ?></p>
             
             <!-- Pack Tier Selection -->
             <div class="pls-configurator-block">

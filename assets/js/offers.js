@@ -359,6 +359,10 @@
             // Trigger cart update event
             $(document.body).trigger('added_to_cart', [response.fragments, response.cart_hash, $button]);
             
+            // Close configurator modal if open
+            $('#pls-configurator-modal').removeClass('is-visible');
+            $('body').removeClass('pls-modal-open');
+            
             // Show bundle popup after short delay
             setTimeout(function() {
               showBundlePopup();
@@ -430,6 +434,31 @@
     });
   }
 
+  // Configurator Modal
+  function initConfiguratorModal() {
+    // Open modal
+    $(document).on('click', '#pls-open-configurator', function() {
+      $('#pls-configurator-modal').addClass('is-visible');
+      $('body').addClass('pls-modal-open');
+    });
+
+    // Close modal
+    $(document).on('click', '.pls-configurator-modal__close, .pls-configurator-modal__overlay', function(e) {
+      if ($(e.target).hasClass('pls-configurator-modal__overlay') || $(e.target).hasClass('pls-configurator-modal__close')) {
+        $('#pls-configurator-modal').removeClass('is-visible');
+        $('body').removeClass('pls-modal-open');
+      }
+    });
+
+    // Close on ESC key
+    $(document).on('keydown', function(e) {
+      if (e.key === 'Escape' && $('#pls-configurator-modal').hasClass('is-visible')) {
+        $('#pls-configurator-modal').removeClass('is-visible');
+        $('body').removeClass('pls-modal-open');
+      }
+    });
+  }
+
   $(function(){
     // Auto-load offers for any offer widget present.
     $('.pls-offer').each(function(){ loadOffers($(this)); });
@@ -440,6 +469,7 @@
     initPriceCalculator();
     initAddToCart();
     initTabs();
+    initConfiguratorModal();
     
     // Re-initialize if cards are loaded dynamically
     $(document).on('pls_tier_cards_loaded', function() {
