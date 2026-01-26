@@ -345,6 +345,44 @@ final class PLS_Frontend_Display {
                 <?php endif; ?>
                 
                 <?php
+                // Product Basics (Icons) - Display before price
+                if ( ! empty( $profile->basics_json ) ) {
+                    $basics_data = json_decode( $profile->basics_json, true );
+                    if ( is_array( $basics_data ) && ! empty( $basics_data ) ) {
+                        // Extract all selected values from basics
+                        $basics_values = array();
+                        foreach ( $basics_data as $attr ) {
+                            if ( isset( $attr['values'] ) && is_array( $attr['values'] ) ) {
+                                foreach ( $attr['values'] as $value ) {
+                                    if ( isset( $value['label'] ) && ! empty( $value['label'] ) ) {
+                                        $basics_values[] = $value;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        if ( ! empty( $basics_values ) ) {
+                            ?>
+                            <div class="pls-product-basics">
+                                <?php foreach ( $basics_values as $basic ) : 
+                                    $label = isset( $basic['label'] ) ? $basic['label'] : '';
+                                    $icon_url = isset( $basic['icon'] ) && ! empty( $basic['icon'] ) ? $basic['icon'] : '';
+                                    ?>
+                                    <div class="pls-basic-icon">
+                                        <?php if ( $icon_url ) : ?>
+                                            <img src="<?php echo esc_url( $icon_url ); ?>" alt="<?php echo esc_attr( $label ); ?>" />
+                                        <?php else : ?>
+                                            <span class="pls-basic-icon-placeholder">✓</span>
+                                        <?php endif; ?>
+                                        <span class="pls-basic-label"><?php echo esc_html( $label ); ?></span>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <?php
+                        }
+                    }
+                }
+                
                 // Show starting price for variable products
                 if ( $product->is_type( 'variable' ) ) {
                     $variation_attributes = $product->get_variation_attributes();

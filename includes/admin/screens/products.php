@@ -872,13 +872,19 @@ wp_localize_script(
                 <div class="pls-section-heading">
                   <p class="pls-label"><?php esc_html_e( 'ADDITIONAL OPTIONS', 'pls-private-label-store' ); ?></p>
                   <h3><?php esc_html_e( 'Other Product Options', 'pls-private-label-store' ); ?></h3>
-                  <p class="pls-subtle"><?php esc_html_e( 'Add custom product options like Custom Printed Bottles, External Box Packaging, etc.', 'pls-private-label-store' ); ?></p>
+                  <p class="pls-subtle"><?php esc_html_e( 'Select from existing product options like Custom Printed Bottles, External Box Packaging, etc. To create or edit options, use the Product Options menu.', 'pls-private-label-store' ); ?></p>
                 </div>
-                <div class="pls-field-stack">
-                  <button type="button" class="button" id="pls-open-attribute-manage"><?php esc_html_e( 'Manage product options & values', 'pls-private-label-store' ); ?></button>
+                <div class="pls-field-stack" style="margin-bottom: 16px;">
+                  <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-attributes' ) ); ?>" target="_blank" class="button" style="text-decoration: none;">
+                    <?php esc_html_e( 'Manage product options & values', 'pls-private-label-store' ); ?>
+                    <span class="dashicons dashicons-external" style="font-size: 16px; vertical-align: middle; margin-left: 4px;"></span>
+                  </a>
+                  <p class="description" style="margin-top: 8px; font-size: 12px; color: #666;">
+                    <?php esc_html_e( 'Opens Product Options page where you can create and edit options and their values.', 'pls-private-label-store' ); ?>
+                  </p>
                 </div>
                 <div id="pls-attribute-rows" class="pls-attribute-rows"></div>
-                <button type="button" class="button" id="pls-add-attribute-row"><?php esc_html_e( 'Add product option', 'pls-private-label-store' ); ?></button>
+                <button type="button" class="button" id="pls-add-attribute-row"><?php esc_html_e( 'Select product option', 'pls-private-label-store' ); ?></button>
                 <div id="pls-attribute-template" class="hidden">
                   <div class="pls-attribute-row">
                     <div class="pls-attribute-row__grid">
@@ -912,8 +918,9 @@ wp_localize_script(
                             <select class="pls-attr-value-multi" multiple data-placeholder="<?php esc_attr_e( 'Select values', 'pls-private-label-store' ); ?>"></select>
                           </label>
                           <div class="pls-attribute-value-details"></div>
-                          <div class="pls-attribute-custom-values"></div>
-                          <button type="button" class="button button-small pls-attribute-value-add-custom"><?php esc_html_e( 'Add custom value', 'pls-private-label-store' ); ?></button>
+                          <p class="pls-field-hint" style="margin-top: 8px; font-size: 11px; color: #666;">
+                            <?php esc_html_e( 'Select from existing values. To add new values, use the Product Options menu.', 'pls-private-label-store' ); ?>
+                          </p>
                         </div>
                       </div>
                     </div>

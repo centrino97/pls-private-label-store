@@ -1226,11 +1226,12 @@
       });
     }
 
-    $('#pls-open-attribute-manage').on('click', function(e){
-      e.preventDefault();
-      openModalById('#pls-attribute-manage-modal');
-      renderManageAttrList();
-    });
+    // Removed: "Manage" button now opens Product Options page in new tab (handled by link in HTML)
+    // $('#pls-open-attribute-manage').on('click', function(e){
+    //   e.preventDefault();
+    //   openModalById('#pls-attribute-manage-modal');
+    //   renderManageAttrList();
+    // });
 
     $(document).on('click', '.pls-manage-attr-item', function(){
       var id = parseInt($(this).data('attr-id'), 10);
@@ -1376,11 +1377,12 @@
         renumberAttributeRows();
       });
 
-      $(document).on('click', '.pls-attribute-value-add-custom', function(e){
-        e.preventDefault();
-        var attrRow = $(this).closest('.pls-attribute-row');
-        addCustomValueRow(attrRow, {});
-      });
+      // Removed: "Add custom value" button - users should create values in Product Options menu
+      // $(document).on('click', '.pls-attribute-value-add-custom', function(e){
+      //   e.preventDefault();
+      //   var attrRow = $(this).closest('.pls-attribute-row');
+      //   addCustomValueRow(attrRow, {});
+      // });
 
       $(document).on('click', '.pls-attribute-custom-remove', function(e){
         e.preventDefault();
