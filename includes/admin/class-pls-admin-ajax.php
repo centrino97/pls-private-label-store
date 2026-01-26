@@ -2077,27 +2077,7 @@ final class PLS_Admin_Ajax {
         // Render using the shortcode with all options enabled to show complete PLS data
         // This is fast because it just renders HTML, no full page load
         echo do_shortcode( '[pls_single_product wc_id="' . esc_attr( $wc_product_id ) . '" show_images="yes" show_configurator="yes" show_description="yes" show_ingredients="yes" show_bundles="yes"]' );
-
-        <!-- Shortcode Usage Info -->
-        <div class="pls-widget-section" style="background: #e7f5e7; border-left: 4px solid #00a32a; margin-top: 40px;">
-            <h2><?php esc_html_e( '📝 Shortcode Usage', 'pls-private-label-store' ); ?></h2>
-            <p style="margin: 0 0 12px 0;">
-                <strong><?php esc_html_e( 'In your Elementor template, use:', 'pls-private-label-store' ); ?></strong>
-            </p>
-            <code style="display: block; padding: 12px; background: #fff; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 12px;">
-                [pls_single_product]
-            </code>
-            <p style="margin: 0 0 12px 0;">
-                <strong><?php esc_html_e( 'Or with options:', 'pls-private-label-store' ); ?></strong>
-            </p>
-            <code style="display: block; padding: 12px; background: #fff; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 12px;">
-                [pls_single_product show_configurator="yes" show_description="yes" show_ingredients="yes" show_bundles="yes"]
-            </code>
-            <p style="margin: 0; font-size: 13px; color: #666;">
-                <?php esc_html_e( 'The shortcode automatically detects the current product when used in Elementor Theme Builder Single Product template.', 'pls-private-label-store' ); ?>
-            </p>
-        </div>
-        <?php
+        
         $html = ob_get_clean();
 
         // Restore original query
