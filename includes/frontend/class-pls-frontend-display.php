@@ -194,10 +194,11 @@ final class PLS_Frontend_Display {
      */
     public static function get_pls_content( $product_id, $options = array() ) {
         $defaults = array(
-            'show_configurator' => true,
-            'show_description'  => true,
-            'show_ingredients'   => true,
-            'show_bundles'       => true,
+            'show_images'        => true,
+            'show_configurator'  => true,
+            'show_description'   => true,
+            'show_ingredients'    => true,
+            'show_bundles'        => true,
         );
         $options = wp_parse_args( $options, $defaults );
 
@@ -223,17 +224,22 @@ final class PLS_Frontend_Display {
         $profile = PLS_Repo_Product_Profile::get( $base_product->id );
 
         ob_start();
-        echo '<div class="pls-auto-inject" id="pls-product-content">';
+        echo '<div class="pls-product-page" id="pls-product-content" data-product-id="' . esc_attr( $product_id ) . '">';
 
-        // Configurator section (pack tier selector with visual cards)
-        if ( $options['show_configurator'] && $product->is_type( 'variable' ) ) {
-            self::render_configurator( $product );
+        // Product Header: Images + Short Description
+        if ( $options['show_images'] && $profile ) {
+            self::render_product_header( $product, $profile );
         }
 
-        // Product info section
+        // Interactive Configurator with Add-to-Cart
+        if ( $options['show_configurator'] && $product->is_type( 'variable' ) ) {
+            self::render_full_configurator( $product, $profile );
+        }
+
+        // Product Information Sections (Tabs/Accordion)
         if ( $profile ) {
-            if ( $options['show_description'] && ! empty( $profile->long_description ) ) {
-                self::render_description( $profile );
+            if ( $options['show_description'] ) {
+                self::render_product_info_sections( $product, $profile );
             }
 
             if ( $options['show_ingredients'] && ! empty( $profile->ingredients_list ) ) {
@@ -246,8 +252,456 @@ final class PLS_Frontend_Display {
             self::render_bundles();
         }
 
-        echo '</div>'; // .pls-auto-inject
+        echo '</div>'; // .pls-product-page
         return ob_get_clean();
+    }
+
+    /**
+     * Render product header with images and short description.
+     *
+     * @param WC_Product $product The product.
+     * @param object     $profile The product profile.
+     */
+    private static function render_product_header( $product, $profile ) {
+        $featured_image_id = ! empty( $profile->featured_image_id ) ? absint( $profile->featured_image_id ) : 0;
+        $gallery_ids = ! empty( $profile->gallery_ids ) ? array_filter( array_map( 'absint', explode( ',', $profile->gallery_ids ) ) ) : array();
+        
+        // Get featured image URL
+        $featured_url = '';
+        $featured_alt = '';
+        if ( $featured_image_id ) {
+            $featured_image = wp_get_attachment_image_src( $featured_image_id, 'woocommerce_single' );
+            $featured_url = $featured_image ? $featured_image[0] : '';
+            $featured_alt = get_post_meta( $featured_image_id, '_wp_attachment_image_alt', true );
+        }
+        
+        // Get gallery images
+        $gallery_images = array();
+        foreach ( $gallery_ids as $gallery_id ) {
+            $img = wp_get_attachment_image_src( $gallery_id, 'woocommerce_thumbnail' );
+            if ( $img ) {
+                $gallery_images[] = array(
+                    'id'  => $gallery_id,
+                    'url' => $img[0],
+                    'full' => wp_get_attachment_image_src( $gallery_id, 'full' )[0] ?? $img[0],
+                    'alt' => get_post_meta( $gallery_id, '_wp_attachment_image_alt', true ),
+                );
+            }
+        }
+        
+        // If no featured but have gallery, use first gallery image
+        if ( ! $featured_url && ! empty( $gallery_images ) ) {
+            $featured_url = $gallery_images[0]['full'];
+            $featured_alt = $gallery_images[0]['alt'];
+        }
+        
+        ?>
+        <div class="pls-product-header">
+            <div class="pls-product-header__images">
+                <?php if ( $featured_url ) : ?>
+                    <div class="pls-product-image-main">
+                        <img src="<?php echo esc_url( $featured_url ); ?>" 
+                             alt="<?php echo esc_attr( $featured_alt ?: $product->get_name() ); ?>"
+                             class="pls-product-image-main__img"
+                             data-image-id="<?php echo esc_attr( $featured_image_id ); ?>" />
+                    </div>
+                <?php else : ?>
+                    <div class="pls-product-image-main pls-product-image-placeholder">
+                        <svg width="600" height="600" viewBox="0 0 600 600" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect width="600" height="600" fill="#f3f4f6"/>
+                            <path d="M300 200L250 250L300 300L350 250L300 200Z" fill="#d1d5db"/>
+                            <text x="300" y="350" text-anchor="middle" fill="#9ca3af" font-family="Arial" font-size="18">No Image</text>
+                        </svg>
+                    </div>
+                <?php endif; ?>
+                
+                <?php if ( ! empty( $gallery_images ) ) : ?>
+                    <div class="pls-product-gallery-thumbnails">
+                        <?php foreach ( $gallery_images as $index => $gallery_img ) : ?>
+                            <button type="button" 
+                                    class="pls-gallery-thumb <?php echo $index === 0 && ! $featured_image_id ? 'is-active' : ''; ?>"
+                                    data-image-id="<?php echo esc_attr( $gallery_img['id'] ); ?>"
+                                    data-image-url="<?php echo esc_url( $gallery_img['full'] ); ?>"
+                                    aria-label="<?php echo esc_attr( sprintf( __( 'View image %d', 'pls-private-label-store' ), $index + 1 ) ); ?>">
+                                <img src="<?php echo esc_url( $gallery_img['url'] ); ?>" 
+                                     alt="<?php echo esc_attr( $gallery_img['alt'] ?: $product->get_name() ); ?>" />
+                            </button>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+            
+            <div class="pls-product-header__info">
+                <h1 class="pls-product-title"><?php echo esc_html( $product->get_name() ); ?></h1>
+                <?php if ( ! empty( $profile->short_description ) ) : ?>
+                    <div class="pls-product-short-description">
+                        <?php echo wp_kses_post( wpautop( $profile->short_description ) ); ?>
+                    </div>
+                <?php endif; ?>
+                
+                <?php
+                // Show starting price for variable products
+                if ( $product->is_type( 'variable' ) ) {
+                    $variation_attributes = $product->get_variation_attributes();
+                    $pack_tiers = isset( $variation_attributes['pa_pack-tier'] ) ? (array) $variation_attributes['pa_pack-tier'] : array();
+                    if ( ! empty( $pack_tiers ) ) {
+                        $lowest_price = null;
+                        foreach ( $pack_tiers as $tier_slug ) {
+                            $variation_id = self::get_variation_for_tier( $product->get_id(), $tier_slug );
+                            if ( $variation_id ) {
+                                $variation = wc_get_product( $variation_id );
+                                if ( $variation ) {
+                                    $price = $variation->get_price();
+                                    if ( null === $lowest_price || $price < $lowest_price ) {
+                                        $lowest_price = $price;
+                                    }
+                                }
+                            }
+                        }
+                        if ( $lowest_price ) {
+                            ?>
+                            <div class="pls-product-starting-price">
+                                <?php esc_html_e( 'Starting from', 'pls-private-label-store' ); ?> 
+                                <strong><?php echo wc_price( $lowest_price ); ?></strong>
+                            </div>
+                            <?php
+                        }
+                    }
+                } else {
+                    ?>
+                    <div class="pls-product-price">
+                        <?php echo $product->get_price_html(); ?>
+                    </div>
+                    <?php
+                }
+                ?>
+            </div>
+        </div>
+        <?php
+    }
+
+    /**
+     * Render full configurator with options and add-to-cart.
+     *
+     * @param WC_Product $product The product.
+     * @param object     $profile The product profile.
+     */
+    private static function render_full_configurator( $product, $profile ) {
+        $variation_attributes = $product->get_variation_attributes();
+        $pack_tiers = isset( $variation_attributes['pa_pack-tier'] ) ? (array) $variation_attributes['pa_pack-tier'] : array();
+
+        if ( empty( $pack_tiers ) ) {
+            return;
+        }
+
+        // Parse basics_json for product options
+        $product_options = array();
+        if ( ! empty( $profile->basics_json ) ) {
+            $basics_data = json_decode( $profile->basics_json, true );
+            if ( is_array( $basics_data ) ) {
+                foreach ( $basics_data as $attr ) {
+                    if ( isset( $attr['attribute_label'] ) && isset( $attr['values'] ) && is_array( $attr['values'] ) ) {
+                        $product_options[] = $attr;
+                    }
+                }
+            }
+        }
+
+        ?>
+        <div class="pls-configurator-section">
+            <h2 class="pls-configurator-title"><?php esc_html_e( 'Configure Your Order', 'pls-private-label-store' ); ?></h2>
+            
+            <!-- Pack Tier Selection -->
+            <div class="pls-configurator-block">
+                <h3 class="pls-configurator-block__title"><?php esc_html_e( 'Select Your Pack Size', 'pls-private-label-store' ); ?></h3>
+                <div class="pls-tier-cards">
+                    <?php foreach ( $pack_tiers as $tier_slug ) :
+                        $tier_term = get_term_by( 'slug', $tier_slug, 'pa_pack-tier' );
+                        if ( ! $tier_term ) {
+                            continue;
+                        }
+                        
+                        $units = (int) get_term_meta( $tier_term->term_id, '_pls_default_units', true );
+                        $tier_key = get_term_meta( $tier_term->term_id, '_pls_tier_key', true );
+                        $variation_id = self::get_variation_for_tier( $product->get_id(), $tier_slug );
+                        $variation_price = '';
+                        $price_per_unit = '';
+                        
+                        if ( $variation_id ) {
+                            $variation = wc_get_product( $variation_id );
+                            if ( $variation ) {
+                                $variation_price = $variation->get_price();
+                                if ( $units > 0 && $variation_price > 0 ) {
+                                    $price_per_unit = $variation_price / $units;
+                                }
+                            }
+                        }
+                        
+                        $tier_level = self::get_tier_level( $tier_key );
+                        ?>
+                        <div class="pls-tier-card" 
+                             data-tier="<?php echo esc_attr( $tier_slug ); ?>" 
+                             data-variation-id="<?php echo esc_attr( $variation_id ); ?>"
+                             data-units="<?php echo esc_attr( $units ); ?>"
+                             data-price-per-unit="<?php echo esc_attr( $price_per_unit ); ?>"
+                             data-total-price="<?php echo esc_attr( $variation_price ); ?>">
+                            <?php if ( $tier_level ) : ?>
+                                <span class="pls-tier-card__badge pls-tier-card__badge--<?php echo esc_attr( $tier_level ); ?>">
+                                    <?php echo esc_html( self::get_tier_badge_label( $tier_level ) ); ?>
+                                </span>
+                            <?php endif; ?>
+                            
+                            <h4 class="pls-tier-card__title"><?php echo esc_html( $tier_term->name ); ?></h4>
+                            
+                            <?php if ( $units > 0 ) : ?>
+                                <div class="pls-tier-card__units">
+                                    <span class="pls-tier-card__units-number"><?php echo number_format( $units ); ?></span>
+                                    <span class="pls-tier-card__units-label"><?php esc_html_e( 'units', 'pls-private-label-store' ); ?></span>
+                                </div>
+                            <?php endif; ?>
+                            
+                            <?php if ( $variation_price ) : ?>
+                                <div class="pls-tier-card__price">
+                                    <?php echo wc_price( $variation_price ); ?>
+                                </div>
+                                <?php if ( $price_per_unit ) : ?>
+                                    <div class="pls-tier-card__price-per-unit">
+                                        <?php echo wc_price( $price_per_unit ); ?> <?php esc_html_e( 'per unit', 'pls-private-label-store' ); ?>
+                                    </div>
+                                <?php endif; ?>
+                            <?php endif; ?>
+                            
+                            <button type="button" class="pls-tier-card__select button" data-tier="<?php echo esc_attr( $tier_slug ); ?>">
+                                <?php esc_html_e( 'Select', 'pls-private-label-store' ); ?>
+                            </button>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+
+            <!-- Product Options -->
+            <?php if ( ! empty( $product_options ) ) : ?>
+                <div class="pls-configurator-block pls-product-options">
+                    <h3 class="pls-configurator-block__title"><?php esc_html_e( 'Package Options', 'pls-private-label-store' ); ?></h3>
+                    <div class="pls-product-options-list">
+                        <?php foreach ( $product_options as $option ) : 
+                            $attr_label = isset( $option['attribute_label'] ) ? $option['attribute_label'] : '';
+                            $values = isset( $option['values'] ) && is_array( $option['values'] ) ? $option['values'] : array();
+                            
+                            // Skip pack-tier (already shown) and label application (handled separately)
+                            if ( stripos( $attr_label, 'pack tier' ) !== false || stripos( $attr_label, 'label application' ) !== false ) {
+                                continue;
+                            }
+                            
+                            if ( empty( $values ) ) {
+                                continue;
+                            }
+                            ?>
+                            <div class="pls-product-option-group" data-attribute-label="<?php echo esc_attr( $attr_label ); ?>">
+                                <label class="pls-product-option-label"><?php echo esc_html( $attr_label ); ?></label>
+                                <div class="pls-product-option-values">
+                                    <?php foreach ( $values as $value ) : 
+                                        $value_id = isset( $value['id'] ) ? absint( $value['id'] ) : 0;
+                                        $value_label = isset( $value['label'] ) ? $value['label'] : '';
+                                        $value_price = isset( $value['price'] ) ? floatval( $value['price'] ) : 0;
+                                        $tier_overrides = isset( $value['tier_price_overrides'] ) && is_array( $value['tier_price_overrides'] ) ? $value['tier_price_overrides'] : null;
+                                        
+                                        // Check if this is a "standard" option (usually free)
+                                        $is_standard = ( stripos( strtolower( $value_label ), 'standard' ) !== false || 
+                                                         stripos( strtolower( $value_label ), 'clear' ) !== false ||
+                                                         stripos( strtolower( $value_label ), 'black' ) !== false );
+                                        ?>
+                                        <label class="pls-option-value-card <?php echo $is_standard ? 'is-standard' : ''; ?>">
+                                            <input type="radio" 
+                                                   name="pls_option_<?php echo esc_attr( sanitize_title( $attr_label ) ); ?>" 
+                                                   value="<?php echo esc_attr( $value_id ); ?>"
+                                                   data-value-id="<?php echo esc_attr( $value_id ); ?>"
+                                                   data-price="<?php echo esc_attr( $value_price ); ?>"
+                                                   data-tier-prices="<?php echo esc_attr( $tier_overrides ? wp_json_encode( $tier_overrides ) : '' ); ?>"
+                                                   <?php echo $is_standard ? 'checked' : ''; ?> />
+                                            <span class="pls-option-value-label"><?php echo esc_html( $value_label ); ?></span>
+                                            <?php if ( ! $is_standard && ( $value_price > 0 || $tier_overrides ) ) : ?>
+                                                <span class="pls-option-price-badge">
+                                                    <?php
+                                                    if ( $tier_overrides && isset( $tier_overrides[1] ) ) {
+                                                        echo '+$' . number_format( floatval( $tier_overrides[1] ), 2 ) . ' ' . esc_html__( '(Tier 1)', 'pls-private-label-store' );
+                                                    } elseif ( $value_price > 0 ) {
+                                                        echo '+$' . number_format( $value_price, 2 );
+                                                    }
+                                                    ?>
+                                                </span>
+                                            <?php else : ?>
+                                                <span class="pls-option-price-badge"><?php esc_html_e( 'Included', 'pls-private-label-store' ); ?></span>
+                                            <?php endif; ?>
+                                        </label>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            <?php endif; ?>
+
+            <!-- Price Summary -->
+            <div class="pls-configurator-block pls-price-summary">
+                <h3 class="pls-configurator-block__title"><?php esc_html_e( 'Price Summary', 'pls-private-label-store' ); ?></h3>
+                <div class="pls-price-breakdown">
+                    <div class="pls-price-row">
+                        <span class="pls-price-label"><?php esc_html_e( 'Base Price', 'pls-private-label-store' ); ?></span>
+                        <span class="pls-price-value" id="pls-price-base"><?php echo wc_price( 0 ); ?></span>
+                    </div>
+                    <div class="pls-price-row" id="pls-price-options-row" style="display: none;">
+                        <span class="pls-price-label"><?php esc_html_e( 'Options', 'pls-private-label-store' ); ?></span>
+                        <span class="pls-price-value" id="pls-price-options"><?php echo wc_price( 0 ); ?></span>
+                    </div>
+                    <div class="pls-price-row pls-price-row--total">
+                        <span class="pls-price-label"><?php esc_html_e( 'Total', 'pls-private-label-store' ); ?></span>
+                        <span class="pls-price-value" id="pls-price-total"><?php echo wc_price( 0 ); ?></span>
+                    </div>
+                    <div class="pls-price-row pls-price-row--per-unit">
+                        <span class="pls-price-label"><?php esc_html_e( 'Per Unit', 'pls-private-label-store' ); ?></span>
+                        <span class="pls-price-value" id="pls-price-per-unit"><?php echo wc_price( 0 ); ?></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add to Cart Form -->
+            <div class="pls-configurator-block pls-add-to-cart-block">
+                <form class="pls-cart-form variations_form cart" method="post" enctype="multipart/form-data" data-product_id="<?php echo esc_attr( $product->get_id() ); ?>">
+                    <input type="hidden" name="add-to-cart" value="<?php echo esc_attr( $product->get_id() ); ?>">
+                    <input type="hidden" name="product_id" value="<?php echo esc_attr( $product->get_id() ); ?>">
+                    <input type="hidden" name="variation_id" value="" class="pls-variation-id" />
+                    
+                    <!-- Quantity Selector -->
+                    <div class="pls-quantity-selector">
+                        <label><?php esc_html_e( 'Quantity', 'pls-private-label-store' ); ?></label>
+                        <div class="pls-quantity-controls">
+                            <button type="button" class="pls-qty-btn pls-qty-minus" aria-label="<?php esc_attr_e( 'Decrease quantity', 'pls-private-label-store' ); ?>">−</button>
+                            <input type="number" 
+                                   name="quantity" 
+                                   value="1" 
+                                   min="1" 
+                                   step="1" 
+                                   class="pls-quantity-input"
+                                   id="pls-quantity" />
+                            <button type="button" class="pls-qty-btn pls-qty-plus" aria-label="<?php esc_attr_e( 'Increase quantity', 'pls-private-label-store' ); ?>">+</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Add to Cart Button -->
+                    <button type="submit" 
+                            class="pls-add-to-cart-button button button-primary button-large" 
+                            disabled>
+                        <span class="pls-add-to-cart-text"><?php esc_html_e( 'Select a pack size', 'pls-private-label-store' ); ?></span>
+                    </button>
+                    
+                    <div class="pls-cart-messages" id="pls-cart-messages"></div>
+                </form>
+            </div>
+        </div>
+        <?php
+    }
+
+    /**
+     * Render product information sections (tabs/accordion).
+     *
+     * @param WC_Product $product The product.
+     * @param object     $profile The product profile.
+     */
+    private static function render_product_info_sections( $product, $profile ) {
+        $has_description = ! empty( $profile->long_description );
+        $has_directions = ! empty( $profile->directions_text );
+        $has_skin_types = ! empty( $profile->skin_types_json );
+        $has_benefits = ! empty( $profile->benefits_json );
+        
+        if ( ! $has_description && ! $has_directions && ! $has_skin_types && ! $has_benefits ) {
+            return;
+        }
+        
+        ?>
+        <div class="pls-product-info-sections">
+            <div class="pls-product-tabs">
+                <?php if ( $has_description ) : ?>
+                    <button type="button" class="pls-tab-button is-active" data-tab="description">
+                        <?php esc_html_e( 'Description', 'pls-private-label-store' ); ?>
+                    </button>
+                <?php endif; ?>
+                
+                <?php if ( $has_directions ) : ?>
+                    <button type="button" class="pls-tab-button" data-tab="directions">
+                        <?php esc_html_e( 'Directions', 'pls-private-label-store' ); ?>
+                    </button>
+                <?php endif; ?>
+                
+                <?php if ( $has_skin_types || $has_benefits ) : ?>
+                    <button type="button" class="pls-tab-button" data-tab="info">
+                        <?php esc_html_e( 'Product Info', 'pls-private-label-store' ); ?>
+                    </button>
+                <?php endif; ?>
+            </div>
+            
+            <div class="pls-product-tab-content">
+                <?php if ( $has_description ) : ?>
+                    <div class="pls-tab-panel is-active" data-tab="description">
+                        <h2><?php esc_html_e( 'About This Product', 'pls-private-label-store' ); ?></h2>
+                        <div class="pls-product-description">
+                            <?php echo wp_kses_post( wpautop( $profile->long_description ) ); ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
+                
+                <?php if ( $has_directions ) : ?>
+                    <div class="pls-tab-panel" data-tab="directions">
+                        <h2><?php esc_html_e( 'Directions for Use', 'pls-private-label-store' ); ?></h2>
+                        <div class="pls-product-directions">
+                            <?php echo wp_kses_post( wpautop( $profile->directions_text ) ); ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
+                
+                <?php if ( $has_skin_types || $has_benefits ) : ?>
+                    <div class="pls-tab-panel" data-tab="info">
+                        <?php if ( $has_skin_types ) : 
+                            $skin_types_data = json_decode( $profile->skin_types_json, true );
+                            if ( is_array( $skin_types_data ) && ! empty( $skin_types_data ) ) :
+                                ?>
+                                <div class="pls-product-skin-types">
+                                    <h3><?php esc_html_e( 'Suitable for Skin Types', 'pls-private-label-store' ); ?></h3>
+                                    <div class="pls-skin-type-pills">
+                                        <?php foreach ( $skin_types_data as $skin_type ) : 
+                                            $label = is_array( $skin_type ) && isset( $skin_type['label'] ) ? $skin_type['label'] : $skin_type;
+                                            ?>
+                                            <span class="pls-skin-type-pill"><?php echo esc_html( $label ); ?></span>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+                        <?php endif; ?>
+                        
+                        <?php if ( $has_benefits ) : 
+                            $benefits_data = json_decode( $profile->benefits_json, true );
+                            if ( is_array( $benefits_data ) && ! empty( $benefits_data ) ) :
+                                ?>
+                                <div class="pls-product-benefits">
+                                    <h3><?php esc_html_e( 'The Benefits', 'pls-private-label-store' ); ?></h3>
+                                    <div class="pls-benefits-grid">
+                                        <?php foreach ( $benefits_data as $benefit ) : 
+                                            $label = is_array( $benefit ) && isset( $benefit['label'] ) ? $benefit['label'] : $benefit;
+                                            ?>
+                                            <div class="pls-benefit-card">
+                                                <span class="pls-benefit-icon">✓</span>
+                                                <span class="pls-benefit-label"><?php echo esc_html( $label ); ?></span>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php
     }
 
     /**
@@ -432,14 +886,15 @@ final class PLS_Frontend_Display {
                 </div>
             <?php endif; ?>
             
-            <?php if ( ! empty( $other_ingredients ) ) : ?>
+            <?php 
+            // Show full ingredient list (all ingredients including key ones)
+            if ( ! empty( $all_ingredients ) ) : 
+                $all_names = array_map( function( $i ) { return $i['name']; }, $all_ingredients );
+                ?>
                 <div class="pls-ingredients-all">
-                    <h3><?php esc_html_e( 'Full Ingredient List', 'pls-private-label-store' ); ?></h3>
-                    <div class="pls-ingredients-list">
-                        <?php 
-                        $names = array_map( function( $i ) { return $i['name']; }, $other_ingredients );
-                        echo esc_html( implode( ', ', $names ) );
-                        ?>
+                    <h3><?php esc_html_e( 'Full Ingredient List (INCI)', 'pls-private-label-store' ); ?></h3>
+                    <div class="pls-ingredients-list pls-ingredients-inci">
+                        <?php echo esc_html( implode( ', ', $all_names ) ); ?>
                     </div>
                 </div>
             <?php endif; ?>

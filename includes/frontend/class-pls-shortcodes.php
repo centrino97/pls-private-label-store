@@ -657,6 +657,7 @@ final class PLS_Shortcodes {
             array(
                 'product_id'        => 0,
                 'wc_id'             => 0, // Alias for product_id (WooCommerce product ID)
+                'show_images'       => 'yes',
                 'show_configurator' => 'yes',
                 'show_description'  => 'yes',
                 'show_ingredients'   => 'yes',
@@ -707,8 +708,9 @@ final class PLS_Shortcodes {
 
         // Use PLS_Frontend_Display to get full content with all data
         $options = array(
-            'show_configurator' => 'yes' === $atts['show_configurator'],
-            'show_description'  => 'yes' === $atts['show_description'],
+            'show_images'        => 'yes' === $atts['show_images'],
+            'show_configurator'  => 'yes' === $atts['show_configurator'],
+            'show_description'   => 'yes' === $atts['show_description'],
             'show_ingredients'   => 'yes' === $atts['show_ingredients'],
             'show_bundles'       => 'yes' === $atts['show_bundles'],
         );
