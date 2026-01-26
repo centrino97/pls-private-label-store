@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 4.8.1
+Stable tag: 4.8.2
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,16 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 4.8.2 =
+* **NEW:** Preview button opens edit modal directly in preview mode
+* **NEW:** Smart toggle system - click Builder/Preview to toggle modes independently
+* **NEW:** Split-screen when both Builder and Preview are active (50/50)
+* **NEW:** Fullscreen preview when only Preview is active
+* **FIXED:** Preview no longer gets stuck - added timeout handling
+* **FIXED:** Preview now shows ALL PLS product data (configurator, description, ingredients, bundles)
+* **IMPROVED:** Preview loads immediately when preview mode is activated
+* **IMPROVED:** Better error handling with timeout detection
+
 = 4.8.1 =
 * **FIXED:** Preview now correctly displays the selected product - fixed product ID tracking
 * **FIXED:** Preview refreshes properly when switching between products

@@ -770,7 +770,7 @@
       updateModalState();
     }
 
-    function openProductModal(data){
+    function openProductModal(data, initialMode){
       resetModal();
       // Reset preview state when opening modal
       currentPreviewProductId = null;
@@ -778,14 +778,31 @@
       $('#pls-preview-loading').hide();
       $('#pls-preview-content').html('');
       
+      // Reset mode buttons
+      $('.pls-mode-btn').removeClass('is-active');
+      
       if (data){
         populateModal(data);
       } else {
         $('#pls-modal-title').text('Create product');
       }
+      
       closeAllModals();
       $('#pls-product-modal').addClass('is-active');
       updateModalState();
+      
+      // Set initial mode if specified
+      if (initialMode){
+        setTimeout(function(){
+          switchMode(initialMode);
+        }, 50);
+      } else {
+        // Default to builder mode
+        $('.pls-mode-btn[data-mode="builder"]').addClass('is-active');
+        $('#pls-product-modal').removeClass('pls-modal-split');
+        $('#pls-product-form').removeClass('hidden').show();
+        $('#pls-preview-panel').addClass('hidden').hide();
+      }
     }
 
     function closeModalElement(modal){
@@ -814,56 +831,15 @@
     $(document).on('click', '.pls-preview-product-btn', function(e){
       e.preventDefault();
       var productId = $(this).data('product-id');
-      var wcId = $(this).data('wc-id');
-      var productName = $(this).data('product-name');
       
-      if (!productId || !wcId) {
+      if (!productId || !productMap[productId]) {
         alert('Invalid product data.');
         return;
       }
       
-      // Show modal
-      var $modal = $('#pls-preview-modal');
-      $modal.show().addClass('is-active');
-      updateModalState();
-      
-      // Update title and product info
-      $('#pls-preview-title').text('Preview: ' + productName);
-      $('#pls-preview-product-info').html('<p><strong>' + productName + '</strong></p>');
-      
-      // Set live product link
-      var liveUrl = window.location.origin + '/?p=' + wcId;
-      $('#pls-preview-view-live').attr('href', liveUrl);
-      
-      // Show loading state
-      $('#pls-preview-content').html('<div style="text-align: center; padding: 40px;"><p class="description">Loading preview content...</p></div>');
-      
-      // Load preview content via AJAX
-      $.post(ajaxurl, {
-        action: 'pls_get_product_preview_content',
-        nonce: (window.PLS_Admin ? PLS_Admin.nonce : ''),
-        product_id: productId,
-        wc_id: wcId
-      }, function(resp){
-        if (resp && resp.success && resp.data && resp.data.html){
-          $('#pls-preview-content').html(resp.data.html);
-          
-          // Re-initialize any scripts that need to run
-          if (typeof PLS_Offers !== 'undefined' && window.jQuery) {
-            // Scripts should already be enqueued, but ensure they're available
-            if (typeof wc_add_to_cart_variation_params !== 'undefined') {
-              // WooCommerce variation script may need re-initialization
-              $(document.body).trigger('wc_variation_form');
-            }
-          }
-        } else {
-          $('#pls-preview-content').html('<div class="pls-note">' + 
-            (resp && resp.data && resp.data.message ? resp.data.message : 'Failed to load preview content.') + 
-            '</div>');
-        }
-      }).fail(function(){
-        $('#pls-preview-content').html('<div class="pls-note">Failed to load preview content. Please try again.</div>');
-      });
+      // Open modal with product data in preview mode
+      var productData = productMap[productId];
+      openProductModal(productData, 'preview');
     });
     
     // Close preview modal
@@ -1736,22 +1712,51 @@
       });
 
       function switchMode(mode){
-        $('.pls-mode-btn').removeClass('is-active');
-        $('.pls-mode-btn[data-mode="'+mode+'"]').addClass('is-active');
+        var $builderBtn = $('.pls-mode-btn[data-mode="builder"]');
+        var $previewBtn = $('.pls-mode-btn[data-mode="preview"]');
+        var builderActive = $builderBtn.hasClass('is-active');
+        var previewActive = $previewBtn.hasClass('is-active');
         
+        // Toggle the clicked mode
         if (mode === 'preview'){
-          // Enable split-screen mode by default
+          $previewBtn.toggleClass('is-active');
+          previewActive = $previewBtn.hasClass('is-active');
+        } else {
+          $builderBtn.toggleClass('is-active');
+          builderActive = $builderBtn.hasClass('is-active');
+        }
+        
+        // Determine layout based on active modes
+        if (builderActive && previewActive){
+          // Both active - split screen
           $('#pls-product-modal').addClass('pls-modal-split');
-          $('#pls-product-form').show();
-          $('#pls-preview-panel').show();
-          // Reset preview state and generate
+          $('#pls-product-form').removeClass('hidden').show();
+          $('#pls-preview-panel').removeClass('hidden').show();
+          // Generate preview if preview was just activated
+          if (mode === 'preview' && previewActive){
+            currentPreviewProductId = null;
+            generatePreview(true);
+          }
+        } else if (previewActive && !builderActive){
+          // Only preview - fullscreen preview
+          $('#pls-product-modal').removeClass('pls-modal-split');
+          $('#pls-product-form').addClass('hidden').hide();
+          $('#pls-preview-panel').removeClass('hidden').show();
+          // Generate preview immediately
           currentPreviewProductId = null;
           generatePreview(true);
-        } else {
-          // Builder mode - hide preview panel
+        } else if (builderActive && !previewActive){
+          // Only builder - fullscreen builder
           $('#pls-product-modal').removeClass('pls-modal-split');
-          $('#pls-preview-panel').hide();
-          $('#pls-product-form').show();
+          $('#pls-product-form').removeClass('hidden').show();
+          $('#pls-preview-panel').addClass('hidden').hide();
+        } else {
+          // Neither active - default to builder
+          $builderBtn.addClass('is-active');
+          builderActive = true;
+          $('#pls-product-modal').removeClass('pls-modal-split');
+          $('#pls-product-form').removeClass('hidden').show();
+          $('#pls-preview-panel').addClass('hidden').hide();
         }
       }
 
@@ -1809,17 +1814,31 @@
         
         // If product is synced, use shortcode with WooCommerce product ID
         if (wcProductId && productId){
+          // Set timeout to prevent getting stuck
+          var previewTimeout = setTimeout(function(){
+            $('#pls-preview-loading').hide();
+            $('#pls-preview-content').html('<div class="pls-note" style="padding: 20px; margin: 20px; background: #fef2f2; border-left: 4px solid #ef4444; color: #991b1b;">' +
+              '<p style="margin: 0 0 8px 0;"><strong>Preview Timeout</strong></p>' +
+              '<p style="margin: 0;">Preview is taking too long to load. Please try refreshing or check if the product is properly synced.</p>' +
+              '</div>');
+          }, 10000); // 10 second timeout
+          
           $.post(ajaxurl, {
             action: 'pls_get_product_preview_content',
             nonce: (window.PLS_Admin ? PLS_Admin.nonce : ''),
             product_id: productId,
             wc_id: wcProductId
           }, function(resp){
+            clearTimeout(previewTimeout);
             $('#pls-preview-loading').hide();
             if (resp && resp.success && resp.data && resp.data.html){
               $('#pls-preview-content').html(resp.data.html);
               // Scroll to top of preview
               $('#pls-preview-content').scrollTop(0);
+              // Trigger any scripts that need initialization
+              if (typeof jQuery !== 'undefined') {
+                jQuery(document.body).trigger('wc_variation_form');
+              }
             } else {
               var errorMsg = (resp && resp.data && resp.data.message) ? resp.data.message : 'Failed to load preview. Product must be synced to WooCommerce first.';
               $('#pls-preview-content').html('<div class="pls-note" style="padding: 20px; margin: 20px; background: #fef2f2; border-left: 4px solid #ef4444; color: #991b1b;">' + 
@@ -1828,10 +1847,19 @@
                 '</div>');
             }
           }).fail(function(xhr, status, error){
+            clearTimeout(previewTimeout);
             $('#pls-preview-loading').hide();
+            var errorMsg = 'Failed to load preview. ';
+            if (status === 'timeout') {
+              errorMsg += 'Request timed out.';
+            } else if (xhr.status === 404) {
+              errorMsg += 'Product not found. Please ensure the product is synced to WooCommerce.';
+            } else {
+              errorMsg += 'Please try again.';
+            }
             $('#pls-preview-content').html('<div class="pls-note" style="padding: 20px; margin: 20px; background: #fef2f2; border-left: 4px solid #ef4444; color: #991b1b;">' +
               '<p style="margin: 0 0 8px 0;"><strong>Preview Failed</strong></p>' +
-              '<p style="margin: 0;">Failed to load preview. Please try again or ensure the product is synced to WooCommerce.</p>' +
+              '<p style="margin: 0;">' + errorMsg + '</p>' +
               '</div>');
           });
         } else {

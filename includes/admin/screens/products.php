@@ -67,7 +67,7 @@ wp_add_inline_style( 'pls-admin', '
     background: #f9f9f9;
     border-bottom: 1px solid #ddd;
 }
-/* Split Screen Mode (when Preview is active) */
+/* Split Screen Mode (when both Builder and Preview are active) */
 #pls-product-modal.pls-modal-split .pls-modal__dialog {
     flex-direction: row !important;
 }
@@ -81,14 +81,27 @@ wp_add_inline_style( 'pls-admin', '
     width: 50% !important;
     overflow-y: auto !important;
     background: #fff !important;
-    padding: 20px !important;
 }
-/* Builder Mode (default) */
-#pls-product-modal:not(.pls-modal-split) #pls-product-form {
+
+/* Preview Only Mode (fullscreen preview) */
+#pls-product-modal:not(.pls-modal-split) #pls-product-form[style*="display: none"],
+#pls-product-modal:not(.pls-modal-split) #pls-product-form.hidden {
+    display: none !important;
+}
+#pls-product-modal:not(.pls-modal-split) #pls-preview-panel:not([style*="display: none"]) {
+    flex: 1;
+    overflow-y: auto;
+    display: flex !important;
+    flex-direction: column;
+}
+
+/* Builder Only Mode (fullscreen builder) */
+#pls-product-modal:not(.pls-modal-split) #pls-product-form:not([style*="display: none"]):not(.hidden) {
     flex: 1;
     overflow-y: auto;
 }
-#pls-product-modal:not(.pls-modal-split) #pls-preview-panel {
+#pls-product-modal:not(.pls-modal-split) #pls-preview-panel[style*="display: none"],
+#pls-product-modal:not(.pls-modal-split) #pls-preview-panel.hidden {
     display: none !important;
 }
 .pls-preview-controls {

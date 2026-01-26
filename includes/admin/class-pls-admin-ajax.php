@@ -2098,8 +2098,8 @@ final class PLS_Admin_Ajax {
 
         <!-- Render using PLS Single Product Shortcode -->
         <?php
-        // Render using the shortcode - this is what users will use in Elementor templates
-        echo do_shortcode( '[pls_single_product product_id="' . esc_attr( $wc_product_id ) . '"]' );
+        // Render using the shortcode with all options enabled to show complete PLS data
+        echo do_shortcode( '[pls_single_product wc_id="' . esc_attr( $wc_product_id ) . '" show_configurator="yes" show_description="yes" show_ingredients="yes" show_bundles="yes"]' );
         ?>
 
         <!-- Shortcode Usage Info -->
