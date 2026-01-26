@@ -264,6 +264,10 @@ final class PLS_Frontend_Display {
      * @param array      $options Display options.
      */
     private static function render_product_header( $product, $profile, $options = array() ) {
+        if ( ! $product || ! $profile ) {
+            return;
+        }
+        
         $featured_image_id = ! empty( $profile->featured_image_id ) ? absint( $profile->featured_image_id ) : 0;
         $gallery_ids = ! empty( $profile->gallery_ids ) ? array_filter( array_map( 'absint', explode( ',', $profile->gallery_ids ) ) ) : array();
         
@@ -376,6 +380,27 @@ final class PLS_Frontend_Display {
                     <?php
                 }
                 ?>
+            </div>
+        </div>
+        <?php
+    }
+
+    /**
+     * Render configurator as modal overlay.
+     *
+     * @param WC_Product $product The product.
+     * @param object     $profile The product profile.
+     */
+    private static function render_configurator_modal( $product, $profile ) {
+        if ( ! $product || ! $profile ) {
+            return;
+        }
+        ?>
+        <div class="pls-configurator-modal" id="pls-configurator-modal">
+            <div class="pls-configurator-modal__overlay"></div>
+            <div class="pls-configurator-modal__content">
+                <button type="button" class="pls-configurator-modal__close" aria-label="<?php esc_attr_e( 'Close', 'pls-private-label-store' ); ?>">×</button>
+                <?php self::render_full_configurator( $product, $profile ); ?>
             </div>
         </div>
         <?php

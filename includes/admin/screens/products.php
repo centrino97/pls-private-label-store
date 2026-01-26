@@ -83,25 +83,62 @@ wp_add_inline_style( 'pls-admin', '
     background: #fff !important;
 }
 
-/* Preview Only Mode (fullscreen preview) */
-#pls-product-modal:not(.pls-modal-split) #pls-product-form[style*="display: none"],
-#pls-product-modal:not(.pls-modal-split) #pls-product-form.hidden {
+/* Modal is ALWAYS fullscreen - no exceptions */
+#pls-product-modal .pls-modal__dialog {
+    max-width: 100% !important;
+    width: 100% !important;
+    height: 100vh !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+/* Split Screen Mode - ONLY when both Builder AND Preview are active */
+#pls-product-modal.pls-modal-split .pls-modal__dialog {
+    flex-direction: row !important;
+}
+
+#pls-product-modal.pls-modal-split #pls-product-form {
+    width: 50% !important;
+    overflow-y: auto !important;
+    border-right: 1px solid #ddd !important;
+    flex-shrink: 0;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+#pls-product-modal.pls-modal-split #pls-preview-panel {
+    width: 50% !important;
+    overflow-y: auto !important;
+    background: #fff !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+/* Preview Only Mode (fullscreen preview) - when only Preview button is active */
+#pls-product-modal:not(.pls-modal-split) #pls-product-form.hidden,
+#pls-product-modal:not(.pls-modal-split) #pls-product-form[style*="display: none"] {
     display: none !important;
 }
-#pls-product-modal:not(.pls-modal-split) #pls-preview-panel:not([style*="display: none"]) {
+
+#pls-product-modal:not(.pls-modal-split) #pls-preview-panel:not(.hidden):not([style*="display: none"]) {
     flex: 1;
     overflow-y: auto;
     display: flex !important;
-    flex-direction: column;
+    flex-direction: column !important;
 }
 
-/* Builder Only Mode (fullscreen builder) */
-#pls-product-modal:not(.pls-modal-split) #pls-product-form:not([style*="display: none"]):not(.hidden) {
+/* Builder Only Mode (fullscreen builder) - when only Builder button is active */
+#pls-product-modal:not(.pls-modal-split) #pls-product-form:not(.hidden):not([style*="display: none"]) {
     flex: 1;
     overflow-y: auto;
+    display: flex !important;
+    flex-direction: column !important;
 }
-#pls-product-modal:not(.pls-modal-split) #pls-preview-panel[style*="display: none"],
-#pls-product-modal:not(.pls-modal-split) #pls-preview-panel.hidden {
+
+#pls-product-modal:not(.pls-modal-split) #pls-preview-panel.hidden,
+#pls-product-modal:not(.pls-modal-split) #pls-preview-panel[style*="display: none"] {
     display: none !important;
 }
 .pls-preview-controls {
@@ -934,19 +971,11 @@ wp_localize_script(
           </div>
         </div>
 
-        <div class="pls-modal__preview-panel" id="pls-preview-panel" style="display:none;">
+        <div class="pls-modal__preview-panel" id="pls-preview-panel" style="display:none; flex: 1; overflow-y: auto; flex-direction: column;">
           <div class="pls-preview-controls" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #f0f0f1; border-bottom: 1px solid #ddd;">
             <div>
               <strong><?php esc_html_e( 'Live Preview', 'pls-private-label-store' ); ?></strong>
               <span class="description" style="margin-left: 12px;"><?php esc_html_e( 'Updates automatically as you edit', 'pls-private-label-store' ); ?></span>
-            </div>
-            <div>
-              <button type="button" class="button button-small pls-preview-mode-btn" data-mode="split" title="<?php esc_attr_e( 'Split Screen', 'pls-private-label-store' ); ?>">
-                <span class="dashicons dashicons-editor-table"></span>
-              </button>
-              <button type="button" class="button button-small pls-preview-mode-btn active" data-mode="fullscreen" title="<?php esc_attr_e( 'Fullscreen', 'pls-private-label-store' ); ?>">
-                <span class="dashicons dashicons-fullscreen-alt"></span>
-              </button>
             </div>
           </div>
           <div class="pls-preview-loading" style="padding: 40px; text-align: center;">

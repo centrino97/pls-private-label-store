@@ -1760,34 +1760,8 @@
         }
       }
 
-      // Preview mode toggle (split/fullscreen)
-      $(document).on('click', '.pls-preview-mode-btn', function(){
-        var mode = $(this).data('mode');
-        $('.pls-preview-mode-btn').removeClass('active');
-        $(this).addClass('active');
-        
-        if (mode === 'split'){
-          $('#pls-product-modal').removeClass('pls-modal-fullscreen').addClass('pls-modal-split');
-          $('#pls-product-modal .pls-modal__dialog').css({
-            'display': 'flex',
-            'max-width': '100%',
-            'width': '100%',
-            'height': '100vh'
-          });
-          $('#pls-product-form').css('width', '50%');
-          $('#pls-preview-panel').css('width', '50%');
-        } else {
-          $('#pls-product-modal').removeClass('pls-modal-split').addClass('pls-modal-fullscreen');
-          $('#pls-product-modal .pls-modal__dialog').css({
-            'display': 'block',
-            'max-width': '100%',
-            'width': '100%',
-            'height': '100vh'
-          });
-          $('#pls-product-form').css('width', '100%');
-          $('#pls-preview-panel').css('width', '100%');
-        }
-      });
+      // Preview mode toggle removed - split is now automatic when both Builder and Preview are active
+      // Modal is always fullscreen, splits automatically when both modes are toggled on
 
       var previewDebounce = null;
       var currentPreviewProductId = null;
