@@ -334,8 +334,21 @@
         var limitMsg = $('#pls-key-limit-message');
         var selectedIngredients = $('#pls-ingredient-chips input:checked').map(function(){ return parseInt($(this).val(), 10); }).get();
         var preserved = Array.isArray(forceSelection) ? forceSelection.map(function(id){ return parseInt(id, 10); }) : keySelected.slice();
-        var normalizedSelection = [];
+        
+        // Filter to only T3+ ingredients (min_tier_level >= 3)
+        var t3PlusIngredients = [];
         selectedIngredients.forEach(function(id){
+          var term = ingredientMap[id];
+          if (term) {
+            var minTier = term.min_tier_level || 1;
+            if (minTier >= 3) {
+              t3PlusIngredients.push(id);
+            }
+          }
+        });
+        
+        var normalizedSelection = [];
+        t3PlusIngredients.forEach(function(id){
           if (preserved.indexOf(id) !== -1 && normalizedSelection.length < keyLimit){
             normalizedSelection.push(id);
           }
@@ -344,12 +357,12 @@
         wrap.empty();
         limitMsg.text('');
         counter.text('Key ingredients: ' + keySelected.length + ' / ' + keyLimit);
-        if (!selectedIngredients.length){
+        if (!t3PlusIngredients.length){
           hint.text(keyHintDefault);
           return;
         }
         hint.text(keyHintReady);
-        selectedIngredients.forEach(function(id){
+        t3PlusIngredients.forEach(function(id){
           var term = ingredientMap[id] || { id: id, name: '#'+id, icon: defaultIngredientIcon };
           wrap.append(renderIngredientLabel(term, 'key_ingredient_ids[]', keySelected.indexOf(id) !== -1));
         });
@@ -1355,7 +1368,9 @@
       setLabelState($(this).is(':checked'));
     });
 
-      $('#pls-add-attribute-row').on('click', function(e){
+      // Removed: "Select product option" button removed - users manage options via Product Options page
+      // Attribute rows can still be added programmatically when editing existing products
+      $(document).on('click', '#pls-add-attribute-row', function(e){
         e.preventDefault();
         buildAttributeRow();
       });
@@ -2035,6 +2050,22 @@
 
       // Update price calculator when tier selector changes
       $('#pls-calc-tier-select').on('change', updatePriceCalculator);
+      
+      // Real-time price calculator updates when pack tier prices/units change
+      $(document).on('input', '#pls-pack-grid input[name*="[units]"], #pls-pack-grid input[name*="[price]"]', function(){
+        updateTierTotal($(this).closest('.pls-pack-row'));
+        updatePriceCalculator();
+      });
+      
+      // Update calculator when pack tier enabled state changes
+      $(document).on('change', '#pls-pack-grid input[name*="[enabled]"]', function(){
+        updatePriceCalculator();
+      });
+      
+      // Update calculator when package options change
+      $(document).on('change', 'input[name="package_colors[]"], input[name="package_caps[]"], #pls-label-enabled, #pls-label-price', function(){
+        updatePriceCalculator();
+      });
       
       // Update price badges based on selected tier
       function updatePriceBadges(){

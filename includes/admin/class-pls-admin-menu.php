@@ -336,6 +336,16 @@ final class PLS_Admin_Menu {
             array( __CLASS__, 'render_system_test' )
         );
 
+        // User Setup page (admin only, for handoff)
+        add_submenu_page(
+            'pls-dashboard',
+            __( 'PLS – User Setup', 'pls-private-label-store' ),
+            __( 'User Setup', 'pls-private-label-store' ),
+            'manage_options',
+            'pls-user-setup',
+            array( __CLASS__, 'render_user_setup' )
+        );
+
         // Hidden preview page (accessed via direct link)
         add_submenu_page(
             null, // Hidden from menu
@@ -528,6 +538,10 @@ final class PLS_Admin_Menu {
 
     public static function render_system_test() {
         require PLS_PLS_DIR . 'includes/admin/screens/system-test.php';
+    }
+
+    public static function render_user_setup() {
+        require PLS_PLS_DIR . 'includes/admin/screens/user-setup.php';
     }
 
     public static function render_order_detail() {

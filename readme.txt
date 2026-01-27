@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 4.8.2
+Stable tag: 4.9.7
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,20 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 4.9.7 =
+* **CRITICAL FIX:** Fixed all pricing calculations - now 100% accurate per unit pricing
+* **NEW:** MOQ enforcement (50 units minimum) with real-time validation and visual warnings
+* **NEW:** Total units display showing units × quantity = total units
+* **IMPROVED:** All prices clearly labeled as "per unit" throughout frontend
+* **IMPROVED:** Enhanced responsive design for mobile, tablet, and desktop devices
+* **IMPROVED:** Better visual hierarchy - per unit price prominently displayed
+* **IMPROVED:** Price calculator shows accurate per unit calculations
+* **IMPROVED:** Starting price on product header shows per unit pricing
+* **IMPROVED:** Tier cards display per unit price prominently with total as reference
+* **IMPROVED:** Price summary clearly highlights "Price Per Unit" section
+* **IMPROVED:** Mobile-optimized layout with touch-friendly controls
+* **IMPROVED:** Better error messages and MOQ validation feedback
+
 = 4.8.2 =
 * **NEW:** Preview button opens edit modal directly in preview mode
 * **NEW:** Smart toggle system - click Builder/Preview to toggle modes independently

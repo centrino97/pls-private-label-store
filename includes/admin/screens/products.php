@@ -48,6 +48,7 @@ wp_add_inline_style( 'pls-admin', '
     padding: 0 !important;
     justify-content: flex-start !important;
     align-items: flex-start !important;
+    display: flex !important;
 }
 #pls-product-modal .pls-modal__dialog {
     max-width: 100% !important;
@@ -60,6 +61,14 @@ wp_add_inline_style( 'pls-admin', '
     display: flex !important;
     flex-direction: column !important;
     box-shadow: none !important;
+    background: #fff !important;
+}
+#pls-product-modal #pls-product-form {
+    flex: 1;
+    overflow-y: auto;
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 0 20px 20px 20px;
 }
 #pls-product-modal .pls-modal__head {
     flex-shrink: 0;
@@ -225,6 +234,10 @@ if ( $primary_attr ) {
             );
         }
     }
+    // Sort by units ascending (Tier 1 → Tier 5)
+    usort( $pack_defaults, function( $a, $b ) {
+        return $a['units'] <=> $b['units'];
+    } );
 }
 // Fallback to hardcoded defaults if no tiers found
 if ( empty( $pack_defaults ) ) {
@@ -460,7 +473,7 @@ wp_localize_script(
               <div class="pls-modal__grid">
                 <div class="pls-modal__section">
                   <h3><?php esc_html_e( 'General', 'pls-private-label-store' ); ?></h3>
-                  <label><?php esc_html_e( 'Name', 'pls-private-label-store' ); ?>
+                  <label><?php esc_html_e( 'Name', 'pls-private-label-store' ); ?> <span class="pls-required-indicator" style="color: #d63638;">*</span>
                     <input type="text" name="name" id="pls-name" required placeholder="Collagen Serum" />
                   </label>
                   <p class="pls-subtle"><?php esc_html_e( 'Status is saved as Draft. Activate products from the PLS products table when ready.', 'pls-private-label-store' ); ?></p>
@@ -884,7 +897,6 @@ wp_localize_script(
                   </p>
                 </div>
                 <div id="pls-attribute-rows" class="pls-attribute-rows"></div>
-                <button type="button" class="button" id="pls-add-attribute-row"><?php esc_html_e( 'Select product option', 'pls-private-label-store' ); ?></button>
                 <div id="pls-attribute-template" class="hidden">
                   <div class="pls-attribute-row">
                     <div class="pls-attribute-row__grid">

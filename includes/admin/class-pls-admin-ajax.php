@@ -156,6 +156,16 @@ final class PLS_Admin_Ajax {
         $payload = array();
 
         foreach ( $terms as $term ) {
+            // Get min_tier_level from corresponding attribute value (ingredients are T3+)
+            $min_tier_level = 3; // Default to T3+ for ingredients
+            $attr_value_id = get_term_meta( $term->term_id, '_pls_attribute_value_id', true );
+            if ( $attr_value_id ) {
+                $value_obj = PLS_Repo_Attributes::get_value( $attr_value_id );
+                if ( $value_obj && isset( $value_obj->min_tier_level ) ) {
+                    $min_tier_level = absint( $value_obj->min_tier_level );
+                }
+            }
+            
             $payload[] = array(
                 'id'                => $term->term_id,
                 'term_id'           => $term->term_id,
@@ -163,6 +173,7 @@ final class PLS_Admin_Ajax {
                 'label'             => $term->name,
                 'short_description' => sanitize_text_field( (string) get_term_meta( $term->term_id, 'pls_ingredient_short_desc', true ) ),
                 'icon'              => PLS_Taxonomies::icon_for_term( $term->term_id ),
+                'min_tier_level'    => $min_tier_level,
             );
         }
 

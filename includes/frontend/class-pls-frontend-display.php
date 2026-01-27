@@ -383,29 +383,36 @@ final class PLS_Frontend_Display {
                     }
                 }
                 
-                // Show starting price for variable products
+                // Show starting price PER UNIT for variable products
                 if ( $product->is_type( 'variable' ) ) {
                     $variation_attributes = $product->get_variation_attributes();
                     $pack_tiers = isset( $variation_attributes['pa_pack-tier'] ) ? (array) $variation_attributes['pa_pack-tier'] : array();
                     if ( ! empty( $pack_tiers ) ) {
-                        $lowest_price = null;
+                        $lowest_price_per_unit = null;
                         foreach ( $pack_tiers as $tier_slug ) {
+                            $tier_term = get_term_by( 'slug', $tier_slug, 'pa_pack-tier' );
+                            if ( ! $tier_term ) {
+                                continue;
+                            }
+                            $units = (int) get_term_meta( $tier_term->term_id, '_pls_default_units', true );
                             $variation_id = self::get_variation_for_tier( $product->get_id(), $tier_slug );
-                            if ( $variation_id ) {
+                            if ( $variation_id && $units > 0 ) {
                                 $variation = wc_get_product( $variation_id );
                                 if ( $variation ) {
-                                    $price = $variation->get_price();
-                                    if ( null === $lowest_price || $price < $lowest_price ) {
-                                        $lowest_price = $price;
+                                    $total_price = $variation->get_price();
+                                    $price_per_unit = $total_price / $units;
+                                    if ( null === $lowest_price_per_unit || $price_per_unit < $lowest_price_per_unit ) {
+                                        $lowest_price_per_unit = $price_per_unit;
                                     }
                                 }
                             }
                         }
-                        if ( $lowest_price ) {
+                        if ( $lowest_price_per_unit ) {
                             ?>
                             <div class="pls-product-starting-price">
                                 <?php esc_html_e( 'Starting from', 'pls-private-label-store' ); ?> 
-                                <strong><?php echo wc_price( $lowest_price ); ?></strong>
+                                <strong><?php echo wc_price( $lowest_price_per_unit ); ?></strong>
+                                <span style="font-size: 0.875rem; font-weight: 400; color: var(--pls-gray-600);"><?php esc_html_e( 'per unit', 'pls-private-label-store' ); ?></span>
                             </div>
                             <?php
                         }
@@ -626,20 +633,20 @@ final class PLS_Frontend_Display {
                 <h3 class="pls-configurator-block__title"><?php esc_html_e( 'Price Summary', 'pls-private-label-store' ); ?></h3>
                 <div class="pls-price-breakdown">
                     <div class="pls-price-row">
-                        <span class="pls-price-label"><?php esc_html_e( 'Base Price', 'pls-private-label-store' ); ?></span>
+                        <span class="pls-price-label"><?php esc_html_e( 'Base Price (total)', 'pls-private-label-store' ); ?></span>
                         <span class="pls-price-value" id="pls-price-base"><?php echo wc_price( 0 ); ?></span>
                     </div>
                     <div class="pls-price-row" id="pls-price-options-row" style="display: none;">
-                        <span class="pls-price-label"><?php esc_html_e( 'Options', 'pls-private-label-store' ); ?></span>
+                        <span class="pls-price-label"><?php esc_html_e( 'Options (total)', 'pls-private-label-store' ); ?></span>
                         <span class="pls-price-value" id="pls-price-options"><?php echo wc_price( 0 ); ?></span>
                     </div>
                     <div class="pls-price-row pls-price-row--total">
-                        <span class="pls-price-label"><?php esc_html_e( 'Total', 'pls-private-label-store' ); ?></span>
+                        <span class="pls-price-label"><?php esc_html_e( 'Order Total', 'pls-private-label-store' ); ?></span>
                         <span class="pls-price-value" id="pls-price-total"><?php echo wc_price( 0 ); ?></span>
                     </div>
-                    <div class="pls-price-row pls-price-row--per-unit">
-                        <span class="pls-price-label"><?php esc_html_e( 'Per Unit', 'pls-private-label-store' ); ?></span>
-                        <span class="pls-price-value" id="pls-price-per-unit"><?php echo wc_price( 0 ); ?></span>
+                    <div class="pls-price-row pls-price-row--per-unit" style="background: var(--pls-gray-50); padding: 0.75rem; border-radius: var(--pls-radius-sm); margin-top: 0.5rem;">
+                        <span class="pls-price-label"><strong><?php esc_html_e( 'Price Per Unit', 'pls-private-label-store' ); ?></strong></span>
+                        <span class="pls-price-value" id="pls-price-per-unit" style="font-size: 1.25rem; color: var(--pls-primary);"><strong><?php echo wc_price( 0 ); ?></strong></span>
                     </div>
                 </div>
             </div>
@@ -653,7 +660,10 @@ final class PLS_Frontend_Display {
                     
                     <!-- Quantity Selector -->
                     <div class="pls-quantity-selector">
-                        <label><?php esc_html_e( 'Quantity', 'pls-private-label-store' ); ?></label>
+                        <label><?php esc_html_e( 'Quantity (packs)', 'pls-private-label-store' ); ?></label>
+                        <p class="pls-quantity-hint" style="font-size: 0.875rem; color: var(--pls-gray-600); margin: 0.25rem 0 0.75rem 0;">
+                            <?php esc_html_e( 'Minimum order: 50 units (1 pack)', 'pls-private-label-store' ); ?>
+                        </p>
                         <div class="pls-quantity-controls">
                             <button type="button" class="pls-qty-btn pls-qty-minus" aria-label="<?php esc_attr_e( 'Decrease quantity', 'pls-private-label-store' ); ?>">−</button>
                             <input type="number" 
@@ -664,6 +674,9 @@ final class PLS_Frontend_Display {
                                    class="pls-quantity-input"
                                    id="pls-quantity" />
                             <button type="button" class="pls-qty-btn pls-qty-plus" aria-label="<?php esc_attr_e( 'Increase quantity', 'pls-private-label-store' ); ?>">+</button>
+                        </div>
+                        <div class="pls-total-units-display" id="pls-total-units-display" style="margin-top: 0.75rem; padding: 0.75rem; background: var(--pls-gray-50); border-radius: var(--pls-radius-sm); font-size: 0.9rem;">
+                            <strong><?php esc_html_e( 'Total units:', 'pls-private-label-store' ); ?></strong> <span id="pls-total-units-count">0</span>
                         </div>
                     </div>
                     
@@ -845,14 +858,14 @@ final class PLS_Frontend_Display {
                         <?php endif; ?>
                         
                         <?php if ( $variation_price ) : ?>
-                            <div class="pls-tier-card__price">
-                                <?php echo wc_price( $variation_price ); ?>
-                            </div>
                             <?php if ( $price_per_unit ) : ?>
-                                <div class="pls-tier-card__price-per-unit">
-                                    <?php echo wc_price( $price_per_unit ); ?> <?php esc_html_e( 'per unit', 'pls-private-label-store' ); ?>
+                                <div class="pls-tier-card__price-per-unit" style="font-size: 1.5rem; font-weight: 700; color: var(--pls-primary); margin: 0.5rem 0;">
+                                    <?php echo wc_price( $price_per_unit ); ?> <span style="font-size: 0.875rem; font-weight: 400; color: var(--pls-gray-600);"><?php esc_html_e( 'per unit', 'pls-private-label-store' ); ?></span>
                                 </div>
                             <?php endif; ?>
+                            <div class="pls-tier-card__price" style="font-size: 0.875rem; color: var(--pls-gray-600); margin-top: 0.25rem;">
+                                <?php printf( esc_html__( 'Total: %s (%d units)', 'pls-private-label-store' ), wc_price( $variation_price ), $units ); ?>
+                            </div>
                         <?php endif; ?>
                         
                         <button type="button" class="pls-tier-card__select button" data-tier="<?php echo esc_attr( $tier_slug ); ?>">
