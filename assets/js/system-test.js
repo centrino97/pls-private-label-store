@@ -7,23 +7,8 @@
     'use strict';
 
     const SystemTest = {
-        // Test categories in order
-        categories: [
-            'pls_info',
-            'server_config',
-            'wc_settings',
-            'user_roles',
-            'database',
-            'product_options',
-            'products_sync',
-            'variations',
-            'bundles',
-            'wc_orders',
-            'custom_orders',
-            'commissions',
-            'revenue',
-            'frontend_display'
-        ],
+        // Test categories - dynamically discovered from DOM
+        categories: [],
 
         // Current test state
         isRunning: false,
@@ -35,8 +20,24 @@
          * Initialize the system test page.
          */
         init: function() {
+            // Dynamically discover test categories from DOM
+            this.discoverCategories();
             this.bindEvents();
             this.initTemplates();
+        },
+
+        /**
+         * Discover test categories from DOM elements.
+         */
+        discoverCategories: function() {
+            const categories = [];
+            $('.pls-test-category').each(function() {
+                const category = $(this).data('category');
+                if (category && categories.indexOf(category) === -1) {
+                    categories.push(category);
+                }
+            });
+            this.categories = categories;
         },
 
         /**

@@ -32,77 +32,226 @@ if ( file_exists( $uupd_file ) ) {
     }
 }
 
-// Define test categories for UI (order matters - diagnostics first)
+// Define test categories for UI (organized by groups)
 $test_categories = array(
-    'pls_info'       => array(
+    // Core Tests
+    'pls_info'          => array(
         'label'       => 'PLS Info & Version',
         'description' => 'Plugin version, UUPD version match, and database tables count.',
         'icon'        => 'info',
+        'group'       => 'core',
     ),
-    'server_config'  => array(
+    'server_config'     => array(
         'label'       => 'Server Configuration',
         'description' => 'PHP version, memory limit, execution time, and required extensions.',
         'icon'        => 'admin-generic',
+        'group'       => 'core',
     ),
-    'wc_settings'    => array(
-        'label'       => 'WooCommerce Settings',
-        'description' => 'Currency, taxes, payment gateways, and shipping zones.',
-        'icon'        => 'admin-settings',
-    ),
-    'user_roles'     => array(
-        'label'       => 'User Roles & Capabilities',
-        'description' => 'PLS User role, Robert/Raniya users, and admin capabilities.',
-        'icon'        => 'groups',
-    ),
-    'database'        => array(
+    'database'           => array(
         'label'       => 'Database',
         'description' => 'Verify all PLS tables exist and have correct schema.',
         'icon'        => 'database',
+        'group'       => 'core',
     ),
-    'product_options' => array(
+    'product_options'   => array(
         'label'       => 'Product Options',
         'description' => 'Check Pack Tier attribute, values, and product options.',
         'icon'        => 'admin-settings',
+        'group'       => 'core',
     ),
-    'products_sync'   => array(
+    'product_profiles'  => array(
+        'label'       => 'Product Profiles',
+        'description' => 'Validate product profile JSON fields, images, and content structure.',
+        'icon'        => 'admin-page',
+        'group'       => 'core',
+    ),
+    'tier_rules'        => array(
+        'label'       => 'Tier Rules System',
+        'description' => 'Test tier-based pricing, restrictions, and label fee calculations.',
+        'icon'        => 'chart-line',
+        'group'       => 'core',
+    ),
+    'swatches'          => array(
+        'label'       => 'Swatch System',
+        'description' => 'Verify swatch data, types, and WooCommerce sync.',
+        'icon'        => 'admin-appearance',
+        'group'       => 'core',
+    ),
+    
+    // WooCommerce Sync
+    'wc_settings'       => array(
+        'label'       => 'WooCommerce Settings',
+        'description' => 'Currency, taxes, payment gateways, and shipping zones.',
+        'icon'        => 'admin-settings',
+        'group'       => 'wc_sync',
+    ),
+    'products_sync'     => array(
         'label'       => 'Products Sync',
         'description' => 'Verify products sync to WooCommerce as variable products.',
         'icon'        => 'products',
+        'group'       => 'wc_sync',
     ),
-    'variations'      => array(
+    'variations'        => array(
         'label'       => 'Variations',
         'description' => 'Check pack tier variations have correct attributes and metadata.',
         'icon'        => 'tag',
+        'group'       => 'wc_sync',
     ),
-    'bundles'         => array(
-        'label'       => 'Bundles',
-        'description' => 'Verify bundles sync as WooCommerce grouped products.',
-        'icon'        => 'archive',
-    ),
-    'wc_orders'       => array(
-        'label'       => 'WooCommerce Orders',
-        'description' => 'Check sample orders exist with correct products and variations.',
+    'bundle_cart'       => array(
+        'label'       => 'Bundle Cart Logic',
+        'description' => 'Test bundle detection, pricing, and cart integration.',
         'icon'        => 'cart',
+        'group'       => 'wc_sync',
     ),
-    'custom_orders'   => array(
-        'label'       => 'Custom Orders',
-        'description' => 'Verify custom orders exist in all Kanban stages.',
-        'icon'        => 'clipboard',
+    
+    // Data Management
+    'stock_management'   => array(
+        'label'       => 'Stock Management',
+        'description' => 'Verify stock tracking, quantities, and WooCommerce sync.',
+        'icon'        => 'database-export',
+        'group'       => 'data',
     ),
-    'commissions'     => array(
-        'label'       => 'Commissions',
-        'description' => 'Check commission records and calculations.',
+    'cost_management'    => array(
+        'label'       => 'Cost Management',
+        'description' => 'Check shipping and packaging costs, and WooCommerce sync.',
         'icon'        => 'money-alt',
+        'group'       => 'data',
     ),
-    'revenue'         => array(
+    'marketing_costs'   => array(
+        'label'       => 'Marketing Costs',
+        'description' => 'Verify marketing cost tracking by channel and date range queries.',
+        'icon'        => 'megaphone',
+        'group'       => 'data',
+    ),
+    'revenue_snapshots'  => array(
+        'label'       => 'Revenue Snapshots',
+        'description' => 'Test daily revenue snapshot generation and date range queries.',
+        'icon'        => 'camera',
+        'group'       => 'data',
+    ),
+    'revenue'           => array(
         'label'       => 'Revenue',
         'description' => 'Verify revenue tracking and summary statistics.',
         'icon'        => 'chart-bar',
+        'group'       => 'data',
     ),
-    'frontend_display' => array(
+    
+    // Orders & Commissions
+    'bundles'           => array(
+        'label'       => 'Bundles',
+        'description' => 'Verify bundles sync as WooCommerce grouped products.',
+        'icon'        => 'archive',
+        'group'       => 'orders',
+    ),
+    'wc_orders'         => array(
+        'label'       => 'WooCommerce Orders',
+        'description' => 'Check sample orders exist with correct products and variations.',
+        'icon'        => 'cart',
+        'group'       => 'orders',
+    ),
+    'custom_orders'     => array(
+        'label'       => 'Custom Orders',
+        'description' => 'Verify custom orders exist in all Kanban stages.',
+        'icon'        => 'clipboard',
+        'group'       => 'orders',
+    ),
+    'commissions'       => array(
+        'label'       => 'Commissions',
+        'description' => 'Check commission records and calculations.',
+        'icon'        => 'money-alt',
+        'group'       => 'orders',
+    ),
+    'commission_reports' => array(
+        'label'       => 'Commission Reports',
+        'description' => 'Verify monthly commission reports, totals accuracy, and status tracking.',
+        'icon'        => 'media-document',
+        'group'       => 'orders',
+    ),
+    
+    // Infrastructure
+    'user_roles'        => array(
+        'label'       => 'User Roles & Capabilities',
+        'description' => 'PLS User role, Robert/Raniya users, and admin capabilities.',
+        'icon'        => 'groups',
+        'group'       => 'infrastructure',
+    ),
+    'ingredient_sync'   => array(
+        'label'       => 'Ingredient Sync',
+        'description' => 'Test ingredient taxonomy sync to attribute system and images.',
+        'icon'        => 'admin-links',
+        'group'       => 'infrastructure',
+    ),
+    'shortcodes'        => array(
+        'label'       => 'Shortcodes',
+        'description' => 'Verify all PLS shortcodes are registered and render correctly.',
+        'icon'        => 'shortcode',
+        'group'       => 'infrastructure',
+    ),
+    'ajax_endpoints'    => array(
+        'label'       => 'AJAX Endpoints',
+        'description' => 'Check admin and frontend AJAX actions are registered with nonce validation.',
+        'icon'        => 'admin-tools',
+        'group'       => 'infrastructure',
+    ),
+    
+    // Admin
+    'onboarding'       => array(
+        'label'       => 'Onboarding/Help System',
+        'description' => 'Verify help content exists for all PLS admin pages.',
+        'icon'        => 'lightbulb',
+        'group'       => 'admin',
+    ),
+    'admin_filter'     => array(
+        'label'       => 'Admin Dashboard Filter',
+        'description' => 'Test menu restrictions and page redirects for restricted users.',
+        'icon'        => 'admin-users',
+        'group'       => 'admin',
+    ),
+    'seo_integration'  => array(
+        'label'       => 'SEO Integration',
+        'description' => 'Verify Yoast SEO meta sync, schema markup, and category SEO.',
+        'icon'        => 'search',
+        'group'       => 'admin',
+    ),
+    
+    // Frontend
+    'frontend_display'  => array(
         'label'       => 'Frontend Display',
         'description' => 'Check auto-injection settings, CSS/JS files, and product page accessibility.',
         'icon'        => 'visibility',
+        'group'       => 'frontend',
+    ),
+    
+    // v4.9.99 Features
+    'tier_unlocking'    => array(
+        'label'       => 'Tier-Based Unlocking',
+        'description' => 'Test tier-based ingredient and fragrance unlocking system.',
+        'icon'        => 'unlock',
+        'group'       => 'v4.9.99',
+    ),
+    'inline_configurator' => array(
+        'label'       => 'Inline Configurator',
+        'description' => 'Verify inline configurator method exists and supports multiple instances.',
+        'icon'        => 'admin-customizer',
+        'group'       => 'v4.9.99',
+    ),
+    'cro_features'      => array(
+        'label'       => 'CRO Features',
+        'description' => 'Test multiple CTAs, long-form content, and social proof sections.',
+        'icon'        => 'chart-area',
+        'group'       => 'v4.9.99',
+    ),
+    'sample_data_completeness' => array(
+        'label'       => 'Sample Data Completeness',
+        'description' => 'Verify sample data has full complexity: 3-5 products, tier-based ingredients/fragrances, all bundle rules.',
+        'icon'        => 'database-add',
+        'group'       => 'v4.9.99',
+    ),
+    'landing_pages'     => array(
+        'label'       => 'Landing Pages',
+        'description' => 'Test landing page post type, keyword mapping, and product integration.',
+        'icon'        => 'admin-page',
+        'group'       => 'v4.9.99',
     ),
 );
 ?>
@@ -296,27 +445,64 @@ $test_categories = array(
 
     <!-- Test Results -->
     <div class="pls-test-results" id="pls-test-results">
-        <?php foreach ( $test_categories as $key => $category ) : ?>
-            <div class="pls-test-category" data-category="<?php echo esc_attr( $key ); ?>">
-                <div class="category-header">
-                    <div class="category-info">
-                        <span class="dashicons dashicons-<?php echo esc_attr( $category['icon'] ); ?>"></span>
-                        <h3><?php echo esc_html( $category['label'] ); ?></h3>
-                        <span class="category-status" data-status="pending">
-                            <span class="dashicons dashicons-clock"></span>
-                        </span>
+        <?php
+        // Group tests by category
+        $grouped_tests = array();
+        foreach ( $test_categories as $key => $category ) {
+            $group = isset( $category['group'] ) ? $category['group'] : 'other';
+            if ( ! isset( $grouped_tests[ $group ] ) ) {
+                $grouped_tests[ $group ] = array();
+            }
+            $grouped_tests[ $group ][ $key ] = $category;
+        }
+        
+        // Group labels
+        $group_labels = array(
+            'core'         => 'Core Tests',
+            'wc_sync'      => 'WooCommerce Sync',
+            'data'         => 'Data Management',
+            'orders'       => 'Orders & Commissions',
+            'infrastructure' => 'Infrastructure',
+            'admin'        => 'Admin Features',
+            'frontend'     => 'Frontend',
+            'v4.9.99'      => 'v4.9.99 Features',
+            'other'        => 'Other',
+        );
+        
+        // Display grouped tests
+        foreach ( $grouped_tests as $group_key => $tests ) :
+            $group_label = isset( $group_labels[ $group_key ] ) ? $group_labels[ $group_key ] : ucfirst( $group_key );
+            ?>
+            <div class="pls-test-group" data-group="<?php echo esc_attr( $group_key ); ?>">
+                <h2 class="test-group-title" style="margin: 30px 0 15px 0; padding-bottom: 10px; border-bottom: 2px solid #ddd; font-size: 18px; font-weight: 600;">
+                    <?php echo esc_html( $group_label ); ?>
+                    <span class="test-group-count" style="font-size: 14px; font-weight: 400; color: #666; margin-left: 8px;">
+                        (<?php echo count( $tests ); ?> tests)
+                    </span>
+                </h2>
+                <?php foreach ( $tests as $key => $category ) : ?>
+                    <div class="pls-test-category" data-category="<?php echo esc_attr( $key ); ?>">
+                        <div class="category-header">
+                            <div class="category-info">
+                                <span class="dashicons dashicons-<?php echo esc_attr( $category['icon'] ); ?>"></span>
+                                <h3><?php echo esc_html( $category['label'] ); ?></h3>
+                                <span class="category-status" data-status="pending">
+                                    <span class="dashicons dashicons-clock"></span>
+                                </span>
+                            </div>
+                            <p class="category-description"><?php echo esc_html( $category['description'] ); ?></p>
+                            <button type="button" class="button button-small pls-run-category" data-category="<?php echo esc_attr( $key ); ?>">
+                                Run
+                            </button>
+                            <button type="button" class="button button-link toggle-details" style="display: none;">
+                                <span class="dashicons dashicons-arrow-down-alt2"></span>
+                            </button>
+                        </div>
+                        <div class="category-results" style="display: none;">
+                            <div class="results-list"></div>
+                        </div>
                     </div>
-                    <p class="category-description"><?php echo esc_html( $category['description'] ); ?></p>
-                    <button type="button" class="button button-small pls-run-category" data-category="<?php echo esc_attr( $key ); ?>">
-                        Run
-                    </button>
-                    <button type="button" class="button button-link toggle-details" style="display: none;">
-                        <span class="dashicons dashicons-arrow-down-alt2"></span>
-                    </button>
-                </div>
-                <div class="category-results" style="display: none;">
-                    <div class="results-list"></div>
-                </div>
+                <?php endforeach; ?>
             </div>
         <?php endforeach; ?>
     </div>

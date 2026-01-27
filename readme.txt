@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 4.9.8
+Stable tag: 4.9.9
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,30 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 4.9.9 =
+* **NEW:** Comprehensive System Test Coverage - Added 20 new test categories (28 total) covering all PLS features
+* **NEW:** Test categories organized into groups: Core, WooCommerce Sync, Data Management, Orders & Commissions, Infrastructure, Admin, Frontend, v4.9.99 Features
+* **NEW:** Tier Rules System tests - Validates tier-based pricing, restrictions, and label fee calculations
+* **NEW:** Product Profiles tests - Validates JSON fields, images, and content structure
+* **NEW:** Stock Management tests - Verifies stock tracking and WooCommerce sync
+* **NEW:** Cost Management tests - Checks shipping/packaging costs and sync
+* **NEW:** Marketing Costs tests - Validates channel tracking and date range queries
+* **NEW:** Revenue Snapshots tests - Tests daily snapshot generation and accuracy
+* **NEW:** Ingredient Sync tests - Validates taxonomy sync to attribute system
+* **NEW:** Shortcodes tests - Verifies all PLS shortcodes are registered
+* **NEW:** AJAX Endpoints tests - Checks admin and frontend AJAX actions
+* **NEW:** Bundle Cart Logic tests - Validates bundle detection and pricing
+* **NEW:** Swatch System tests - Verifies swatch data and WooCommerce sync
+* **NEW:** Commission Reports tests - Validates monthly reports and totals
+* **NEW:** Onboarding/Help System tests - Checks help content availability
+* **NEW:** Admin Dashboard Filter tests - Validates menu restrictions
+* **NEW:** SEO Integration tests - Verifies Yoast SEO meta sync
+* **NEW:** v4.9.99 Feature tests - Tier unlocking, inline configurator, CRO features, sample data completeness, landing pages
+* **IMPROVED:** System Test UI - Grouped test categories with headers and descriptions
+* **IMPROVED:** JavaScript dynamically discovers test categories from DOM
+* **IMPROVED:** Sample data structure supports tier-based ingredients/fragrances
+* **IMPROVED:** Sample data uses database transactions for faster processing
+
 = 4.9.8 =
 * **CRITICAL FIX:** Removed quantity picker - tiers are fixed packs, users just select a tier
 * **CRITICAL FIX:** Fixed WooCommerce sync to store total price (price_per_unit × units) as variation price

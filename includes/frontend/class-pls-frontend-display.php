@@ -584,7 +584,10 @@ final class PLS_Frontend_Display {
                             }
                             ?>
                             <div class="pls-product-option-group" data-attribute-label="<?php echo esc_attr( $attr_label ); ?>">
-                                <label class="pls-product-option-label"><?php echo esc_html( $attr_label ); ?></label>
+                                <label class="pls-product-option-label">
+                                    <?php echo esc_html( $attr_label ); ?>
+                                    <span class="pls-option-group-hint"><?php esc_html_e( '(Select one)', 'pls-private-label-store' ); ?></span>
+                                </label>
                                 <div class="pls-product-option-values">
                                     <?php foreach ( $values as $value ) : 
                                         $value_id = isset( $value['id'] ) ? absint( $value['id'] ) : 0;
@@ -595,30 +598,44 @@ final class PLS_Frontend_Display {
                                         // Check if this is a "standard" option (usually free)
                                         $is_standard = ( stripos( strtolower( $value_label ), 'standard' ) !== false || 
                                                          stripos( strtolower( $value_label ), 'clear' ) !== false ||
-                                                         stripos( strtolower( $value_label ), 'black' ) !== false );
+                                                         stripos( strtolower( $value_label ), 'black' ) !== false ||
+                                                         stripos( strtolower( $value_label ), 'included' ) !== false );
+                                        
+                                        // Determine if option has a price
+                                        $has_price = ( ! $is_standard && ( $value_price > 0 || $tier_overrides ) );
                                         ?>
-                                        <label class="pls-option-value-card <?php echo $is_standard ? 'is-standard' : ''; ?>">
+                                        <label class="pls-option-value-card <?php echo $is_standard ? 'is-standard' : ''; ?> <?php echo $has_price ? 'has-price' : ''; ?>">
                                             <input type="radio" 
                                                    name="pls_option_<?php echo esc_attr( sanitize_title( $attr_label ) ); ?>" 
                                                    value="<?php echo esc_attr( $value_id ); ?>"
                                                    data-value-id="<?php echo esc_attr( $value_id ); ?>"
                                                    data-price="<?php echo esc_attr( $value_price ); ?>"
                                                    data-tier-prices="<?php echo esc_attr( $tier_overrides ? wp_json_encode( $tier_overrides ) : '' ); ?>"
-                                                   <?php echo $is_standard ? 'checked' : ''; ?> />
-                                            <span class="pls-option-value-label"><?php echo esc_html( $value_label ); ?></span>
-                                            <?php if ( ! $is_standard && ( $value_price > 0 || $tier_overrides ) ) : ?>
-                                                <span class="pls-option-price-badge">
-                                                    <?php
-                                                    if ( $tier_overrides && isset( $tier_overrides[1] ) ) {
-                                                        echo '+$' . number_format( floatval( $tier_overrides[1] ), 2 ) . ' ' . esc_html__( '(Tier 1)', 'pls-private-label-store' );
-                                                    } elseif ( $value_price > 0 ) {
-                                                        echo '+$' . number_format( $value_price, 2 );
-                                                    }
-                                                    ?>
-                                                </span>
-                                            <?php else : ?>
-                                                <span class="pls-option-price-badge"><?php esc_html_e( 'Included', 'pls-private-label-store' ); ?></span>
-                                            <?php endif; ?>
+                                                   <?php echo $is_standard ? 'checked' : ''; ?>
+                                                   class="pls-option-radio" />
+                                            <span class="pls-option-radio-indicator"></span>
+                                            <span class="pls-option-value-content">
+                                                <span class="pls-option-value-label"><?php echo esc_html( $value_label ); ?></span>
+                                                <?php if ( $has_price ) : ?>
+                                                    <span class="pls-option-price-badge pls-option-price-badge--paid">
+                                                        <span class="pls-option-price-prefix">+</span>
+                                                        <?php
+                                                        if ( $tier_overrides && isset( $tier_overrides[1] ) ) {
+                                                            echo '$' . number_format( floatval( $tier_overrides[1] ), 2 );
+                                                            echo ' <span class="pls-option-price-note">' . esc_html__( 'per unit', 'pls-private-label-store' ) . '</span>';
+                                                        } elseif ( $value_price > 0 ) {
+                                                            echo '$' . number_format( $value_price, 2 );
+                                                            echo ' <span class="pls-option-price-note">' . esc_html__( 'per unit', 'pls-private-label-store' ) . '</span>';
+                                                        }
+                                                        ?>
+                                                    </span>
+                                                <?php else : ?>
+                                                    <span class="pls-option-price-badge pls-option-price-badge--included">
+                                                        <span class="pls-option-included-icon">✓</span>
+                                                        <?php esc_html_e( 'Included', 'pls-private-label-store' ); ?>
+                                                    </span>
+                                                <?php endif; ?>
+                                            </span>
                                         </label>
                                     <?php endforeach; ?>
                                 </div>
@@ -695,9 +712,10 @@ final class PLS_Frontend_Display {
         $has_description = ! empty( $profile->long_description );
         $has_directions = ! empty( $profile->directions_text );
         $has_skin_types = ! empty( $profile->skin_types_json );
-        $has_benefits = ! empty( $profile->benefits_json );
+        // Benefits are now rendered separately, not in tabs
+        $has_benefits = false;
         
-        if ( ! $has_description && ! $has_directions && ! $has_skin_types && ! $has_benefits ) {
+        if ( ! $has_description && ! $has_directions && ! $has_skin_types ) {
             return;
         }
         
@@ -742,48 +760,69 @@ final class PLS_Frontend_Display {
                     </div>
                 <?php endif; ?>
                 
-                <?php if ( $has_skin_types || $has_benefits ) : ?>
+                <?php if ( $has_skin_types ) : ?>
                     <div class="pls-tab-panel" data-tab="info">
-                        <?php if ( $has_skin_types ) : 
-                            $skin_types_data = json_decode( $profile->skin_types_json, true );
-                            if ( is_array( $skin_types_data ) && ! empty( $skin_types_data ) ) :
-                                ?>
-                                <div class="pls-product-skin-types">
-                                    <h3><?php esc_html_e( 'Suitable for Skin Types', 'pls-private-label-store' ); ?></h3>
-                                    <div class="pls-skin-type-pills">
-                                        <?php foreach ( $skin_types_data as $skin_type ) : 
-                                            $label = is_array( $skin_type ) && isset( $skin_type['label'] ) ? $skin_type['label'] : $skin_type;
-                                            ?>
-                                            <span class="pls-skin-type-pill"><?php echo esc_html( $label ); ?></span>
-                                        <?php endforeach; ?>
-                                    </div>
+                        <?php 
+                        $skin_types_data = json_decode( $profile->skin_types_json, true );
+                        if ( is_array( $skin_types_data ) && ! empty( $skin_types_data ) ) :
+                            ?>
+                            <div class="pls-product-skin-types">
+                                <h3><?php esc_html_e( 'Suitable for Skin Types', 'pls-private-label-store' ); ?></h3>
+                                <div class="pls-skin-type-pills">
+                                    <?php foreach ( $skin_types_data as $skin_type ) : 
+                                        $label = is_array( $skin_type ) && isset( $skin_type['label'] ) ? $skin_type['label'] : $skin_type;
+                                        ?>
+                                        <span class="pls-skin-type-pill"><?php echo esc_html( $label ); ?></span>
+                                    <?php endforeach; ?>
                                 </div>
-                            <?php endif; ?>
-                        <?php endif; ?>
-                        
-                        <?php if ( $has_benefits ) : 
-                            $benefits_data = json_decode( $profile->benefits_json, true );
-                            if ( is_array( $benefits_data ) && ! empty( $benefits_data ) ) :
-                                ?>
-                                <div class="pls-product-benefits">
-                                    <h3><?php esc_html_e( 'The Benefits', 'pls-private-label-store' ); ?></h3>
-                                    <div class="pls-benefits-grid">
-                                        <?php foreach ( $benefits_data as $benefit ) : 
-                                            $label = is_array( $benefit ) && isset( $benefit['label'] ) ? $benefit['label'] : $benefit;
-                                            ?>
-                                            <div class="pls-benefit-card">
-                                                <span class="pls-benefit-icon">✓</span>
-                                                <span class="pls-benefit-label"><?php echo esc_html( $label ); ?></span>
-                                            </div>
-                                        <?php endforeach; ?>
-                                    </div>
-                                </div>
-                            <?php endif; ?>
+                            </div>
                         <?php endif; ?>
                     </div>
                 <?php endif; ?>
             </div>
         </div>
+        <?php
+    }
+
+    /**
+     * Render benefits section as standalone visual cards.
+     *
+     * @param object $profile The product profile.
+     */
+    private static function render_benefits_section( $profile ) {
+        if ( empty( $profile->benefits_json ) ) {
+            return;
+        }
+
+        $benefits_data = json_decode( $profile->benefits_json, true );
+        if ( ! is_array( $benefits_data ) || empty( $benefits_data ) ) {
+            return;
+        }
+
+        ?>
+        <section class="pls-benefits-section">
+            <h2 class="pls-section-title"><?php esc_html_e( 'The Benefits', 'pls-private-label-store' ); ?></h2>
+            <div class="pls-benefits-grid">
+                <?php foreach ( $benefits_data as $benefit ) : 
+                    $label = is_array( $benefit ) && isset( $benefit['label'] ) ? $benefit['label'] : $benefit;
+                    $icon_url = is_array( $benefit ) && isset( $benefit['icon'] ) && ! empty( $benefit['icon'] ) ? $benefit['icon'] : '';
+                    $image_url = is_array( $benefit ) && isset( $benefit['image'] ) && ! empty( $benefit['image'] ) ? $benefit['image'] : '';
+                    ?>
+                    <div class="pls-benefit-card">
+                        <div class="pls-benefit-icon">
+                            <?php if ( $image_url ) : ?>
+                                <img src="<?php echo esc_url( $image_url ); ?>" alt="<?php echo esc_attr( $label ); ?>" />
+                            <?php elseif ( $icon_url ) : ?>
+                                <img src="<?php echo esc_url( $icon_url ); ?>" alt="<?php echo esc_attr( $label ); ?>" />
+                            <?php else : ?>
+                                <span class="pls-benefit-icon-placeholder">✓</span>
+                            <?php endif; ?>
+                        </div>
+                        <div class="pls-benefit-label"><?php echo esc_html( $label ); ?></div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </section>
         <?php
     }
 
@@ -953,13 +992,29 @@ final class PLS_Frontend_Display {
             <h2 class="pls-auto-inject__title"><?php esc_html_e( 'Ingredients', 'pls-private-label-store' ); ?></h2>
             
             <?php if ( ! empty( $key_ingredients ) ) : ?>
-                <div class="pls-ingredients-key">
-                    <h3><?php esc_html_e( 'Key Ingredients', 'pls-private-label-store' ); ?></h3>
-                    <div class="pls-ingredients-key__grid">
-                        <?php foreach ( $key_ingredients as $ingredient ) : ?>
+                <div class="pls-key-ingredients-section">
+                    <h2 class="pls-section-title"><?php esc_html_e( 'Key Ingredients', 'pls-private-label-store' ); ?></h2>
+                    <div class="pls-ingredients-key-grid">
+                        <?php foreach ( $key_ingredients as $ingredient ) : 
+                            // Get ingredient image from taxonomy meta
+                            $ingredient_image_id = get_term_meta( $ingredient['id'], '_pls_ingredient_image', true );
+                            $ingredient_image_url = '';
+                            if ( $ingredient_image_id ) {
+                                $image = wp_get_attachment_image_src( $ingredient_image_id, 'medium' );
+                                $ingredient_image_url = $image ? $image[0] : '';
+                            }
+                            ?>
                             <div class="pls-ingredient-card pls-ingredient-card--key">
-                                <span class="pls-ingredient-card__badge">★</span>
-                                <span class="pls-ingredient-card__name"><?php echo esc_html( $ingredient['name'] ); ?></span>
+                                <?php if ( $ingredient_image_url ) : ?>
+                                    <div class="pls-ingredient-image">
+                                        <img src="<?php echo esc_url( $ingredient_image_url ); ?>" alt="<?php echo esc_attr( $ingredient['name'] ); ?>" />
+                                    </div>
+                                <?php else : ?>
+                                    <div class="pls-ingredient-image pls-ingredient-image--placeholder">
+                                        <span class="pls-ingredient-placeholder-icon">★</span>
+                                    </div>
+                                <?php endif; ?>
+                                <div class="pls-ingredient-name"><?php echo esc_html( $ingredient['name'] ); ?></div>
                                 <?php if ( ! empty( $ingredient['desc'] ) ) : ?>
                                     <p class="pls-ingredient-card__desc"><?php echo esc_html( $ingredient['desc'] ); ?></p>
                                 <?php endif; ?>

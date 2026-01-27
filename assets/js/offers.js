@@ -305,6 +305,10 @@
       const tierPricesJson = $(this).data('tier-prices');
       const tierPrices = tierPricesJson ? JSON.parse(tierPricesJson) : null;
 
+      // Remove selected state from other options in same group
+      $group.find('.pls-option-value-card').removeClass('is-selected');
+      $card.addClass('is-selected');
+
       selectedOptions[attributeLabel] = {
         valueId: valueId,
         price: price,
@@ -312,7 +316,26 @@
       };
 
       calculatePrice();
+      
+      // Visual feedback - scroll price summary into view if needed
+      const $priceSummary = $('.pls-price-summary');
+      if ($priceSummary.length && !isElementInViewport($priceSummary[0])) {
+        $('html, body').animate({
+          scrollTop: $priceSummary.offset().top - 100
+        }, 300);
+      }
     });
+    
+    // Helper function to check if element is in viewport
+    function isElementInViewport(el) {
+      const rect = el.getBoundingClientRect();
+      return (
+        rect.top >= 0 &&
+        rect.left >= 0 &&
+        rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+        rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+      );
+    }
 
   }
 

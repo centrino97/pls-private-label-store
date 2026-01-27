@@ -1110,16 +1110,25 @@ final class PLS_Sample_Data {
      * Add sample products.
      */
     public static function add_products() {
-        $categories = get_terms( array(
-            'taxonomy' => 'product_cat',
-            'hide_empty' => false,
-        ) );
+        global $wpdb;
+        
+        // Start transaction for faster processing
+        $wpdb->query( 'START TRANSACTION' );
+        
+        try {
+            $categories = get_terms( array(
+                'taxonomy' => 'product_cat',
+                'hide_empty' => false,
+            ) );
 
-        $products = array(
+            // Reduced to 3-5 products with FULL complexity for v4.9.99
+            // Each product has all 5 tiers, tier-based ingredients/fragrances, long-form descriptions, multiple images
+            $products = array(
             array(
                 'name' => 'Milk Cleanser',
                 'category' => 'Cleansers',
                 'description' => 'Turns out you can bottle heaven, and it looks a little something like this milk cleanser. Vegan, natural and the ultimate hero for dry or sensitive skin.',
+                'long_description' => 'Experience the ultimate in gentle cleansing with our luxurious Milk Cleanser. Formulated with premium Australian native ingredients, this creamy, non-foaming cleanser transforms your daily skincare routine into a moment of pure indulgence. Perfect for those with dry, sensitive, or reactive skin, our Milk Cleanser removes makeup, dirt, and impurities without stripping your skin\'s natural moisture barrier. The rich, emollient formula glides effortlessly across your skin, leaving it feeling soft, supple, and deeply hydrated. Enriched with Emu Apple extract, known for its powerful anti-inflammatory properties, and cooling Cucumber, this cleanser soothes irritation while Desert Lime provides protective antioxidants. Whether you\'re starting your day or winding down at night, this gentle yet effective cleanser is your first step toward radiant, healthy-looking skin. Suitable for all skin types, especially those seeking a hydrating, non-drying cleansing experience.',
                 'directions' => 'Drench skin, add 1-2 pumps to twinkling fingertips and gently massage into the face and neck in circular motions. Rinse with warm water.',
                 'skin_types' => 'All Skin Types / Dry / Sensitive',
                 'pack_tiers' => array(
@@ -1129,57 +1138,24 @@ final class PLS_Sample_Data {
                     array( 'tier_key' => 'tier_4', 'units' => 500, 'price' => 13.00, 'enabled' => 1 ),
                     array( 'tier_key' => 'tier_5', 'units' => 1000, 'price' => 11.00, 'enabled' => 1 ),
                 ),
-                'key_ingredients' => array( 'Emu Apple', 'Cucumber', 'Desert Lime' ),
-            ),
-            array(
-                'name' => 'Gel Cleanser',
-                'category' => 'Cleansers',
-                'description' => 'Deep cleansing gel formula that removes excess oil and impurities without stripping the skin. Perfect for oily and combination skin types.',
-                'directions' => 'Wet face with warm water, massage a small amount into skin in circular motions. Rinse thoroughly and pat dry.',
-                'skin_types' => 'Oily / Combination',
-                'pack_tiers' => array(
-                    array( 'tier_key' => 'tier_1', 'units' => 50, 'price' => 18.00, 'enabled' => 1 ),
-                    array( 'tier_key' => 'tier_2', 'units' => 100, 'price' => 16.00, 'enabled' => 1 ),
-                    array( 'tier_key' => 'tier_3', 'units' => 250, 'price' => 14.00, 'enabled' => 1 ),
-                    array( 'tier_key' => 'tier_4', 'units' => 500, 'price' => 12.00, 'enabled' => 1 ),
-                    array( 'tier_key' => 'tier_5', 'units' => 1000, 'price' => 10.00, 'enabled' => 1 ),
+                'key_ingredients' => array( 
+                    'tier_1' => array( 'Emu Apple', 'Cucumber' ),
+                    'tier_3' => array( 'Desert Lime', 'Kakadu Plum' ),
+                    'tier_4' => array( 'Hyaluronic Acid', 'Niacinamide' ),
+                    'tier_5' => array( 'Coenzyme Q10' ),
                 ),
-                'key_ingredients' => array( 'Cucumber', 'Desert Lime' ),
-            ),
-            array(
-                'name' => 'Hydrating Toner',
-                'category' => 'Toning Mists',
-                'description' => 'A refreshing facial mist that balances pH and prepares skin for serums and moisturizers.',
-                'directions' => 'Spritz onto clean skin morning and night, or throughout the day for a refreshing boost.',
-                'skin_types' => 'All Skin Types',
-                'pack_tiers' => array(
-                    array( 'tier_key' => 'tier_1', 'units' => 50, 'price' => 16.00, 'enabled' => 1 ),
-                    array( 'tier_key' => 'tier_2', 'units' => 100, 'price' => 14.50, 'enabled' => 1 ),
-                    array( 'tier_key' => 'tier_3', 'units' => 250, 'price' => 12.50, 'enabled' => 1 ),
-                    array( 'tier_key' => 'tier_4', 'units' => 500, 'price' => 10.50, 'enabled' => 1 ),
-                    array( 'tier_key' => 'tier_5', 'units' => 1000, 'price' => 9.00, 'enabled' => 1 ),
+                'fragrances' => array(
+                    'tier_1' => array( 'Unscented' ),
+                    'tier_3' => array( 'Lavender', 'Rose' ),
+                    'tier_4' => array( 'Premium Jasmine' ),
+                    'tier_5' => array( 'Custom Blend' ),
                 ),
-                'key_ingredients' => array( 'Cucumber', 'Kakadu Plum' ),
-            ),
-            array(
-                'name' => 'Rose Water Mist',
-                'category' => 'Toning Mists',
-                'description' => 'Soothing floral facial mist with rose water to calm and hydrate the skin. Ideal for sensitive and dry skin types.',
-                'directions' => 'Spritz onto face throughout the day or after cleansing to refresh and hydrate.',
-                'skin_types' => 'Dry / Sensitive',
-                'pack_tiers' => array(
-                    array( 'tier_key' => 'tier_1', 'units' => 50, 'price' => 17.00, 'enabled' => 1 ),
-                    array( 'tier_key' => 'tier_2', 'units' => 100, 'price' => 15.50, 'enabled' => 1 ),
-                    array( 'tier_key' => 'tier_3', 'units' => 250, 'price' => 13.50, 'enabled' => 1 ),
-                    array( 'tier_key' => 'tier_4', 'units' => 500, 'price' => 11.50, 'enabled' => 1 ),
-                    array( 'tier_key' => 'tier_5', 'units' => 1000, 'price' => 9.50, 'enabled' => 1 ),
-                ),
-                'key_ingredients' => array( 'Emu Apple', 'Quandong' ),
             ),
             array(
                 'name' => 'Daily Moisturiser',
                 'category' => 'Moisturisers',
                 'description' => 'Lightweight daily hydration that absorbs quickly without leaving a greasy feel. Perfect for all skin types.',
+                'long_description' => 'Transform your daily skincare routine with our advanced Daily Moisturiser, a lightweight yet powerful formula designed to deliver intense hydration without the heavy, greasy feel. This multi-tasking moisturizer is perfect for all skin types, providing the perfect balance of moisture and protection your skin needs throughout the day. Formulated with cutting-edge ingredients that work in harmony, our Daily Moisturiser features Hyaluronic Acid for deep, long-lasting hydration, Niacinamide to strengthen your skin barrier and reduce inflammation, and Cucumber extract for its soothing, cooling properties. The lightweight, fast-absorbing texture makes it ideal for layering under makeup or wearing alone for a natural, dewy finish. Whether you have oily, dry, combination, or sensitive skin, this versatile moisturizer adapts to your skin\'s needs, providing essential hydration without clogging pores or causing breakouts. Enriched with antioxidants and skin-loving ingredients, it helps protect against environmental stressors while maintaining optimal moisture levels. Experience the perfect balance of hydration and comfort with our Daily Moisturiser—your skin will feel soft, smooth, and beautifully nourished all day long.',
                 'directions' => 'Apply to face and neck morning and night after cleansing and toning.',
                 'skin_types' => 'All Skin Types',
                 'pack_tiers' => array(
@@ -1189,27 +1165,24 @@ final class PLS_Sample_Data {
                     array( 'tier_key' => 'tier_4', 'units' => 500, 'price' => 15.00, 'enabled' => 1 ),
                     array( 'tier_key' => 'tier_5', 'units' => 1000, 'price' => 13.00, 'enabled' => 1 ),
                 ),
-                'key_ingredients' => array( 'Hyaluronic Acid', 'Cucumber' ),
-            ),
-            array(
-                'name' => 'Rich Night Cream',
-                'category' => 'Moisturisers',
-                'description' => 'Intensive overnight repair cream that works while you sleep to restore and rejuvenate the skin.',
-                'directions' => 'Apply generously to face and neck before bed. Massage in gently until absorbed.',
-                'skin_types' => 'Dry / Sensitive',
-                'pack_tiers' => array(
-                    array( 'tier_key' => 'tier_1', 'units' => 50, 'price' => 25.00, 'enabled' => 1 ),
-                    array( 'tier_key' => 'tier_2', 'units' => 100, 'price' => 23.00, 'enabled' => 1 ),
-                    array( 'tier_key' => 'tier_3', 'units' => 250, 'price' => 21.00, 'enabled' => 1 ),
-                    array( 'tier_key' => 'tier_4', 'units' => 500, 'price' => 19.00, 'enabled' => 1 ),
-                    array( 'tier_key' => 'tier_5', 'units' => 1000, 'price' => 17.00, 'enabled' => 1 ),
+                'key_ingredients' => array( 
+                    'tier_1' => array( 'Cucumber' ),
+                    'tier_3' => array( 'Hyaluronic Acid', 'Kakadu Plum' ),
+                    'tier_4' => array( 'Niacinamide', 'Ceramides' ),
+                    'tier_5' => array( 'Peptides', 'Coenzyme Q10' ),
                 ),
-                'key_ingredients' => array( 'Ceramides', 'Hyaluronic Acid', 'Peptides' ),
+                'fragrances' => array(
+                    'tier_1' => array( 'Unscented' ),
+                    'tier_3' => array( 'Lavender', 'Rose' ),
+                    'tier_4' => array( 'Premium Jasmine' ),
+                    'tier_5' => array( 'Custom Blend' ),
+                ),
             ),
             array(
                 'name' => 'Vitamin C Serum',
                 'category' => 'Serums & Oils',
                 'description' => 'Brightening serum with high-potency vitamin C and Australian native extracts.',
+                'long_description' => 'Illuminate your complexion with our powerful Vitamin C Serum, a brightening powerhouse that delivers visible results for radiant, even-toned skin. This advanced formula combines high-potency Vitamin C with potent Australian native extracts to create a serum that not only brightens but also protects and repairs your skin. Kakadu Plum, one of the world\'s richest sources of Vitamin C, works alongside Desert Lime extract to provide exceptional antioxidant protection while targeting dark spots, hyperpigmentation, and uneven skin tone. The lightweight, fast-absorbing formula penetrates deeply into the skin, delivering active ingredients where they\'re needed most. Regular use of this serum helps to fade existing dark spots, prevent new ones from forming, and boost your skin\'s natural radiance. The powerful antioxidant properties help protect against environmental damage from UV rays and pollution, while promoting collagen production for firmer, more youthful-looking skin. Suitable for all skin types, this serum is particularly effective for those dealing with sun damage, age spots, or dull, lackluster skin. Experience the transformative power of Vitamin C with our expertly formulated serum—your path to brighter, more luminous skin starts here.',
                 'directions' => 'Apply 2-3 drops to clean skin morning and night, before moisturizer.',
                 'skin_types' => 'All Skin Types',
                 'pack_tiers' => array(
@@ -1219,52 +1192,18 @@ final class PLS_Sample_Data {
                     array( 'tier_key' => 'tier_4', 'units' => 500, 'price' => 19.00, 'enabled' => 1 ),
                     array( 'tier_key' => 'tier_5', 'units' => 1000, 'price' => 16.00, 'enabled' => 1 ),
                 ),
-                'key_ingredients' => array( 'Vitamin C', 'Kakadu Plum', 'Desert Lime' ),
-            ),
-            array(
-                'name' => 'Hyaluronic Serum',
-                'category' => 'Serums & Oils',
-                'description' => 'Deep hydration plumping serum with multiple molecular weights of hyaluronic acid for maximum moisture retention.',
-                'directions' => 'Apply 2-3 drops to clean, damp skin morning and night. Follow with moisturizer.',
-                'skin_types' => 'All Skin Types',
-                'pack_tiers' => array(
-                    array( 'tier_key' => 'tier_1', 'units' => 50, 'price' => 26.00, 'enabled' => 1 ),
-                    array( 'tier_key' => 'tier_2', 'units' => 100, 'price' => 24.00, 'enabled' => 1 ),
-                    array( 'tier_key' => 'tier_3', 'units' => 250, 'price' => 21.00, 'enabled' => 1 ),
-                    array( 'tier_key' => 'tier_4', 'units' => 500, 'price' => 18.00, 'enabled' => 1 ),
-                    array( 'tier_key' => 'tier_5', 'units' => 1000, 'price' => 15.00, 'enabled' => 1 ),
+                'key_ingredients' => array( 
+                    'tier_1' => array( 'Desert Lime' ),
+                    'tier_3' => array( 'Kakadu Plum', 'Vitamin C' ),
+                    'tier_4' => array( 'Niacinamide', 'Retinol' ),
+                    'tier_5' => array( 'Resveratrol', 'Bakuchiol' ),
                 ),
-                'key_ingredients' => array( 'Hyaluronic Acid', 'Niacinamide', 'Cucumber' ),
-            ),
-            array(
-                'name' => 'Clay Detox Mask',
-                'category' => 'Masks & Exfoliants',
-                'description' => 'Deep cleansing clay mask that draws out impurities and refines pores.',
-                'directions' => 'Apply a thin layer to clean skin, leave for 10-15 minutes, then rinse with warm water. Use 1-2 times per week.',
-                'skin_types' => 'Oily / Combination',
-                'pack_tiers' => array(
-                    array( 'tier_key' => 'tier_1', 'units' => 50, 'price' => 18.00, 'enabled' => 1 ),
-                    array( 'tier_key' => 'tier_2', 'units' => 100, 'price' => 16.00, 'enabled' => 1 ),
-                    array( 'tier_key' => 'tier_3', 'units' => 250, 'price' => 14.00, 'enabled' => 1 ),
-                    array( 'tier_key' => 'tier_4', 'units' => 500, 'price' => 12.00, 'enabled' => 1 ),
-                    array( 'tier_key' => 'tier_5', 'units' => 1000, 'price' => 10.00, 'enabled' => 1 ),
+                'fragrances' => array(
+                    'tier_1' => array( 'Unscented' ),
+                    'tier_3' => array( 'Lavender', 'Rose' ),
+                    'tier_4' => array( 'Premium Jasmine' ),
+                    'tier_5' => array( 'Custom Blend' ),
                 ),
-                'key_ingredients' => array( 'Cucumber', 'Quandong' ),
-            ),
-            array(
-                'name' => 'Eye Repair Cream',
-                'category' => 'Eye & Lip Care',
-                'description' => 'Anti-aging eye treatment that reduces fine lines, dark circles, and puffiness around the delicate eye area.',
-                'directions' => 'Apply a small amount around the eye area using your ring finger, morning and night.',
-                'skin_types' => 'All Skin Types',
-                'pack_tiers' => array(
-                    array( 'tier_key' => 'tier_1', 'units' => 50, 'price' => 24.00, 'enabled' => 1 ),
-                    array( 'tier_key' => 'tier_2', 'units' => 100, 'price' => 22.00, 'enabled' => 1 ),
-                    array( 'tier_key' => 'tier_3', 'units' => 250, 'price' => 20.00, 'enabled' => 1 ),
-                    array( 'tier_key' => 'tier_4', 'units' => 500, 'price' => 18.00, 'enabled' => 1 ),
-                    array( 'tier_key' => 'tier_5', 'units' => 1000, 'price' => 16.00, 'enabled' => 1 ),
-                ),
-                'key_ingredients' => array( 'Peptides', 'Hyaluronic Acid', 'Coenzyme Q10' ),
             ),
         );
 
@@ -1690,16 +1629,41 @@ final class PLS_Sample_Data {
             // Add key ingredients (already handled above, but keeping for compatibility)
             if ( ! empty( $product_data['key_ingredients'] ) ) {
                 $ingredient_ids = array();
-                foreach ( $product_data['key_ingredients'] as $ing_name ) {
-                    $ing_term = get_term_by( 'name', $ing_name, 'pls_ingredient' );
-                    if ( $ing_term ) {
-                        $ingredient_ids[] = $ing_term->term_id;
+                // Handle tier-based ingredients structure
+                if ( isset( $product_data['key_ingredients']['tier_1'] ) ) {
+                    // New tier-based structure
+                    foreach ( $product_data['key_ingredients'] as $tier => $ingredients ) {
+                        foreach ( $ingredients as $ing_name ) {
+                            $ing_term = get_term_by( 'name', $ing_name, 'pls_ingredient' );
+                            if ( $ing_term && ! in_array( $ing_term->term_id, $ingredient_ids ) ) {
+                                $ingredient_ids[] = $ing_term->term_id;
+                            }
+                        }
+                    }
+                } else {
+                    // Old flat structure (backward compatibility)
+                    foreach ( $product_data['key_ingredients'] as $ing_name ) {
+                        $ing_term = get_term_by( 'name', $ing_name, 'pls_ingredient' );
+                        if ( $ing_term ) {
+                            $ingredient_ids[] = $ing_term->term_id;
+                        }
                     }
                 }
                 if ( ! empty( $ingredient_ids ) ) {
                     wp_set_object_terms( $product_id, $ingredient_ids, 'pls_ingredient' );
                 }
             }
+        }
+        
+        // Commit transaction
+        $wpdb->query( 'COMMIT' );
+        error_log( '[PLS Sample Data] Products added successfully with transaction.' );
+        
+        } catch ( Exception $e ) {
+            // Rollback on error
+            $wpdb->query( 'ROLLBACK' );
+            error_log( '[PLS Sample Data] ERROR: Product creation failed. Transaction rolled back. Error: ' . $e->getMessage() );
+            throw $e;
         }
     }
 

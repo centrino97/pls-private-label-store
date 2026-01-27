@@ -33,6 +33,22 @@
     --pls-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
     --pls-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
     --pls-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+    
+    /* Spacing Variables */
+    --pls-spacing-xs: 0.5rem;
+    --pls-spacing-sm: 1rem;
+    --pls-spacing-md: 1.5rem;
+    --pls-spacing-lg: 2rem;
+    --pls-spacing-xl: 3rem;
+    
+    /* Typography Variables */
+    --pls-font-size-xs: 0.75rem;
+    --pls-font-size-sm: 0.875rem;
+    --pls-font-size-base: 1rem;
+    --pls-font-size-lg: 1.125rem;
+    --pls-font-size-xl: 1.25rem;
+    --pls-font-size-2xl: 1.5rem;
+    --pls-font-size-3xl: 2rem;
 }
 
 /* ==========================================================================
@@ -45,10 +61,20 @@
 }
 
 .pls-auto-inject__section {
-    margin-bottom: 2.5rem;
-    padding: 1.5rem;
+    margin-bottom: var(--pls-spacing-xl);
+    padding: var(--pls-spacing-lg);
     background: var(--pls-gray-50);
     border-radius: var(--pls-radius-lg);
+}
+
+/* Section Title (for standalone sections) */
+.pls-section-title {
+    font-size: var(--pls-font-size-2xl);
+    font-weight: 600;
+    color: var(--pls-gray-900);
+    margin-bottom: var(--pls-spacing-lg);
+    text-align: center;
+    line-height: 1.3;
 }
 
 .pls-auto-inject__title {
@@ -453,6 +479,77 @@
     .pls-configurator-block__title {
         font-size: 1rem;
         margin-bottom: 1rem;
+    }
+    
+    /* Benefits Section Responsive */
+    .pls-benefits-section {
+        margin: var(--pls-spacing-lg) 0;
+        padding: var(--pls-spacing-md) 0;
+    }
+    
+    .pls-benefits-section .pls-section-title {
+        font-size: var(--pls-font-size-xl);
+        margin-bottom: var(--pls-spacing-md);
+    }
+    
+    .pls-benefits-grid {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: var(--pls-spacing-sm);
+    }
+    
+    .pls-benefit-card {
+        padding: var(--pls-spacing-md);
+        min-height: 160px;
+    }
+    
+    .pls-benefit-icon {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .pls-benefit-icon-placeholder {
+        width: 60px;
+        height: 60px;
+        font-size: var(--pls-font-size-xl);
+    }
+    
+    .pls-benefit-label {
+        font-size: var(--pls-font-size-sm);
+    }
+    
+    /* Key Ingredients Section Responsive */
+    .pls-key-ingredients-section {
+        margin: var(--pls-spacing-lg) 0;
+        padding: var(--pls-spacing-md) 0;
+    }
+    
+    .pls-key-ingredients-section .pls-section-title {
+        font-size: var(--pls-font-size-xl);
+        margin-bottom: var(--pls-spacing-md);
+    }
+    
+    .pls-ingredients-key-grid {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: var(--pls-spacing-sm);
+    }
+    
+    .pls-ingredient-card--key {
+        padding: var(--pls-spacing-md);
+        min-height: 200px;
+    }
+    
+    .pls-ingredient-image {
+        width: 120px;
+        height: 120px;
+        margin-bottom: var(--pls-spacing-sm);
+    }
+    
+    .pls-ingredient-name {
+        font-size: var(--pls-font-size-base);
+    }
+    
+    .pls-section-title {
+        font-size: var(--pls-font-size-xl);
     }
 }
 
@@ -983,68 +1080,186 @@ body.pls-modal-open {
 }
 
 .pls-product-option-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    font-size: 1.125rem;
     font-weight: 600;
-    color: var(--pls-gray-800);
-    font-size: 0.95rem;
+    color: var(--pls-gray-900);
+}
+
+.pls-option-group-hint {
+    font-size: 0.875rem;
+    font-weight: 400;
+    color: var(--pls-gray-500);
 }
 
 .pls-product-option-values {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.875rem;
 }
 
 .pls-option-value-card {
     position: relative;
     display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1rem;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
     background: #fff;
     border: 2px solid var(--pls-gray-200);
-    border-radius: var(--pls-radius);
+    border-radius: var(--pls-radius-lg);
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    min-height: 70px;
 }
 
 .pls-option-value-card:hover {
     border-color: var(--pls-primary);
-    box-shadow: var(--pls-shadow);
+    box-shadow: 0 4px 12px rgba(34, 113, 177, 0.15);
+    transform: translateY(-2px);
 }
 
 .pls-option-value-card input[type="radio"] {
-    margin: 0;
-    cursor: pointer;
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
 }
 
-.pls-option-value-card input[type="radio"]:checked + .pls-option-value-label {
-    font-weight: 600;
-    color: var(--pls-primary);
+.pls-option-radio-indicator {
+    position: relative;
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--pls-gray-300);
+    border-radius: 50%;
+    background: #fff;
+    transition: all 0.2s ease;
+    margin-top: 2px;
+}
+
+.pls-option-value-card input[type="radio"]:checked ~ .pls-option-radio-indicator {
+    border-color: var(--pls-primary);
+    background: var(--pls-primary);
+}
+
+.pls-option-value-card input[type="radio"]:checked ~ .pls-option-radio-indicator::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #fff;
 }
 
 .pls-option-value-card:has(input[type="radio"]:checked) {
     border-color: var(--pls-primary);
-    background: rgba(34, 113, 177, 0.05);
+    background: linear-gradient(135deg, rgba(34, 113, 177, 0.08), rgba(34, 113, 177, 0.03));
+    box-shadow: 0 4px 16px rgba(34, 113, 177, 0.2);
+    transform: translateY(-2px);
+}
+
+.pls-option-value-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 0;
 }
 
 .pls-option-value-label {
-    flex: 1;
-    font-size: 0.9rem;
-    color: var(--pls-gray-700);
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--pls-gray-800);
+    line-height: 1.4;
+    transition: color 0.2s ease;
+}
+
+.pls-option-value-card:has(input[type="radio"]:checked) .pls-option-value-label {
+    font-weight: 600;
+    color: var(--pls-primary);
 }
 
 .pls-option-price-badge {
-    font-size: 0.8rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.875rem;
     font-weight: 600;
-    color: var(--pls-gray-600);
-    padding: 0.25rem 0.5rem;
-    background: var(--pls-gray-100);
+    padding: 0.375rem 0.75rem;
     border-radius: var(--pls-radius-sm);
+    white-space: nowrap;
 }
 
-.pls-option-value-card.is-standard .pls-option-price-badge {
-    background: var(--pls-success);
+.pls-option-price-badge--included {
+    background: linear-gradient(135deg, var(--pls-success), #00c853);
     color: #fff;
+    box-shadow: 0 2px 4px rgba(0, 163, 42, 0.2);
+}
+
+.pls-option-price-badge--paid {
+    background: linear-gradient(135deg, var(--pls-gray-100), var(--pls-gray-50));
+    color: var(--pls-gray-800);
+    border: 1px solid var(--pls-gray-300);
+}
+
+.pls-option-value-card:has(input[type="radio"]:checked) .pls-option-price-badge--paid {
+    background: linear-gradient(135deg, rgba(34, 113, 177, 0.15), rgba(34, 113, 177, 0.08));
+    border-color: var(--pls-primary);
+    color: var(--pls-primary);
+}
+
+.pls-option-price-prefix {
+    font-weight: 700;
+    color: var(--pls-primary);
+}
+
+.pls-option-value-card:has(input[type="radio"]:checked) .pls-option-price-prefix {
+    color: var(--pls-primary-dark);
+}
+
+.pls-option-price-note {
+    font-size: 0.75rem;
+    font-weight: 400;
+    opacity: 0.8;
+    margin-left: 0.125rem;
+}
+
+.pls-option-included-icon {
+    font-size: 0.875rem;
+    margin-right: 0.25rem;
+}
+
+.pls-option-value-card.is-standard {
+    border-color: var(--pls-success);
+    background: linear-gradient(135deg, rgba(0, 163, 42, 0.05), rgba(0, 163, 42, 0.02));
+}
+
+.pls-option-value-card.is-standard:hover {
+    border-color: var(--pls-success);
+    box-shadow: 0 4px 12px rgba(0, 163, 42, 0.15);
+}
+
+.pls-option-value-card.is-standard:has(input[type="radio"]:checked) {
+    border-color: var(--pls-success);
+    background: linear-gradient(135deg, rgba(0, 163, 42, 0.12), rgba(0, 163, 42, 0.06));
+    box-shadow: 0 4px 16px rgba(0, 163, 42, 0.25);
+}
+
+.pls-option-value-card.is-selected {
+    border-color: var(--pls-primary);
+    background: linear-gradient(135deg, rgba(34, 113, 177, 0.1), rgba(34, 113, 177, 0.05));
+    box-shadow: 0 4px 16px rgba(34, 113, 177, 0.25);
+    transform: translateY(-2px);
+}
+
+.pls-option-value-card.is-selected .pls-option-value-label {
+    font-weight: 600;
+    color: var(--pls-primary);
 }
 
 /* Price Summary */
@@ -1353,13 +1568,92 @@ body.pls-modal-open {
     color: var(--pls-gray-800);
 }
 
+/* Benefits Section (Standalone) */
+.pls-benefits-section {
+    margin: var(--pls-spacing-xl) 0;
+    padding: var(--pls-spacing-lg) 0;
+}
+
+.pls-benefits-section .pls-section-title {
+    font-size: var(--pls-font-size-2xl);
+    font-weight: 600;
+    color: var(--pls-gray-900);
+    margin-bottom: var(--pls-spacing-lg);
+    text-align: center;
+}
+
 .pls-benefits-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--pls-spacing-md);
+}
+
+.pls-benefit-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--pls-spacing-sm);
+    padding: var(--pls-spacing-lg);
+    background: #fff;
+    border: 1px solid var(--pls-gray-200);
+    border-radius: var(--pls-radius-lg);
+    transition: all 0.3s ease;
+    text-align: center;
+    min-height: 180px;
+    justify-content: center;
+}
+
+.pls-benefit-card:hover {
+    border-color: var(--pls-primary);
+    box-shadow: var(--pls-shadow-lg);
+    transform: translateY(-4px);
+}
+
+.pls-benefit-icon {
+    flex-shrink: 0;
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: var(--pls-spacing-sm);
+}
+
+.pls-benefit-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: var(--pls-radius);
+}
+
+.pls-benefit-icon-placeholder {
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--pls-success) 0%, #00c853 100%);
+    color: #fff;
+    border-radius: 50%;
+    font-weight: 700;
+    font-size: var(--pls-font-size-2xl);
+}
+
+.pls-benefit-label {
+    font-size: var(--pls-font-size-base);
+    font-weight: 500;
+    color: var(--pls-gray-800);
+    line-height: 1.4;
+}
+
+/* Legacy benefits styles (for tabs) */
+.pls-product-benefits .pls-benefits-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 1rem;
 }
 
-.pls-benefit-card {
+.pls-product-benefits .pls-benefit-card {
     display: flex;
     align-items: center;
     gap: 0.75rem;
@@ -1368,14 +1662,13 @@ body.pls-modal-open {
     border: 1px solid var(--pls-gray-200);
     border-radius: var(--pls-radius);
     transition: all 0.2s ease;
+    min-height: auto;
+    flex-direction: row;
+    text-align: left;
+    justify-content: flex-start;
 }
 
-.pls-benefit-card:hover {
-    border-color: var(--pls-primary);
-    box-shadow: var(--pls-shadow);
-}
-
-.pls-benefit-icon {
+.pls-product-benefits .pls-benefit-icon {
     flex-shrink: 0;
     width: 32px;
     height: 32px;
@@ -1387,12 +1680,7 @@ body.pls-modal-open {
     border-radius: 50%;
     font-weight: 700;
     font-size: 1.125rem;
-}
-
-.pls-benefit-label {
-    font-size: 0.95rem;
-    font-weight: 500;
-    color: var(--pls-gray-800);
+    margin-bottom: 0;
 }
 
 /* Full INCI Ingredient List */
@@ -1530,11 +1818,22 @@ body.pls-modal-open {
     }
     
     .pls-product-option-values {
-        flex-direction: column;
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
     }
     
     .pls-option-value-card {
-        width: 100%;
+        padding: 0.875rem 1rem;
+        min-height: 65px;
+    }
+    
+    .pls-option-value-label {
+        font-size: 0.9rem;
+    }
+    
+    .pls-option-price-badge {
+        font-size: 0.8rem;
+        padding: 0.3rem 0.625rem;
     }
     
     .pls-benefits-grid {
@@ -1639,6 +1938,56 @@ body.pls-modal-open {
         margin-top: 0.25rem;
     }
     
+    /* Benefits Section Mobile */
+    .pls-benefits-grid {
+        grid-template-columns: 1fr;
+        gap: var(--pls-spacing-sm);
+    }
+    
+    .pls-benefit-card {
+        min-height: 140px;
+        padding: var(--pls-spacing-sm);
+    }
+    
+    .pls-benefit-icon {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .pls-benefit-icon-placeholder {
+        width: 50px;
+        height: 50px;
+        font-size: var(--pls-font-size-lg);
+    }
+    
+    .pls-benefit-label {
+        font-size: var(--pls-font-size-xs);
+    }
+    
+    /* Key Ingredients Section Mobile */
+    .pls-ingredients-key-grid {
+        grid-template-columns: 1fr;
+        gap: var(--pls-spacing-sm);
+    }
+    
+    .pls-ingredient-card--key {
+        min-height: 180px;
+        padding: var(--pls-spacing-sm);
+    }
+    
+    .pls-ingredient-image {
+        width: 100px;
+        height: 100px;
+    }
+    
+    .pls-ingredient-name {
+        font-size: var(--pls-font-size-sm);
+    }
+    
+    .pls-section-title {
+        font-size: var(--pls-font-size-lg);
+    }
+    
     .pls-product-option-group {
         gap: 0.5rem;
     }
@@ -1647,9 +1996,38 @@ body.pls-modal-open {
         font-size: 0.9rem;
     }
     
+    .pls-product-option-values {
+        grid-template-columns: 1fr;
+        gap: 0.625rem;
+    }
+    
     .pls-option-value-card {
-        padding: 0.625rem 0.875rem;
+        padding: 0.75rem;
+        min-height: 60px;
+        gap: 0.625rem;
+    }
+    
+    .pls-option-radio-indicator {
+        width: 18px;
+        height: 18px;
+    }
+    
+    .pls-option-value-label {
         font-size: 0.875rem;
+    }
+    
+    .pls-option-price-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .pls-product-option-label {
+        font-size: 1rem;
+        margin-bottom: 0.75rem;
+    }
+    
+    .pls-option-group-hint {
+        font-size: 0.8rem;
     }
     
     .pls-price-row {
@@ -1658,6 +2036,77 @@ body.pls-modal-open {
     
     .pls-price-row--total {
         font-size: 1rem;
+    }
+    
+    /* Benefits Section Responsive */
+    .pls-benefits-section {
+        margin: var(--pls-spacing-lg) 0;
+        padding: var(--pls-spacing-md) 0;
+    }
+    
+    .pls-benefits-section .pls-section-title {
+        font-size: var(--pls-font-size-xl);
+        margin-bottom: var(--pls-spacing-md);
+    }
+    
+    .pls-benefits-grid {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: var(--pls-spacing-sm);
+    }
+    
+    .pls-benefit-card {
+        padding: var(--pls-spacing-md);
+        min-height: 160px;
+    }
+    
+    .pls-benefit-icon {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .pls-benefit-icon-placeholder {
+        width: 60px;
+        height: 60px;
+        font-size: var(--pls-font-size-xl);
+    }
+    
+    .pls-benefit-label {
+        font-size: var(--pls-font-size-sm);
+    }
+    
+    /* Key Ingredients Section Responsive */
+    .pls-key-ingredients-section {
+        margin: var(--pls-spacing-lg) 0;
+        padding: var(--pls-spacing-md) 0;
+    }
+    
+    .pls-key-ingredients-section .pls-section-title {
+        font-size: var(--pls-font-size-xl);
+        margin-bottom: var(--pls-spacing-md);
+    }
+    
+    .pls-ingredients-key-grid {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: var(--pls-spacing-sm);
+    }
+    
+    .pls-ingredient-card--key {
+        padding: var(--pls-spacing-md);
+        min-height: 200px;
+    }
+    
+    .pls-ingredient-image {
+        width: 120px;
+        height: 120px;
+        margin-bottom: var(--pls-spacing-sm);
+    }
+    
+    .pls-ingredient-name {
+        font-size: var(--pls-font-size-base);
+    }
+    
+    .pls-section-title {
+        font-size: var(--pls-font-size-xl);
     }
     
     .pls-quantity-controls {
