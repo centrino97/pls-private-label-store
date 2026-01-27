@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 4.9.7
+Stable tag: 4.9.8
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,15 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 4.9.8 =
+* **CRITICAL FIX:** Removed quantity picker - tiers are fixed packs, users just select a tier
+* **CRITICAL FIX:** Fixed WooCommerce sync to store total price (price_per_unit × units) as variation price
+* **IMPROVED:** Tier cards now show price per unit as primary price, total as secondary
+* **IMPROVED:** Enhanced configurator UX - better spacing, visual hierarchy, and layout
+* **IMPROVED:** Units display shows selected pack's unit count prominently
+* **IMPROVED:** Enhanced responsive design for configurator on all devices (mobile, tablet, desktop)
+* **IMPROVED:** Better tier card styling with flexbox layout and improved hover states
+
 = 4.9.7 =
 * **CRITICAL FIX:** Fixed all pricing calculations - now 100% accurate per unit pricing
 * **NEW:** MOQ enforcement (50 units minimum) with real-time validation and visual warnings

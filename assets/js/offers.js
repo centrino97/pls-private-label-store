@@ -177,18 +177,20 @@
   function initPriceCalculator() {
     let selectedTier = null;
     let selectedOptions = {};
-    let quantity = 1;
+    // Quantity is always 1 (one pack selected)
+    const quantity = 1;
 
     function calculatePrice() {
       if (!selectedTier) {
         updatePriceDisplay(0, 0, 0, 0);
+        updateUnitsDisplay(0);
         return;
       }
 
       const totalPriceForTier = parseFloat(selectedTier.totalPrice) || 0;
       const units = parseInt(selectedTier.units) || 0;
       
-      // Calculate base price PER UNIT
+      // Calculate base price PER UNIT (variation price is total, divide by units)
       const basePricePerUnit = units > 0 ? totalPriceForTier / units : 0;
       
       // Calculate options price PER UNIT (options are already per unit)
@@ -211,16 +213,17 @@
       // Total price per unit = base per unit + options per unit
       const totalPerUnit = basePricePerUnit + optionsTotalPerUnit;
       
-      // Total for this order = (price per unit) * (units per pack) * (quantity of packs)
+      // Total for this pack = (price per unit) * (units per pack) * (quantity = 1)
       const totalForOrder = totalPerUnit * units * quantity;
       
-      // Base total for order = base per unit * units * quantity
+      // Base total for pack = base per unit * units * quantity
       const baseTotalForOrder = basePricePerUnit * units * quantity;
       
-      // Options total for order = options per unit * units * quantity
+      // Options total for pack = options per unit * units * quantity
       const optionsTotalForOrder = optionsTotalPerUnit * units * quantity;
 
       updatePriceDisplay(baseTotalForOrder, optionsTotalForOrder, totalForOrder, totalPerUnit);
+      updateUnitsDisplay(units);
     }
 
     function updatePriceDisplay(base, options, total, perUnit) {
@@ -233,6 +236,10 @@
       }
       $('#pls-price-total').html(formatPrice(total));
       $('#pls-price-per-unit').html(formatPrice(perUnit));
+    }
+
+    function updateUnitsDisplay(units) {
+      $('#pls-selected-units').text(units.toLocaleString());
     }
 
     function formatPrice(amount) {
@@ -275,19 +282,17 @@
         tierKey: tierKey
       };
       
-      // Ensure quantity meets MOQ (50 units minimum)
-      if (units > 0 && units < 50) {
-        // If selected tier has less than 50 units, set quantity to meet MOQ
-        const minQuantity = Math.ceil(50 / units);
-        quantity = minQuantity;
-        $('#pls-quantity').val(minQuantity);
-      }
-
       // Update variation input
       $('.pls-variation-id').val(variationId);
 
+      // Enable add to cart button
+      const $addToCartBtn = $('.pls-add-to-cart-button');
+      if ($addToCartBtn.length) {
+        $addToCartBtn.prop('disabled', false);
+        $addToCartBtn.find('.pls-add-to-cart-text').text('Add to Cart');
+      }
+
       calculatePrice();
-      updateTotalUnits();
     });
 
     // Option selection handler
@@ -309,54 +314,6 @@
       calculatePrice();
     });
 
-    // Update total units display
-    function updateTotalUnits() {
-      if (!selectedTier) {
-        $('#pls-total-units-count').text('0');
-        return;
-      }
-      const units = parseInt(selectedTier.units) || 0;
-      const totalUnits = units * quantity;
-      $('#pls-total-units-count').text(totalUnits.toLocaleString());
-      
-      // Validate MOQ (50 units minimum)
-      const $display = $('#pls-total-units-display');
-      const $addToCartBtn = $('.pls-add-to-cart-button');
-      
-      if (totalUnits < 50) {
-        $display.addClass('pls-moq-warning');
-        if ($addToCartBtn.length) {
-          $addToCartBtn.prop('disabled', true);
-          $addToCartBtn.find('.pls-add-to-cart-text').text('Minimum 50 units required');
-        }
-      } else {
-        $display.removeClass('pls-moq-warning');
-        if ($addToCartBtn.length && selectedTier) {
-          $addToCartBtn.prop('disabled', false);
-          $addToCartBtn.find('.pls-add-to-cart-text').text('Add to Cart');
-        }
-      }
-    }
-
-    // Quantity change handler
-    $(document).on('click', '.pls-qty-minus', function() {
-      const $input = $('#pls-quantity');
-      const currentVal = parseInt($input.val()) || 1;
-      if (currentVal > 1) {
-        $input.val(currentVal - 1).trigger('change');
-      }
-    });
-
-    $(document).on('click', '.pls-qty-plus', function() {
-      const $input = $('#pls-quantity');
-      const currentVal = parseInt($input.val()) || 1;
-      $input.val(currentVal + 1).trigger('change');
-    });
-
-    $(document).on('change', '#pls-quantity', function() {
-      quantity = parseInt($(this).val()) || 1;
-      calculatePrice();
-    });
   }
 
   // Add to cart handler
@@ -369,22 +326,11 @@
       const $messages = $('#pls-cart-messages');
       const productId = $form.data('product_id');
       const variationId = $('.pls-variation-id').val();
-      const quantity = parseInt($('#pls-quantity').val()) || 1;
+      const quantity = 1; // Always 1 pack
 
       if (!variationId) {
         $messages.html('<div class="pls-message-error">Please select a pack size.</div>').addClass('pls-message-error');
         return;
-      }
-      
-      // Validate MOQ (50 units minimum)
-      const $selectedCard = $('.pls-tier-card.is-selected');
-      if ($selectedCard.length) {
-        const units = parseInt($selectedCard.data('units')) || 0;
-        const totalUnits = units * quantity;
-        if (totalUnits < 50) {
-          $messages.html('<div class="pls-message-error">Minimum order quantity is 50 units. Please increase your quantity.</div>').addClass('pls-message-error');
-          return;
-        }
       }
 
       // Disable button and show loading

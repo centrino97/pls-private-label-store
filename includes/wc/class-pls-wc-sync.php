@@ -743,7 +743,9 @@ final class PLS_WC_Sync {
 
                 // Use term slug (WooCommerce stores and returns slugs in variation attributes)
                 $variation->set_attributes( array( $pack_attr['taxonomy'] => $term->slug ) );
-                $variation->set_regular_price( $tier_data['price'] );
+                // Price in DB is per unit, WooCommerce variation needs total price
+                $total_price = $tier_data['price'] * $tier_data['units'];
+                $variation->set_regular_price( $total_price );
                 $variation->set_status( 'publish' );
                 $variation->save();
 
@@ -863,7 +865,9 @@ final class PLS_WC_Sync {
 
                 // Use term slug (WooCommerce stores and returns slugs in variation attributes)
                 $variation->set_attributes( array( $pack_attr['taxonomy'] => $term->slug ) );
-                $variation->set_regular_price( $tier->price );
+                // Price in DB is per unit, WooCommerce variation needs total price
+                $total_price = $tier->price * $tier->units;
+                $variation->set_regular_price( $total_price );
                 $variation->set_status( 'publish' );
                 $variation->save();
 

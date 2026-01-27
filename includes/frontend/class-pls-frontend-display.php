@@ -546,13 +546,13 @@ final class PLS_Frontend_Display {
                                 </div>
                             <?php endif; ?>
                             
-                            <?php if ( $variation_price ) : ?>
-                                <div class="pls-tier-card__price">
-                                    <?php echo wc_price( $variation_price ); ?>
+                            <?php if ( $price_per_unit ) : ?>
+                                <div class="pls-tier-card__price-per-unit" style="font-size: 1.5rem; font-weight: 600; color: var(--pls-primary); margin: 0.5rem 0;">
+                                    <?php echo wc_price( $price_per_unit ); ?> <span style="font-size: 0.875rem; font-weight: 400; color: var(--pls-gray-600);"><?php esc_html_e( 'per unit', 'pls-private-label-store' ); ?></span>
                                 </div>
-                                <?php if ( $price_per_unit ) : ?>
-                                    <div class="pls-tier-card__price-per-unit">
-                                        <?php echo wc_price( $price_per_unit ); ?> <?php esc_html_e( 'per unit', 'pls-private-label-store' ); ?>
+                                <?php if ( $variation_price ) : ?>
+                                    <div class="pls-tier-card__price" style="font-size: 0.875rem; color: var(--pls-gray-600);">
+                                        <?php esc_html_e( 'Total:', 'pls-private-label-store' ); ?> <?php echo wc_price( $variation_price ); ?>
                                     </div>
                                 <?php endif; ?>
                             <?php endif; ?>
@@ -658,25 +658,16 @@ final class PLS_Frontend_Display {
                     <input type="hidden" name="product_id" value="<?php echo esc_attr( $product->get_id() ); ?>">
                     <input type="hidden" name="variation_id" value="" class="pls-variation-id" />
                     
-                    <!-- Quantity Selector -->
-                    <div class="pls-quantity-selector">
-                        <label><?php esc_html_e( 'Quantity (packs)', 'pls-private-label-store' ); ?></label>
-                        <p class="pls-quantity-hint" style="font-size: 0.875rem; color: var(--pls-gray-600); margin: 0.25rem 0 0.75rem 0;">
-                            <?php esc_html_e( 'Minimum order: 50 units (1 pack)', 'pls-private-label-store' ); ?>
-                        </p>
-                        <div class="pls-quantity-controls">
-                            <button type="button" class="pls-qty-btn pls-qty-minus" aria-label="<?php esc_attr_e( 'Decrease quantity', 'pls-private-label-store' ); ?>">−</button>
-                            <input type="number" 
-                                   name="quantity" 
-                                   value="1" 
-                                   min="1" 
-                                   step="1" 
-                                   class="pls-quantity-input"
-                                   id="pls-quantity" />
-                            <button type="button" class="pls-qty-btn pls-qty-plus" aria-label="<?php esc_attr_e( 'Increase quantity', 'pls-private-label-store' ); ?>">+</button>
+                    <!-- Hidden quantity field (always 1 pack) -->
+                    <input type="hidden" name="quantity" value="1" />
+                    
+                    <!-- Units Display -->
+                    <div class="pls-units-display" id="pls-units-display" style="margin-bottom: 1.5rem; padding: 1rem; background: var(--pls-gray-50); border-radius: var(--pls-radius-sm); text-align: center;">
+                        <div style="font-size: 0.875rem; color: var(--pls-gray-600); margin-bottom: 0.5rem;">
+                            <?php esc_html_e( 'Pack includes', 'pls-private-label-store' ); ?>
                         </div>
-                        <div class="pls-total-units-display" id="pls-total-units-display" style="margin-top: 0.75rem; padding: 0.75rem; background: var(--pls-gray-50); border-radius: var(--pls-radius-sm); font-size: 0.9rem;">
-                            <strong><?php esc_html_e( 'Total units:', 'pls-private-label-store' ); ?></strong> <span id="pls-total-units-count">0</span>
+                        <div style="font-size: 1.5rem; font-weight: 600; color: var(--pls-primary);">
+                            <span id="pls-selected-units">0</span> <span style="font-size: 1rem; font-weight: 400; color: var(--pls-gray-700);"><?php esc_html_e( 'units', 'pls-private-label-store' ); ?></span>
                         </div>
                     </div>
                     
