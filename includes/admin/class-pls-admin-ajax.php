@@ -906,10 +906,15 @@ final class PLS_Admin_Ajax {
         
         $product_payload = self::format_product_payload( PLS_Repo_Base_Product::get( $persisted['id'] ), 'https://bodocibiophysics.com/label-guide/' );
 
+        // v4.9.99: Always synced - clarify messaging
+        $sync_msg = $sync_result 
+            ? $sync_result 
+            : __( 'Product saved & synced to WooCommerce (as draft). Activate to publish.', 'pls-private-label-store' );
+
         $response = array(
             'ok'            => true,
             'product'       => $product_payload,
-            'sync_message'  => $sync_result ? $sync_result : __( 'Product saved. Activate to sync to WooCommerce.', 'pls-private-label-store' ),
+            'sync_message'  => $sync_msg,
         );
 
         // Debug logging

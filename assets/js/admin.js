@@ -128,6 +128,16 @@
       var keySelected = [];
       var keyLimit = 5;
 
+      // v4.9.99: Table-based ingredient UI with pagination
+      var ingredientPagination = {
+        currentPage: 1,
+        perPage: 50,
+        totalItems: 0,
+        filteredItems: [],
+        currentFilter: 'all', // 'all', 'selected', 'key'
+        searchTerm: ''
+      };
+
       function renderIngredientLabel(term, inputName, isChecked){
         var label = $('<label class="pls-chip-select pls-chip-select--rich"></label>');
         if (inputName){
@@ -157,6 +167,56 @@
         return label;
       }
 
+      // v4.9.99: Render ingredient as table row
+      function renderIngredientTableRow(term, isSelected, isKey){
+        var iconSrc = term.icon || defaultIngredientIcon;
+        var tierLevel = term.min_tier_level || 1;
+        var isT3Plus = tierLevel >= 3;
+        
+        var row = $('<tr></tr>')
+          .attr('data-ingredient-id', term.id)
+          .toggleClass('is-selected', isSelected)
+          .toggleClass('is-key', isKey);
+        
+        // Select checkbox
+        var selectTd = $('<td class="pls-col-select"></td>');
+        var selectInput = $('<input type="checkbox" name="ingredient_ids[]" />')
+          .val(term.id)
+          .prop('checked', isSelected);
+        selectTd.append(selectInput);
+        row.append(selectTd);
+        
+        // Icon
+        var iconTd = $('<td class="pls-col-icon"></td>');
+        if (iconSrc) {
+          iconTd.append($('<img class="pls-ingredient-icon"/>').attr('src', iconSrc).attr('alt', ''));
+        }
+        row.append(iconTd);
+        
+        // Name & Description
+        var nameTd = $('<td class="pls-col-name"></td>');
+        nameTd.append($('<div class="pls-ingredient-name"></div>').text(term.name || term.label || ('#'+term.id)));
+        if (term.short_description) {
+          nameTd.append($('<div class="pls-ingredient-desc"></div>').text(term.short_description));
+        }
+        row.append(nameTd);
+        
+        // Key checkbox (only if T3+)
+        var keyTd = $('<td class="pls-col-key"></td>');
+        if (isT3Plus && isSelected) {
+          var keyInput = $('<input type="checkbox" class="pls-key-checkbox" />')
+            .val(term.id)
+            .prop('checked', isKey)
+            .prop('disabled', !isSelected || (keySelected.length >= keyLimit && !isKey));
+          keyTd.append(keyInput);
+        } else if (isSelected && !isT3Plus) {
+          keyTd.append($('<span class="pls-tier-indicator">T3+ only</span>'));
+        }
+        row.append(keyTd);
+        
+        return row;
+      }
+
       function renderSelectedIngredients(selectedIds){
         var wrap = $('#pls-selected-ingredients');
         $('#pls-selected-count').text(selectedIds.length);
@@ -169,9 +229,129 @@
         });
       }
 
+      // v4.9.99: Get filtered ingredient list
+      function getFilteredIngredients(){
+        var selectedIds = getSelectedIngredientIds();
+        var keyIds = getKeyIngredientIds();
+        var search = ingredientPagination.searchTerm.toLowerCase();
+        var filter = ingredientPagination.currentFilter;
+        
+        var items = [];
+        Object.values(ingredientMap).forEach(function(term){
+          var normId = parseInt(term.term_id || term.id, 10);
+          if (!normId) return;
+          term.id = normId;
+          
+          // Apply search filter
+          if (search) {
+            var haystack = (term.name || term.label || '').toLowerCase();
+            if (haystack.indexOf(search) === -1) return;
+          }
+          
+          // Apply category filter
+          var isSelected = selectedIds.indexOf(normId) !== -1;
+          var isKey = keyIds.indexOf(normId) !== -1;
+          
+          if (filter === 'selected' && !isSelected) return;
+          if (filter === 'key' && !isKey) return;
+          
+          items.push({
+            term: term,
+            isSelected: isSelected,
+            isKey: isKey
+          });
+        });
+        
+        // Sort: selected first, then alphabetical
+        items.sort(function(a, b){
+          if (a.isSelected && !b.isSelected) return -1;
+          if (!a.isSelected && b.isSelected) return 1;
+          return (a.term.name || '').localeCompare(b.term.name || '');
+        });
+        
+        return items;
+      }
+
+      function getSelectedIngredientIds(){
+        return $('#pls-ingredient-chips input[name="ingredient_ids[]"]:checked')
+          .map(function(){ return parseInt($(this).val(), 10); }).get();
+      }
+
+      function getKeyIngredientIds(){
+        return $('#pls-ingredient-chips .pls-key-checkbox:checked')
+          .map(function(){ return parseInt($(this).val(), 10); }).get();
+      }
+
+      // v4.9.99: Render ingredient table with pagination
       function renderIngredientList(filter){
         var wrap = $('#pls-ingredient-chips');
-        if (!wrap.length) { return; }
+        if (!wrap.length) return;
+        
+        // Check if we're using new table UI or legacy chip UI
+        var isTableUI = wrap.is('tbody');
+        
+        if (!isTableUI) {
+          // Legacy chip-based UI (fallback)
+          renderIngredientListLegacy(filter);
+          return;
+        }
+        
+        // Save current selections before re-render
+        var selectedIds = getSelectedIngredientIds();
+        var keyIds = getKeyIngredientIds();
+        
+        // Update search term
+        ingredientPagination.searchTerm = filter || '';
+        
+        // Get filtered items
+        ingredientPagination.filteredItems = getFilteredIngredients();
+        ingredientPagination.totalItems = ingredientPagination.filteredItems.length;
+        
+        // Calculate pagination
+        var perPage = ingredientPagination.perPage;
+        if (perPage === 'all' || perPage === 0) {
+          perPage = ingredientPagination.totalItems;
+        }
+        var totalPages = Math.ceil(ingredientPagination.totalItems / perPage) || 1;
+        if (ingredientPagination.currentPage > totalPages) {
+          ingredientPagination.currentPage = totalPages;
+        }
+        
+        var startIndex = (ingredientPagination.currentPage - 1) * perPage;
+        var endIndex = Math.min(startIndex + perPage, ingredientPagination.totalItems);
+        var pageItems = ingredientPagination.filteredItems.slice(startIndex, endIndex);
+        
+        // Clear and render rows
+        wrap.empty();
+        
+        if (pageItems.length === 0) {
+          $('#pls-ingredients-empty').show();
+          wrap.closest('.pls-ingredients-table-wrapper').find('table').hide();
+        } else {
+          $('#pls-ingredients-empty').hide();
+          wrap.closest('.pls-ingredients-table-wrapper').find('table').show();
+          
+          pageItems.forEach(function(item){
+            wrap.append(renderIngredientTableRow(item.term, item.isSelected, item.isKey));
+          });
+        }
+        
+        // Update pagination UI
+        updateIngredientPaginationUI(startIndex, endIndex, totalPages);
+        
+        // Update search count
+        $('#pls-search-count').text(ingredientPagination.totalItems + ' found');
+        
+        // Update selected count
+        $('#pls-selected-count').text(selectedIds.length);
+        
+        // Update key ingredients display
+        updateKeyIngredients(keyIds);
+      }
+
+      // Legacy chip-based rendering (fallback)
+      function renderIngredientListLegacy(filter){
+        var wrap = $('#pls-ingredient-chips');
         var preserved = wrap.find('input:checked').map(function(){ return parseInt($(this).val(), 10); }).get();
         var preservedKey = $('#pls-key-ingredients input:checked').map(function(){ return parseInt($(this).val(), 10); }).get();
         var normalizedFilter = (filter || '').toLowerCase();
@@ -209,6 +389,76 @@
         renderSelectedIngredients(preserved);
         updateKeyIngredients(preservedKey);
       }
+
+      // v4.9.99: Update pagination UI elements
+      function updateIngredientPaginationUI(start, end, totalPages){
+        var total = ingredientPagination.totalItems;
+        $('#pls-pagination-showing').text('Showing ' + (total > 0 ? start + 1 : 0) + '-' + end + ' of ' + total);
+        $('#pls-page-info').text(ingredientPagination.currentPage + ' / ' + totalPages);
+        
+        $('#pls-page-prev').prop('disabled', ingredientPagination.currentPage <= 1);
+        $('#pls-page-next').prop('disabled', ingredientPagination.currentPage >= totalPages);
+      }
+
+      // v4.9.99: Pagination event handlers
+      $(document).on('click', '#pls-page-prev', function(){
+        if (ingredientPagination.currentPage > 1) {
+          ingredientPagination.currentPage--;
+          renderIngredientList(ingredientPagination.searchTerm);
+        }
+      });
+
+      $(document).on('click', '#pls-page-next', function(){
+        var perPage = ingredientPagination.perPage === 'all' ? ingredientPagination.totalItems : ingredientPagination.perPage;
+        var totalPages = Math.ceil(ingredientPagination.totalItems / perPage) || 1;
+        if (ingredientPagination.currentPage < totalPages) {
+          ingredientPagination.currentPage++;
+          renderIngredientList(ingredientPagination.searchTerm);
+        }
+      });
+
+      $(document).on('change', '#pls-ingredients-per-page', function(){
+        var val = $(this).val();
+        ingredientPagination.perPage = val === 'all' ? 'all' : parseInt(val, 10);
+        ingredientPagination.currentPage = 1;
+        renderIngredientList(ingredientPagination.searchTerm);
+      });
+
+      // v4.9.99: Filter button handlers
+      $(document).on('click', '.pls-filter-btn', function(){
+        var filter = $(this).data('filter');
+        $('.pls-filter-btn').removeClass('is-active');
+        $(this).addClass('is-active');
+        ingredientPagination.currentFilter = filter;
+        ingredientPagination.currentPage = 1;
+        renderIngredientList(ingredientPagination.searchTerm);
+      });
+
+      // v4.9.99: Select all visible handler
+      $(document).on('change', '#pls-select-all-ingredients', function(){
+        var isChecked = $(this).is(':checked');
+        $('#pls-ingredient-chips input[name="ingredient_ids[]"]').prop('checked', isChecked);
+        renderIngredientList(ingredientPagination.searchTerm);
+      });
+
+      // v4.9.99: Key checkbox handler (in table)
+      $(document).on('change', '#pls-ingredient-chips .pls-key-checkbox', function(){
+        var val = parseInt($(this).val(), 10);
+        var isChecked = $(this).is(':checked');
+        
+        if (isChecked) {
+          if (keySelected.length < keyLimit) {
+            keySelected.push(val);
+          } else {
+            $(this).prop('checked', false);
+            return;
+          }
+        } else {
+          keySelected = keySelected.filter(function(id){ return id !== val; });
+        }
+        
+        updateKeyIngredients(keySelected);
+      });
 
       function formatPrice(val){
         var num = parseFloat(val);
@@ -1414,10 +1664,25 @@
         }
       });
 
-      $('#pls-ingredient-chips').on('change', 'input[type=checkbox]', function(){
-        var selected = $('#pls-ingredient-chips input:checked').map(function(){ return parseInt($(this).val(), 10); }).get();
+      // v4.9.99: Updated ingredient checkbox handler for table UI
+      $('#pls-ingredient-chips').on('change', 'input[name="ingredient_ids[]"]', function(){
+        var $row = $(this).closest('tr');
+        var isChecked = $(this).is(':checked');
+        $row.toggleClass('is-selected', isChecked);
+        
+        // Update key checkbox state
+        if (!isChecked) {
+          $row.find('.pls-key-checkbox').prop('checked', false);
+          var val = parseInt($(this).val(), 10);
+          keySelected = keySelected.filter(function(id){ return id !== val; });
+        }
+        
+        var selected = getSelectedIngredientIds();
         renderSelectedIngredients(selected);
         updateKeyIngredients();
+        
+        // Re-render to update key checkbox availability
+        renderIngredientList(ingredientPagination.searchTerm);
       });
 
       $('#pls-key-ingredients').on('change', 'input[type=checkbox]', function(){

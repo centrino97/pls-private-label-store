@@ -34,25 +34,34 @@ $ingredient_terms = PLS_Admin_Ajax::ingredient_payload();
 
 $attr_payload = PLS_Admin_Ajax::attribute_payload();
 
-// Add preview modal CSS
+// Add preview modal CSS - Fullscreen product editor
 wp_add_inline_style( 'pls-admin', '
-/* Product Modal - Always Fullscreen - Override base admin.css */
-#pls-product-modal {
+/* ============================================
+   Product Modal - FULLSCREEN Editor
+   ============================================ */
+.pls-modal#pls-product-modal,
+#pls-product-modal.pls-modal {
     position: fixed !important;
     top: 0 !important;
     left: 0 !important;
     right: 0 !important;
     bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
     z-index: 100000 !important;
-    background: rgba(0,0,0,0.8) !important;
+    background: rgba(0,0,0,0.85) !important;
     padding: 0 !important;
-    justify-content: flex-start !important;
-    align-items: flex-start !important;
+    margin: 0 !important;
     display: flex !important;
+    justify-content: stretch !important;
+    align-items: stretch !important;
 }
+
+.pls-modal#pls-product-modal .pls-modal__dialog,
+#pls-product-modal.pls-modal .pls-modal__dialog,
 #pls-product-modal .pls-modal__dialog {
-    max-width: 100% !important;
-    width: 100% !important;
+    max-width: 100vw !important;
+    width: 100vw !important;
     height: 100vh !important;
     max-height: 100vh !important;
     margin: 0 !important;
@@ -62,158 +71,123 @@ wp_add_inline_style( 'pls-admin', '
     flex-direction: column !important;
     box-shadow: none !important;
     background: #fff !important;
+    overflow: hidden !important;
 }
+
+/* Modal Header */
+#pls-product-modal .pls-modal__head {
+    flex-shrink: 0;
+    padding: 16px 24px;
+    border-bottom: 1px solid #e2e8f0;
+    background: #fff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Mode Toggle (Builder/Preview) */
+#pls-product-modal .pls-mode-toggle {
+    flex-shrink: 0;
+    padding: 12px 24px;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    gap: 8px;
+}
+
+#pls-product-modal .pls-mode-btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.15s ease;
+}
+
+#pls-product-modal .pls-mode-btn:hover {
+    background: #f1f5f9;
+}
+
+#pls-product-modal .pls-mode-btn.is-active {
+    background: #2271b1;
+    color: #fff;
+    border-color: #2271b1;
+}
+
+/* Form Container */
 #pls-product-modal #pls-product-form {
     flex: 1;
     overflow-y: auto;
     display: flex !important;
     flex-direction: column !important;
-    padding: 0 20px 20px 20px;
+    padding: 0 24px 24px 24px;
+    min-height: 0;
 }
-#pls-product-modal .pls-modal__head {
-    flex-shrink: 0;
-    padding: 20px;
-    border-bottom: 1px solid #ddd;
+
+/* Preview Panel */
+#pls-product-modal #pls-preview-panel {
+    display: none;
+    flex-direction: column;
     background: #fff;
-}
-#pls-product-modal .pls-mode-toggle {
-    flex-shrink: 0;
-    padding: 0 20px;
-    background: #f9f9f9;
-    border-bottom: 1px solid #ddd;
-}
-/* Split Screen Mode (when both Builder and Preview are active) */
-#pls-product-modal.pls-modal-split .pls-modal__dialog {
-    flex-direction: row !important;
-}
-#pls-product-modal.pls-modal-split #pls-product-form {
-    width: 50% !important;
-    overflow-y: auto !important;
-    border-right: 1px solid #ddd !important;
-    flex-shrink: 0;
-}
-#pls-product-modal.pls-modal-split #pls-preview-panel {
-    width: 50% !important;
-    overflow-y: auto !important;
-    background: #fff !important;
+    overflow: hidden;
 }
 
-/* Split Screen Mode - ONLY when both Builder AND Preview are active */
+#pls-product-modal #pls-preview-panel.is-visible,
+#pls-product-modal #pls-preview-panel:not([style*="display: none"]):not(.hidden) {
+    display: flex !important;
+}
+
+/* ============================================
+   Split Screen Mode (Builder + Preview)
+   ============================================ */
 #pls-product-modal.pls-modal-split .pls-modal__dialog {
     flex-direction: row !important;
 }
 
 #pls-product-modal.pls-modal-split #pls-product-form {
-    width: 50% !important;
+    width: 55% !important;
+    flex-shrink: 0 !important;
     overflow-y: auto !important;
-    border-right: 1px solid #ddd !important;
-    flex-shrink: 0;
-    display: flex !important;
-    flex-direction: column !important;
+    border-right: 1px solid #e2e8f0 !important;
 }
 
 #pls-product-modal.pls-modal-split #pls-preview-panel {
-    width: 50% !important;
-    overflow-y: auto !important;
-    background: #fff !important;
+    width: 45% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+}
+
+/* ============================================
+   Preview Only Mode
+   ============================================ */
+#pls-product-modal:not(.pls-modal-split) #pls-preview-panel:not(.hidden) {
+    flex: 1;
     display: flex !important;
     flex-direction: column !important;
 }
 
-/* Preview Only Mode (fullscreen preview) - when only Preview button is active */
-#pls-product-modal:not(.pls-modal-split) #pls-product-form.hidden,
-#pls-product-modal:not(.pls-modal-split) #pls-product-form[style*="display: none"] {
-    display: none !important;
+/* Modal Footer */
+#pls-product-modal .pls-modal__footer {
+    flex-shrink: 0;
+    padding: 16px 24px;
+    border-top: 1px solid #e2e8f0;
+    background: #f8fafc;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
-#pls-product-modal:not(.pls-modal-split) #pls-preview-panel:not(.hidden):not([style*="display: none"]) {
+/* Preview Panel Styling */
+#pls-preview-panel .pls-preview-header {
+    flex-shrink: 0;
+}
+
+#pls-preview-panel #pls-preview-content {
     flex: 1;
     overflow-y: auto;
-    display: flex !important;
-    flex-direction: column !important;
-}
-
-/* Builder Only Mode (fullscreen builder) - when only Builder button is active */
-#pls-product-modal:not(.pls-modal-split) #pls-product-form:not(.hidden):not([style*="display: none"]) {
-    flex: 1;
-    overflow-y: auto;
-    display: flex !important;
-    flex-direction: column !important;
-}
-
-#pls-product-modal:not(.pls-modal-split) #pls-preview-panel.hidden,
-#pls-product-modal:not(.pls-modal-split) #pls-preview-panel[style*="display: none"] {
-    display: none !important;
-}
-.pls-preview-controls {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-}
-.pls-preview-mode-btn.active {
-    background: #2271b1 !important;
-    color: #fff !important;
-}
-.pls-preview-modal {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    z-index: 100000 !important;
-    background: rgba(0,0,0,0.8) !important;
-}
-.pls-preview-modal .pls-modal__dialog {
-    display: flex !important;
-    flex-direction: row !important;
-    max-width: 100% !important;
-    width: 100% !important;
-    height: 100vh !important;
-    margin: 0 !important;
-    border-radius: 0 !important;
-    background: #fff !important;
-}
-.pls-preview-modal .pls-preview-sidebar {
-    width: 40% !important;
-    overflow-y: auto !important;
-    border-right: 1px solid #ddd !important;
-    background: #f9f9f9 !important;
-    padding: 20px !important;
-}
-.pls-preview-modal .pls-preview-content-panel {
-    width: 60% !important;
-    overflow-y: auto !important;
-    padding: 40px !important;
-    background: #fff !important;
-}
-.pls-preview-content-panel .pls-preview-note {
-    background: #fff3cd;
-    border-left: 4px solid #ffb900;
-    padding: 12px 16px;
-    margin-bottom: 30px;
-    border-radius: 4px;
-}
-.pls-preview-content-panel .pls-preview-note strong {
-    display: block;
-    margin-bottom: 8px;
-}
-.pls-preview-content-panel .pls-widget-section {
-    margin-bottom: 40px;
-    padding: 20px;
-    background: #f9f9f9;
-    border-radius: 4px;
-}
-.pls-preview-content-panel .pls-widget-section h2 {
-    margin-top: 0;
-    font-size: 20px;
-    color: #2271b1;
-}
-.pls-preview-content-panel .pls-note {
-    padding: 12px;
-    background: #f0f0f1;
-    border-left: 4px solid #dba617;
-    margin: 10px 0;
-    border-radius: 4px;
+    min-height: 0;
 }
 ' );
 
@@ -476,7 +450,7 @@ wp_localize_script(
                   <label><?php esc_html_e( 'Name', 'pls-private-label-store' ); ?> <span class="pls-required-indicator" style="color: #d63638;">*</span>
                     <input type="text" name="name" id="pls-name" required placeholder="Collagen Serum" />
                   </label>
-                  <p class="pls-subtle"><?php esc_html_e( 'Status is saved as Draft. Activate products from the PLS products table when ready.', 'pls-private-label-store' ); ?></p>
+                  <p class="pls-subtle"><?php esc_html_e( 'Products are automatically synced to WooCommerce on every save. Drafts are hidden from the shop. Activate when ready to publish.', 'pls-private-label-store' ); ?></p>
                   <div class="pls-field-stack">
                     <p class="pls-micro"><?php esc_html_e( 'Categories', 'pls-private-label-store' ); ?></p>
                     <div class="pls-chip-group" id="pls-category-pills">
@@ -613,46 +587,93 @@ wp_localize_script(
             </div>
 
             <div class="pls-stepper__panel" data-step="ingredients">
-              <div class="pls-modal__grid">
-                <div class="pls-modal__section">
-                  <h3><?php esc_html_e( 'Ingredients', 'pls-private-label-store' ); ?></h3>
-                  <div class="pls-field-stack">
-                    <label class="pls-field-stack">
-                      <span class="pls-micro"><?php esc_html_e( 'Search ingredients', 'pls-private-label-store' ); ?></span>
-                      <input type="search" id="pls-ingredient-search" placeholder="<?php esc_attr_e( 'Search ingredients', 'pls-private-label-store' ); ?>" />
-                    </label>
-                    <button type="button" class="button" id="pls-open-ingredient-create"><?php esc_html_e( 'Create ingredient', 'pls-private-label-store' ); ?></button>
+              <!-- v4.9.99: Redesigned Ingredients UI - Table-like layout for 100+ ingredients -->
+              <div class="pls-ingredients-container">
+                <div class="pls-ingredients-header">
+                  <div class="pls-ingredients-header__left">
+                    <h3 style="margin: 0;"><?php esc_html_e( 'Ingredients', 'pls-private-label-store' ); ?></h3>
+                    <p class="pls-subtle" style="margin: 4px 0 0 0;"><?php esc_html_e( 'Select ingredients from the list. Use search to find specific items.', 'pls-private-label-store' ); ?></p>
                   </div>
-                  <div class="pls-ingredient-columns">
-                    <div class="pls-ingredient-panel">
-                      <p class="pls-micro"><?php esc_html_e( 'All Ingredients (INCI base)', 'pls-private-label-store' ); ?></p>
-                      <p class="pls-subtle" style="font-size: 11px; margin-top: 4px; margin-bottom: 8px;"><?php esc_html_e( 'Select all ingredients used in this product. These form the base formula and will be displayed on the product page.', 'pls-private-label-store' ); ?></p>
-                      <div class="pls-chip-group pls-ingredient-list" id="pls-ingredient-chips" data-default-icon="<?php echo esc_attr( PLS_Taxonomies::default_icon() ); ?>"></div>
-                    </div>
-                    <div class="pls-ingredient-panel">
-                      <p class="pls-micro"><?php esc_html_e( 'Selected', 'pls-private-label-store' ); ?> (<span id="pls-selected-count">0</span>)</p>
-                      <div class="pls-chip-group" id="pls-selected-ingredients"></div>
-                    </div>
+                  <div class="pls-ingredients-header__right">
+                    <span class="pls-badge pls-badge--info" id="pls-ingredient-stats">
+                      <span id="pls-selected-count">0</span> <?php esc_html_e( 'selected', 'pls-private-label-store' ); ?>
+                    </span>
+                    <button type="button" class="button button-small" id="pls-open-ingredient-create">
+                      <span class="dashicons dashicons-plus-alt2" style="font-size: 14px; width: 14px; height: 14px; vertical-align: middle;"></span>
+                      <?php esc_html_e( 'Create', 'pls-private-label-store' ); ?>
+                    </button>
                   </div>
                 </div>
-                <div class="pls-modal__section">
-                  <div class="pls-section-heading">
-                    <p class="pls-label" style="display: flex; align-items: center; gap: 8px;">
-                      <?php esc_html_e( 'Spotlight picks', 'pls-private-label-store' ); ?>
-                      <span class="pls-tier-badge" style="background: #6366f1; color: #fff; padding: 2px 6px; border-radius: 2px; font-size: 9px;">T3+</span>
-                    </p>
-                    <h3><?php esc_html_e( 'Key ingredients', 'pls-private-label-store' ); ?></h3>
-                    <p class="pls-subtle" id="pls-key-ingredients-hint" data-ready-text="<?php esc_attr_e( 'Choose which ingredients to spotlight with icons (up to 5).', 'pls-private-label-store' ); ?>"><?php esc_html_e( 'Select ingredients on the left to spotlight them here.', 'pls-private-label-store' ); ?></p>
+                
+                <!-- Search & Filter Bar -->
+                <div class="pls-ingredients-toolbar">
+                  <div class="pls-search-box">
+                    <span class="dashicons dashicons-search" style="color: #94a3b8;"></span>
+                    <input type="search" id="pls-ingredient-search" placeholder="<?php esc_attr_e( 'Search ingredients...', 'pls-private-label-store' ); ?>" />
+                    <span class="pls-search-count" id="pls-search-count"></span>
                   </div>
+                  <div class="pls-filter-buttons">
+                    <button type="button" class="pls-filter-btn is-active" data-filter="all"><?php esc_html_e( 'All', 'pls-private-label-store' ); ?></button>
+                    <button type="button" class="pls-filter-btn" data-filter="selected"><?php esc_html_e( 'Selected', 'pls-private-label-store' ); ?></button>
+                    <button type="button" class="pls-filter-btn" data-filter="key"><?php esc_html_e( 'Key Only', 'pls-private-label-store' ); ?></button>
+                  </div>
+                </div>
+                
+                <!-- Ingredients Table -->
+                <div class="pls-ingredients-table-wrapper">
+                  <table class="pls-ingredients-table" id="pls-ingredients-table">
+                    <thead>
+                      <tr>
+                        <th class="pls-col-select" style="width: 40px;">
+                          <input type="checkbox" id="pls-select-all-ingredients" title="<?php esc_attr_e( 'Select/Deselect All Visible', 'pls-private-label-store' ); ?>" />
+                        </th>
+                        <th class="pls-col-icon" style="width: 40px;"></th>
+                        <th class="pls-col-name"><?php esc_html_e( 'Ingredient', 'pls-private-label-store' ); ?></th>
+                        <th class="pls-col-key" style="width: 80px;" title="<?php esc_attr_e( 'Mark as Key Ingredient (max 5)', 'pls-private-label-store' ); ?>">
+                          <?php esc_html_e( 'Key', 'pls-private-label-store' ); ?>
+                          <span class="pls-tier-badge" style="background: #6366f1; color: #fff; padding: 1px 4px; border-radius: 2px; font-size: 8px; margin-left: 4px;">T3+</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody id="pls-ingredient-chips" data-default-icon="<?php echo esc_attr( PLS_Taxonomies::default_icon() ); ?>">
+                      <!-- Populated by JavaScript -->
+                    </tbody>
+                  </table>
+                  <div class="pls-table-empty" id="pls-ingredients-empty" style="display: none;">
+                    <span class="dashicons dashicons-warning" style="font-size: 32px; color: #cbd5e1;"></span>
+                    <p><?php esc_html_e( 'No ingredients found matching your search.', 'pls-private-label-store' ); ?></p>
+                  </div>
+                </div>
+                
+                <!-- Pagination -->
+                <div class="pls-ingredients-pagination" id="pls-ingredients-pagination">
+                  <div class="pls-pagination-info">
+                    <span id="pls-pagination-showing"><?php esc_html_e( 'Showing 0-0 of 0', 'pls-private-label-store' ); ?></span>
+                  </div>
+                  <div class="pls-pagination-controls">
+                    <select id="pls-ingredients-per-page" style="padding: 4px 8px;">
+                      <option value="25">25</option>
+                      <option value="50" selected>50</option>
+                      <option value="100">100</option>
+                      <option value="all"><?php esc_html_e( 'All', 'pls-private-label-store' ); ?></option>
+                    </select>
+                    <button type="button" class="button button-small" id="pls-page-prev" disabled>
+                      <span class="dashicons dashicons-arrow-left-alt2" style="font-size: 14px; width: 14px; height: 14px;"></span>
+                    </button>
+                    <span id="pls-page-info" style="padding: 0 8px;">1 / 1</span>
+                    <button type="button" class="button button-small" id="pls-page-next" disabled>
+                      <span class="dashicons dashicons-arrow-right-alt2" style="font-size: 14px; width: 14px; height: 14px;"></span>
+                    </button>
+                  </div>
+                </div>
+                
+                <!-- Key Ingredients Summary -->
+                <div class="pls-key-ingredients-summary" id="pls-key-ingredients-summary">
                   <div class="pls-key-ingredients-header">
                     <strong id="pls-key-counter"><?php esc_html_e( 'Key ingredients: 0 / 5', 'pls-private-label-store' ); ?></strong>
                     <span class="pls-key-limit-message" id="pls-key-limit-message" aria-live="polite"></span>
                   </div>
-                  <p class="pls-subtle"><?php esc_html_e( 'Pick your hero ingredients and keep their icons aligned with the base list.', 'pls-private-label-store' ); ?></p>
-                  <div style="background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 6px; padding: 10px 12px; margin-bottom: 12px; font-size: 12px;">
-                    <strong style="color: #0369a1;"><?php esc_html_e( 'Active ingredients (Tier 3+):', 'pls-private-label-store' ); ?></strong>
-                    <span style="color: #0c4a6e;"><?php esc_html_e( 'Key ingredients become selectable options for Tier 3+ customers who want to customize their active ingredients.', 'pls-private-label-store' ); ?></span>
-                  </div>
+                  <p class="pls-subtle"><?php esc_html_e( 'Key ingredients are highlighted on the product page and available as options for Tier 3+ customers.', 'pls-private-label-store' ); ?></p>
                   <div class="pls-chip-group pls-key-ingredients-list" id="pls-key-ingredients"></div>
                 </div>
               </div>
@@ -985,20 +1006,6 @@ wp_localize_script(
           </div>
         </div>
 
-        <div class="pls-modal__preview-panel" id="pls-preview-panel" style="display:none; flex: 1; overflow-y: auto; flex-direction: column;">
-          <div class="pls-preview-controls" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #f0f0f1; border-bottom: 1px solid #ddd;">
-            <div>
-              <strong><?php esc_html_e( 'Live Preview', 'pls-private-label-store' ); ?></strong>
-              <span class="description" style="margin-left: 12px;"><?php esc_html_e( 'Updates automatically as you edit', 'pls-private-label-store' ); ?></span>
-            </div>
-          </div>
-          <div class="pls-preview-loading" style="padding: 40px; text-align: center;">
-            <span class="spinner is-active" style="float: none; margin: 0 auto;"></span>
-            <p><?php esc_html_e( 'Generating preview...', 'pls-private-label-store' ); ?></p>
-          </div>
-          <iframe id="pls-preview-iframe" style="width:100%; height:calc(100vh - 200px); border:none; background:#fff; display:none;"></iframe>
-        </div>
-
         <div class="pls-modal__footer">
           <div class="pls-stepper__controls">
             <button type="button" class="button" id="pls-step-prev"><?php esc_html_e( 'Back', 'pls-private-label-store' ); ?></button>
@@ -1011,41 +1018,45 @@ wp_localize_script(
         </div>
       </form>
       
-      <!-- Preview Panel (shown in split-screen mode) -->
-      <div id="pls-preview-panel" style="display: none;">
-        <div style="padding: 0; background: #fff; height: 100%; overflow-y: auto; display: flex; flex-direction: column;">
-          <!-- Preview Header -->
-          <div style="padding: 20px; border-bottom: 1px solid #ddd; background: #f9f9f9; flex-shrink: 0;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <h3 style="margin: 0; font-size: 18px; font-weight: 600;"><?php esc_html_e( 'Live Preview', 'pls-private-label-store' ); ?></h3>
-              <div style="display: flex; gap: 8px;">
-                <button type="button" class="button button-small pls-preview-refresh-btn" title="<?php esc_attr_e( 'Refresh Preview', 'pls-private-label-store' ); ?>" style="padding: 4px 8px;">
-                  <span style="font-size: 14px;">↻</span>
-                </button>
-              </div>
-            </div>
-            <p class="description" style="margin: 0; font-size: 13px; color: #666;">
-              <?php esc_html_e( 'Updates automatically as you edit', 'pls-private-label-store' ); ?>
-            </p>
-          </div>
-          
-          <!-- Preview Content -->
-          <div id="pls-preview-content" style="flex: 1; overflow-y: auto; padding: 20px; background: #fff; position: relative;">
-            <div id="pls-preview-loading" style="display: none; text-align: center; padding: 60px 20px;">
-              <div style="display: inline-block; width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #2271b1; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 16px;"></div>
-              <p class="description" style="margin: 0; color: #666;"><?php esc_html_e( 'Generating preview...', 'pls-private-label-store' ); ?></p>
-            </div>
-            <div id="pls-preview-placeholder" style="text-align: center; padding: 60px 20px;">
-              <p class="description" style="margin: 0; color: #666;">
-                <?php esc_html_e( 'Click Preview tab to see how your product will render.', 'pls-private-label-store' ); ?>
+      <!-- Preview Panel -->
+      <div id="pls-preview-panel" class="pls-modal__preview-panel" style="display: none;">
+        <!-- Preview Header -->
+        <div class="pls-preview-header" style="padding: 16px 20px; border-bottom: 1px solid #ddd; background: #f9f9f9; flex-shrink: 0;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <h3 style="margin: 0 0 4px 0; font-size: 16px; font-weight: 600;"><?php esc_html_e( 'Live Preview', 'pls-private-label-store' ); ?></h3>
+              <p class="description" style="margin: 0; font-size: 12px; color: #666;">
+                <?php esc_html_e( 'Updates automatically as you edit', 'pls-private-label-store' ); ?>
               </p>
             </div>
+            <button type="button" class="button button-small pls-preview-refresh-btn" title="<?php esc_attr_e( 'Refresh Preview', 'pls-private-label-store' ); ?>">
+              <span class="dashicons dashicons-update" style="font-size: 16px; width: 16px; height: 16px; vertical-align: middle;"></span>
+            </button>
+          </div>
+        </div>
+        
+        <!-- Preview Content -->
+        <div id="pls-preview-content" style="flex: 1; overflow-y: auto; padding: 20px; background: #fff;">
+          <div id="pls-preview-loading" style="display: none; text-align: center; padding: 60px 20px;">
+            <div class="pls-spinner" style="display: inline-block; width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #2271b1; border-radius: 50%; animation: pls-spin 1s linear infinite; margin-bottom: 16px;"></div>
+            <p class="description" style="margin: 0; color: #666;"><?php esc_html_e( 'Generating preview...', 'pls-private-label-store' ); ?></p>
+          </div>
+          <div id="pls-preview-placeholder" style="text-align: center; padding: 60px 20px;">
+            <div style="margin-bottom: 16px;">
+              <span class="dashicons dashicons-visibility" style="font-size: 48px; width: 48px; height: 48px; color: #ddd;"></span>
+            </div>
+            <p style="margin: 0 0 8px 0; font-size: 14px; color: #666; font-weight: 500;">
+              <?php esc_html_e( 'Preview will appear here', 'pls-private-label-store' ); ?>
+            </p>
+            <p class="description" style="margin: 0; color: #999; font-size: 13px;">
+              <?php esc_html_e( 'Product must be saved and synced to WooCommerce to see preview.', 'pls-private-label-store' ); ?>
+            </p>
           </div>
         </div>
       </div>
       
       <style>
-        @keyframes spin {
+        @keyframes pls-spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
         }

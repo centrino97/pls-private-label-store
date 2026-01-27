@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 4.9.9
+Stable tag: 4.9.99
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,17 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 4.9.99 =
+* **NEW:** Table-based Ingredients UI - Redesigned ingredient selection with searchable, paginated table (scales to 100+ ingredients)
+* **NEW:** Ingredient pagination - Select 25, 50, 100 items per page or show all
+* **NEW:** Ingredient filtering - Quick filters for All, Selected, and Key ingredients
+* **NEW:** Bulk select - Select/deselect all visible ingredients at once
+* **NEW:** Inline key ingredient marking - Mark ingredients as "key" directly from the table
+* **IMPROVED:** Search experience - Real-time search with result count display
+* **IMPROVED:** Auto-sync messaging - Clearer feedback that products sync automatically on every save
+* **IMPROVED:** Modal fullscreen support - Better responsive modal layout
+* **FIXED:** Live preview panel - Resolved duplicate ID issue causing preview to stuck on "Generating..."
+
 = 4.9.9 =
 * **NEW:** Comprehensive System Test Coverage - Added 20 new test categories (28 total) covering all PLS features
 * **NEW:** Test categories organized into groups: Core, WooCommerce Sync, Data Management, Orders & Commissions, Infrastructure, Admin, Frontend, v4.9.99 Features

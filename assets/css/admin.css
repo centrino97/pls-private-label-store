@@ -3375,3 +3375,419 @@ a[title]:hover::before {
   z-index: 1001;
   margin-bottom: -5px;
 }
+
+/* ============================================
+   v4.9.99: Ingredients Table UI
+   Scalable design for 100+ ingredients
+   ============================================ */
+
+.pls-ingredients-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: #fff;
+  border: 1px solid var(--pls-gray-200);
+  border-radius: var(--pls-radius-lg);
+  padding: 20px;
+}
+
+.pls-ingredients-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.pls-ingredients-header__left {
+  flex: 1;
+  min-width: 200px;
+}
+
+.pls-ingredients-header__right {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.pls-ingredients-toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 12px;
+  background: var(--pls-gray-50);
+  border-radius: var(--pls-radius-md);
+}
+
+.pls-search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  border: 1px solid var(--pls-gray-200);
+  border-radius: var(--pls-radius-md);
+  padding: 6px 12px;
+  flex: 1;
+  min-width: 200px;
+  max-width: 400px;
+}
+
+.pls-search-box input {
+  border: none;
+  outline: none;
+  flex: 1;
+  font-size: 14px;
+  background: transparent;
+}
+
+.pls-search-box input:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.pls-search-count {
+  font-size: 12px;
+  color: var(--pls-gray-500);
+  white-space: nowrap;
+}
+
+.pls-filter-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.pls-filter-btn {
+  padding: 6px 12px;
+  border: 1px solid var(--pls-gray-200);
+  background: #fff;
+  border-radius: var(--pls-radius-sm);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pls-filter-btn:hover {
+  background: var(--pls-gray-50);
+}
+
+.pls-filter-btn.is-active {
+  background: var(--pls-accent);
+  color: #fff;
+  border-color: var(--pls-accent);
+}
+
+/* Ingredients Table */
+.pls-ingredients-table-wrapper {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid var(--pls-gray-200);
+  border-radius: var(--pls-radius-md);
+}
+
+.pls-ingredients-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.pls-ingredients-table thead {
+  position: sticky;
+  top: 0;
+  background: var(--pls-gray-50);
+  z-index: 1;
+}
+
+.pls-ingredients-table th {
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  color: var(--pls-gray-600);
+  border-bottom: 1px solid var(--pls-gray-200);
+}
+
+.pls-ingredients-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--pls-gray-100);
+  vertical-align: middle;
+}
+
+.pls-ingredients-table tbody tr {
+  transition: background 0.1s ease;
+}
+
+.pls-ingredients-table tbody tr:hover {
+  background: var(--pls-gray-50);
+}
+
+.pls-ingredients-table tbody tr.is-selected {
+  background: #e0f2fe;
+}
+
+.pls-ingredients-table tbody tr.is-key {
+  background: #fef3c7;
+}
+
+.pls-ingredients-table tbody tr.is-selected.is-key {
+  background: #d1fae5;
+}
+
+.pls-ingredient-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  object-fit: contain;
+}
+
+.pls-ingredient-name {
+  font-weight: 500;
+  color: var(--pls-gray-900);
+}
+
+.pls-ingredient-desc {
+  font-size: 12px;
+  color: var(--pls-gray-500);
+  margin-top: 2px;
+}
+
+.pls-table-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--pls-gray-500);
+}
+
+.pls-table-empty p {
+  margin: 12px 0 0 0;
+}
+
+/* Pagination */
+.pls-ingredients-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: var(--pls-gray-50);
+  border-radius: var(--pls-radius-md);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.pls-pagination-info {
+  font-size: 13px;
+  color: var(--pls-gray-600);
+}
+
+.pls-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Key Ingredients Summary */
+.pls-key-ingredients-summary {
+  padding: 16px;
+  background: linear-gradient(135deg, #fef3c7 0%, #fef9c3 100%);
+  border: 1px solid #fcd34d;
+  border-radius: var(--pls-radius-md);
+}
+
+.pls-key-ingredients-summary .pls-key-ingredients-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.pls-key-ingredients-summary .pls-chip-group {
+  margin-top: 12px;
+}
+
+/* ============================================
+   v4.9.99: Product Options Table UI
+   ============================================ */
+
+.pls-options-table-wrapper {
+  border: 1px solid var(--pls-gray-200);
+  border-radius: var(--pls-radius-md);
+  overflow: hidden;
+}
+
+.pls-options-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.pls-options-table thead {
+  background: var(--pls-gray-50);
+}
+
+.pls-options-table th {
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  color: var(--pls-gray-600);
+  border-bottom: 1px solid var(--pls-gray-200);
+}
+
+.pls-options-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--pls-gray-100);
+  vertical-align: middle;
+}
+
+.pls-options-table tbody tr:hover {
+  background: var(--pls-gray-50);
+}
+
+.pls-options-table .pls-option-name {
+  font-weight: 500;
+}
+
+.pls-options-table .pls-option-price {
+  font-family: monospace;
+  color: var(--pls-gray-600);
+}
+
+.pls-options-table .pls-option-price.has-price {
+  color: #059669;
+  font-weight: 500;
+}
+
+.pls-options-table .pls-tier-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  background: #e0e7ff;
+  color: #4338ca;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* Collapsible Option Groups */
+.pls-option-group {
+  border: 1px solid var(--pls-gray-200);
+  border-radius: var(--pls-radius-md);
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.pls-option-group__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--pls-gray-50);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease;
+}
+
+.pls-option-group__header:hover {
+  background: var(--pls-gray-100);
+}
+
+.pls-option-group__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.pls-option-group__count {
+  font-size: 12px;
+  color: var(--pls-gray-500);
+  font-weight: normal;
+}
+
+.pls-option-group__toggle {
+  transition: transform 0.2s ease;
+}
+
+.pls-option-group.is-collapsed .pls-option-group__toggle {
+  transform: rotate(-90deg);
+}
+
+.pls-option-group__content {
+  padding: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+}
+
+.pls-option-group.is-collapsed .pls-option-group__content {
+  display: none;
+}
+
+/* Option Card (compact) */
+.pls-option-card-compact {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #fff;
+  border: 1px solid var(--pls-gray-200);
+  border-radius: var(--pls-radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pls-option-card-compact:hover {
+  border-color: var(--pls-accent);
+  background: #f0f9ff;
+}
+
+.pls-option-card-compact.is-selected {
+  background: #e0f2fe;
+  border-color: var(--pls-accent);
+}
+
+.pls-option-card-compact input[type="checkbox"] {
+  margin: 0;
+}
+
+.pls-option-card-compact .pls-option-label {
+  flex: 1;
+  font-size: 13px;
+}
+
+.pls-option-card-compact .pls-option-price {
+  font-size: 12px;
+  color: var(--pls-gray-500);
+}
+
+.pls-option-card-compact .pls-option-price.has-price {
+  color: #059669;
+  font-weight: 500;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .pls-ingredients-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .pls-search-box {
+    max-width: 100%;
+  }
+  
+  .pls-filter-buttons {
+    justify-content: center;
+  }
+  
+  .pls-ingredients-pagination {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .pls-option-group__content {
+    grid-template-columns: 1fr;
+  }
+}
