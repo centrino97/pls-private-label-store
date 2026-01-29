@@ -374,7 +374,7 @@
           product_id: productId,
           variation_id: variationId,
           quantity: quantity,
-          nonce: (typeof plsOffers !== 'undefined' ? plsOffers.nonce : '')
+          nonce: (typeof plsOffers !== 'undefined' && plsOffers.addToCartNonce ? plsOffers.addToCartNonce : '')
         },
         success: function(response) {
           if (response.success) {
@@ -413,6 +413,13 @@
     const $popup = $('.pls-bundle-popup');
     if (!$popup.length) {
       // Create popup HTML if it doesn't exist
+      // Get cart URL from various sources
+      const cartUrl = (typeof plsOffers !== 'undefined' && plsOffers.cartUrl) 
+        ? plsOffers.cartUrl 
+        : ((typeof wc_add_to_cart_params !== 'undefined' && wc_add_to_cart_params.cart_url) 
+          ? wc_add_to_cart_params.cart_url 
+          : '/cart');
+      
       const popupHtml = `
         <div class="pls-bundle-popup">
           <div class="pls-bundle-popup__content">
@@ -420,7 +427,7 @@
             <h2 class="pls-bundle-popup__title">✓ Added to Cart!</h2>
             <p class="pls-bundle-popup__message">Complete your order with a bundle and save more!</p>
             <div class="pls-bundle-popup__actions">
-              <a href="${(typeof wc_add_to_cart_params !== 'undefined' && wc_add_to_cart_params.cart_url) ? wc_add_to_cart_params.cart_url : '/cart'}" class="button button-primary">View Cart</a>
+              <a href="${cartUrl}" class="button button-primary">View Cart</a>
               <button type="button" class="button pls-bundle-popup-continue">Continue Shopping</button>
             </div>
           </div>

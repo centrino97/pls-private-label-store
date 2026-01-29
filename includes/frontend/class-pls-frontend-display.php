@@ -62,8 +62,10 @@ final class PLS_Frontend_Display {
 
         // Localize script with AJAX data
         wp_localize_script( 'pls-offers', 'plsOffers', array(
-            'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-            'nonce'   => wp_create_nonce( 'pls_offers' ),
+            'ajaxUrl'        => admin_url( 'admin-ajax.php' ),
+            'nonce'          => wp_create_nonce( 'pls_offers' ),
+            'addToCartNonce' => wp_create_nonce( 'pls_add_to_cart' ),
+            'cartUrl'        => function_exists( 'wc_get_cart_url' ) ? wc_get_cart_url() : home_url( '/cart/' ),
         ) );
     }
 

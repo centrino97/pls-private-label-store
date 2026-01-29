@@ -67,12 +67,14 @@
         // Close modal
         $(document).on('click', '.pls-modal__close', function() {
             $('#pls-order-detail-modal').removeClass('is-active');
+            $('body').removeClass('pls-modal-open');
         });
         
         // Close modal on background click
         $(document).on('click', '#pls-order-detail-modal', function(e) {
             if ($(e.target).is('#pls-order-detail-modal')) {
                 $(this).removeClass('is-active');
+                $('body').removeClass('pls-modal-open');
             }
         });
 
@@ -113,7 +115,8 @@
                 },
                 success: function(response) {
                     if ( response.success ) {
-                        $('#pls-order-detail-modal').hide();
+                        $('#pls-order-detail-modal').removeClass('is-active');
+                        $('body').removeClass('pls-modal-open');
                         location.reload();
                     } else {
                         alert( response.data.message || 'Failed to update.' );
@@ -258,7 +261,8 @@
                 success: function(response) {
                     if ( response.success ) {
                         $('#pls-order-detail-content').html(response.data.html);
-                        $('#pls-order-detail-modal').show();
+                        $('#pls-order-detail-modal').addClass('is-active');
+                        $('body').addClass('pls-modal-open');
                     } else {
                         alert( response.data.message || 'Failed to load order details.' );
                     }

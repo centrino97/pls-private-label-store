@@ -58,6 +58,11 @@ final class PLS_Ajax {
      * Handle AJAX add to cart request.
      */
     public static function add_to_cart() {
+        // Verify nonce for CSRF protection
+        if ( ! check_ajax_referer( 'pls_add_to_cart', 'nonce', false ) ) {
+            wp_send_json_error( array( 'message' => __( 'Security check failed. Please refresh the page and try again.', 'pls-private-label-store' ) ), 403 );
+        }
+
         if ( ! function_exists( 'WC' ) || ! WC()->cart ) {
             wp_send_json_error( array( 'message' => __( 'WooCommerce cart is not available.', 'pls-private-label-store' ) ) );
         }
