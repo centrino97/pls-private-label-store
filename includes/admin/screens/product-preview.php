@@ -38,10 +38,12 @@ wp_enqueue_style( 'pls-offers', PLS_PLS_URL . 'assets/css/offers.css', array(), 
 wp_enqueue_script( 'pls-offers', PLS_PLS_URL . 'assets/js/offers.js', array( 'jquery' ), PLS_PLS_VERSION, true );
 wp_localize_script(
     'pls-offers',
-    'PLS_Offers',
+    'plsOffers',
     array(
-        'ajax_url' => admin_url( 'admin-ajax.php' ),
-        'nonce'    => wp_create_nonce( 'pls_offers' ),
+        'ajaxUrl'        => admin_url( 'admin-ajax.php' ),
+        'nonce'          => wp_create_nonce( 'pls_offers' ),
+        'addToCartNonce' => wp_create_nonce( 'pls_add_to_cart' ),
+        'cartUrl'        => function_exists( 'wc_get_cart_url' ) ? wc_get_cart_url() : home_url( '/cart/' ),
     )
 );
 

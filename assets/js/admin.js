@@ -88,26 +88,6 @@
           });
         }
       });
-      
-      // Debug logging for product options
-      if (console && console.log) {
-        console.log('[PLS Debug] Loaded ' + PLS_ProductAdmin.attributes.length + ' attributes');
-        var packageTypeAttr = PLS_ProductAdmin.attributes.find(function(a) {
-          return (a.attr_key === 'package-type' || 
-                  (a.label && a.label.toLowerCase().indexOf('package type') !== -1));
-        });
-        var packageColorAttr = PLS_ProductAdmin.attributes.find(function(a) {
-          return (a.attr_key === 'package-color' || a.attr_key === 'package-colour' ||
-                  (a.label && a.label.toLowerCase().indexOf('package color') !== -1));
-        });
-        var packageCapAttr = PLS_ProductAdmin.attributes.find(function(a) {
-          return (a.attr_key === 'package-cap' ||
-                  (a.label && a.label.toLowerCase().indexOf('package cap') !== -1));
-        });
-        console.log('[PLS Debug] Package Type found:', !!packageTypeAttr, packageTypeAttr ? packageTypeAttr.label : 'N/A');
-        console.log('[PLS Debug] Package Color found:', !!packageColorAttr, packageColorAttr ? packageColorAttr.label : 'N/A');
-        console.log('[PLS Debug] Package Cap found:', !!packageCapAttr, packageCapAttr ? packageCapAttr.label : 'N/A');
-      }
     }
 
       goToStep('general');

@@ -4,14 +4,14 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 5.0.0
+Stable tag: 5.0.1
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
 
 == Description ==
 This plugin creates custom tables for a structured catalog model (base products, pack tiers, bundles, attributes/swatches)
-and provides Elementor widgets as placeholders for a seamless Theme Builder integration.
+and provides shortcodes for seamless Elementor Theme Builder integration.
 
 == Installation ==
 1. Upload the ZIP in WP Admin → Plugins → Add New → Upload Plugin
@@ -23,6 +23,14 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 5.0.1 =
+* **CLEANUP:** Removed dead widget code - deleted unused Elementor widget files
+* **CLEANUP:** Removed debug console.log statements from admin JavaScript
+* **IMPROVED:** Updated plugin descriptions to reflect shortcode-only architecture
+* **IMPROVED:** Cleaned up Elementor integration class and documentation
+* **IMPROVED:** Removed empty widgets directory and temporary files
+* **DOCS:** Updated all documentation to accurately reflect shortcode-based frontend
+
 = 5.0.0 =
 * **MAJOR RELEASE:** Production-Ready Private Label Store with Full E-commerce Capabilities
 * **SECURITY:** Added CSRF protection to frontend add-to-cart AJAX handler with nonce verification

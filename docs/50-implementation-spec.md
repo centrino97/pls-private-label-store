@@ -18,7 +18,7 @@ Notes:
 - Admin screens (`includes/admin/screens/`): dashboard + stub pages for products, attributes, bundles.
 - Data helper: `includes/data/class-pls-repositories.php` (table resolver, no repos yet).
 - Woo sync scaffold: `includes/wc/class-pls-wc-sync.php` (stub methods).
-- Elementor layer: `includes/elementor/class-pls-elementor.php` registers Configurator + Bundle Offer widgets and Pack Units dynamic tag (stub); shared frontend assets load.
+- Elementor layer: `includes/elementor/class-pls-elementor.php` registers Pack Units dynamic tag and loads frontend assets for shortcodes.
 - AJAX: `includes/frontend/class-pls-ajax.php` exposes placeholder offer/apply endpoints.
 - Docs: `docs/00-40` cover overview, data model, Woo mapping, Elementor integration, sync/idempotency.
 
@@ -27,7 +27,7 @@ Notes:
 - Attributes & Swatches
 - Bundles & Deals
 - WooCommerce sync layer (connects all tables to native Woo objects)
-- Elementor layer (widgets drive real Woo products/variations/terms)
+- Elementor layer (shortcodes render complete pages, dynamic tags provide additional data)
 
 ## Data layer – repository classes (add under `includes/data/`)
 - `repo-base-product.php` (`PLS_Repo_Base_Product`): `all()`, `get()`, `insert()`, `update()`, `set_wc_product_id()`.
@@ -81,9 +81,10 @@ Notes:
 - Offers: `PLS_Ajax::get_offers()` derives upsell bundles from current product/cart; `pls_apply_offer` injects bundle items.
 
 ## Elementor integration (frontend layer)
-- Configurator widget: detects current Woo product, reads variations/pack tiers; JS sets `select[name="attribute_pa_pack-tier"]` on Woo add-to-cart form; may fetch `_pls_units` via AJAX for UI.
-- Bundle Offer widget: uses `assets/js/offers.js` to call `pls_get_offers` with product ID + cart hash, render cards, and call `pls_apply_offer` to add bundles.
-- Dynamic tag `PLS_DTag_Pack_Units`: render `_pls_units` for selected/default variation so templates can show "Pack of X units".
+- **Shortcodes**: Use `[pls_single_product]`, `[pls_single_category]`, or `[pls_shop_page]` in Elementor templates via Shortcode widget. These render complete pages with configurator, product info, and bundle offers.
+- **Configurator**: Built into `[pls_single_product]` shortcode - detects current Woo product, reads variations/pack tiers; JS sets `select[name="attribute_pa_pack-tier"]` on Woo add-to-cart form.
+- **Bundle Offers**: Built into `[pls_single_product]` shortcode - uses `assets/js/offers.js` to call `pls_get_offers` with product ID + cart hash, render cards, and call `pls_apply_offer` to add bundles.
+- **Dynamic tag `PLS_DTag_Pack_Units`**: Render `_pls_units` for selected/default variation so templates can show "Pack of X units" in custom displays.
 
 ## Cross-cutting behaviours
 - Sync should be idempotent; re-running updates without duplicates and respects backreferences (`wc_product_id`, `wc_variation_id`, `wc_attribute_id`, term IDs).

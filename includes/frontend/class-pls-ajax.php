@@ -71,13 +71,24 @@ final class PLS_Ajax {
         $variation_id = isset( $_POST['variation_id'] ) ? absint( $_POST['variation_id'] ) : 0;
         $quantity = isset( $_POST['quantity'] ) ? absint( $_POST['quantity'] ) : 1;
 
+        // Validate required fields
         if ( ! $product_id || ! $variation_id ) {
             wp_send_json_error( array( 'message' => __( 'Product ID and variation ID are required.', 'pls-private-label-store' ) ) );
+        }
+
+        // Validate quantity (tiers are fixed packs, quantity should be 1)
+        if ( $quantity < 1 ) {
+            wp_send_json_error( array( 'message' => __( 'Invalid quantity.', 'pls-private-label-store' ) ) );
         }
 
         $variation = wc_get_product( $variation_id );
         if ( ! $variation || $variation->get_parent_id() !== $product_id ) {
             wp_send_json_error( array( 'message' => __( 'Invalid variation.', 'pls-private-label-store' ) ) );
+        }
+
+        // Check if variation is purchasable
+        if ( ! $variation->is_purchasable() ) {
+            wp_send_json_error( array( 'message' => __( 'This variation is not available for purchase.', 'pls-private-label-store' ) ) );
         }
 
         // Add to cart
@@ -100,7 +111,15 @@ final class PLS_Ajax {
                 ),
             ) );
         } else {
-            wp_send_json_error( array( 'message' => __( 'Failed to add product to cart.', 'pls-private-label-store' ) ) );
+            // Check for WooCommerce notices
+            $notices = wc_get_notices( 'error' );
+            $error_message = __( 'Failed to add product to cart.', 'pls-private-label-store' );
+            
+            if ( ! empty( $notices ) ) {
+                $error_message = wp_strip_all_tags( $notices[0]['notice'] );
+            }
+            
+            wp_send_json_error( array( 'message' => $error_message ) );
         }
     }
 }

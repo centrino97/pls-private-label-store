@@ -2,7 +2,7 @@
 
 ## What is PLS?
 
-PLS (Private Label Store) is a WordPress plugin that manages a private label product catalog, syncs with WooCommerce, and provides Elementor widgets for frontend display.
+PLS (Private Label Store) is a WordPress plugin that manages a private label product catalog, syncs with WooCommerce, and provides shortcodes for frontend display in Elementor templates.
 
 ## Core Features
 
@@ -17,7 +17,8 @@ PLS (Private Label Store) is a WordPress plugin that manages a private label pro
 
 - **Data Layer**: Custom database tables for products, bundles, orders, commissions
 - **Sync Layer**: WooCommerce integration for product/variation sync
-- **Frontend**: Elementor widgets for product display
+- **Frontend**: Shortcodes for complete page rendering (`[pls_single_product]`, `[pls_single_category]`, `[pls_shop_page]`)
+- **Elementor Integration**: Use shortcodes in Elementor templates via Shortcode widget
 - **Admin UI**: Modern, component-based interface
 
 ## Key Files
@@ -27,7 +28,7 @@ PLS (Private Label Store) is a WordPress plugin that manages a private label pro
 - `includes/wc/class-pls-wc-sync.php` - WooCommerce sync
 - `includes/admin/` - Admin interface
 - `includes/data/` - Repository classes
-- `includes/elementor/` - Elementor widgets
+- `includes/elementor/` - Elementor dynamic tags and frontend assets
 
 ## Database Tables
 

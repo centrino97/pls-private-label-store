@@ -1,6 +1,10 @@
 <?php
 /**
- * Elementor integration: widgets + dynamic tags.
+ * Elementor integration: dynamic tags and frontend assets.
+ *
+ * Note: PLS uses shortcodes for frontend display, not Elementor widgets.
+ * Use [pls_single_product], [pls_single_category], or [pls_shop_page] shortcodes
+ * in Elementor templates via the Shortcode widget.
  *
  * @package PLS_Private_Label_Store
  */
@@ -12,16 +16,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class PLS_Elementor {
 
     public static function init() {
-        // Elementor widgets disabled - use shortcodes instead (pls_single_product, pls_single_category, pls_shop_page)
-        // Removed: add_action( 'elementor/widgets/register', array( __CLASS__, 'register_widgets' ) );
+        // Register dynamic tags (Pack Units)
         add_action( 'elementor/dynamic_tags/register', array( __CLASS__, 'register_dynamic_tags' ) );
 
+        // Enqueue frontend assets for shortcode functionality
         add_action( 'wp_enqueue_scripts', array( __CLASS__, 'frontend_assets' ) );
-    }
-
-    public static function register_widgets( $widgets_manager ) {
-        // Widgets disabled - use shortcodes instead
-        // Removed widget registration
     }
 
     public static function register_dynamic_tags( $dynamic_tags ) {
@@ -43,8 +42,8 @@ final class PLS_Elementor {
     }
 
     /**
-     * Frontend assets for offers widgets.
-     * Widgets also declare deps, but we keep a minimal loader for safety.
+     * Frontend assets for shortcode functionality.
+     * Loads CSS and JavaScript required for PLS shortcodes to work properly.
      */
     public static function frontend_assets() {
         if ( is_admin() ) {
@@ -68,10 +67,12 @@ final class PLS_Elementor {
 
         wp_localize_script(
             'pls-offers',
-            'PLS_Offers',
+            'plsOffers',
             array(
-                'ajax_url' => admin_url( 'admin-ajax.php' ),
-                'nonce'    => wp_create_nonce( 'pls_offers' ),
+                'ajaxUrl'        => admin_url( 'admin-ajax.php' ),
+                'nonce'          => wp_create_nonce( 'pls_offers' ),
+                'addToCartNonce' => wp_create_nonce( 'pls_add_to_cart' ),
+                'cartUrl'        => function_exists( 'wc_get_cart_url' ) ? wc_get_cart_url() : home_url( '/cart/' ),
             )
         );
     }
