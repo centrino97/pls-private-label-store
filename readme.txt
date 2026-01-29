@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 4.9.99
+Stable tag: 5.0.0
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,22 @@ and provides Elementor widgets as placeholders for a seamless Theme Builder inte
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 5.0.0 =
+* **MAJOR RELEASE:** Production-Ready Private Label Store with Full E-commerce Capabilities
+* **SECURITY:** Added CSRF protection to frontend add-to-cart AJAX handler with nonce verification
+* **SECURITY:** Pass secure addToCartNonce from PHP to JavaScript for cart operations
+* **FIXED:** Custom Orders "View" button now opens modal correctly (CSS class toggle fix)
+* **FIXED:** "View Cart" link in success popup now uses correct dynamic cart URL from WooCommerce
+* **FIXED:** Cart URL resolution with proper fallback chain (plsOffers.cartUrl → wc_add_to_cart_params → /cart)
+* **NEW:** Comprehensive System Audit Report documenting all features and potential improvements
+* **NEW:** Complete Test Plan with 100+ test cases covering all admin and frontend features
+* **NEW:** UX Helper Elements verification checklist (tooltips, modals, loading states, empty states)
+* **IMPROVED:** All security audit recommendations implemented
+* **IMPROVED:** Error handling audit completed with documentation
+* **IMPROVED:** Data integrity audit completed with recommendations
+* **DOCS:** Added docs/system-audit-report.md with full security, UX, and code quality analysis
+* **DOCS:** Added docs/comprehensive-test-plan.md with complete testing procedures
+
 = 4.9.99 =
 * **NEW:** Table-based Ingredients UI - Redesigned ingredient selection with searchable, paginated table (scales to 100+ ingredients)
 * **NEW:** Ingredient pagination - Select 25, 50, 100 items per page or show all
