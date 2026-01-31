@@ -318,75 +318,45 @@ final class PLS_Shortcodes {
     }
 
     /**
-     * Configurator shortcode.
-     * 
-     * Usage: [pls_configurator product_id="123"]
+     * Inline configurator shortcode (v4.9.99 feature).
+     * Usage: [pls_configurator product_id="123"] or [pls_configurator_inline product_id="123"]
      *
      * @param array $atts Shortcode attributes.
-     * @return string
+     * @return string HTML output.
      */
     public static function configurator_shortcode( $atts ) {
-        $atts = shortcode_atts(
-            array(
-                'product_id' => 0,
-            ),
-            $atts,
-            'pls_configurator'
-        );
+        $atts = shortcode_atts( array(
+            'product_id' => 0,
+            'instance_id' => '',
+        ), $atts, 'pls_configurator' );
 
         $product_id = absint( $atts['product_id'] );
-        if ( ! $product_id ) {
-            // Try to get from current WooCommerce product
+        
+        // If no product_id provided, try to detect from current product page
+        if ( ! $product_id && is_product() ) {
             global $product;
-            if ( $product instanceof WC_Product ) {
+            if ( $product ) {
                 $product_id = $product->get_id();
             }
         }
 
         if ( ! $product_id ) {
-            return '<div class="pls-note">' . esc_html__( 'Product ID required.', 'pls-private-label-store' ) . '</div>';
+            return '<p class="pls-error">' . esc_html__( 'Product ID required. Usage: [pls_configurator product_id="123"]', 'pls-private-label-store' ) . '</p>';
         }
 
-        $wc_product = wc_get_product( $product_id );
-        if ( ! $wc_product || ! $wc_product->is_type( 'variable' ) ) {
-            return '<div class="pls-note">' . esc_html__( 'Variable product required.', 'pls-private-label-store' ) . '</div>';
+        $product = wc_get_product( $product_id );
+        if ( ! $product ) {
+            return '<p class="pls-error">' . esc_html__( 'Product not found.', 'pls-private-label-store' ) . '</p>';
         }
 
-        // Enqueue required scripts/styles
-        wp_enqueue_style( 'pls-offers' );
+        // Ensure frontend display assets are loaded
+        require_once PLS_PLS_DIR . 'includes/frontend/class-pls-frontend-display.php';
+        PLS_Frontend_Display::register_assets();
+        wp_enqueue_style( 'pls-frontend-display' );
         wp_enqueue_script( 'pls-offers' );
 
-        $variation_attributes = $wc_product->get_variation_attributes();
-        $pack_tiers = isset( $variation_attributes['pa_pack-tier'] ) ? (array) $variation_attributes['pa_pack-tier'] : array();
-
-        if ( empty( $pack_tiers ) ) {
-            return '<div class="pls-note">' . esc_html__( 'No pack tiers found.', 'pls-private-label-store' ) . '</div>';
-        }
-
-        ob_start();
-        ?>
-        <div class="pls-configurator" data-product-id="<?php echo esc_attr( $product_id ); ?>">
-            <div class="pls-configurator__title"><?php echo esc_html__( 'Configure your pack', 'pls-private-label-store' ); ?></div>
-            <div class="pls-configurator__block">
-                <strong><?php echo esc_html__( 'Pack tiers', 'pls-private-label-store' ); ?></strong>
-                <div class="pls-configurator__tiers">
-                    <?php foreach ( $pack_tiers as $tier_slug ) : ?>
-                        <?php
-                        $tier_term = get_term_by( 'slug', $tier_slug, 'pa_pack-tier' );
-                        if ( ! $tier_term ) {
-                            continue;
-                        }
-                        ?>
-                        <label class="pls-configurator__tier">
-                            <input type="radio" name="pls_pack_tier" value="<?php echo esc_attr( $tier_slug ); ?>" />
-                            <span><?php echo esc_html( $tier_term->name ); ?></span>
-                        </label>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-        </div>
-        <?php
-        return ob_get_clean();
+        // Render inline configurator
+        return PLS_Frontend_Display::render_configurator_inline( $product, $atts['instance_id'] );
     }
 
     /**
@@ -782,47 +752,5 @@ final class PLS_Shortcodes {
         // Return empty string - the hooks handle the display
         // But add a wrapper div for potential future enhancements
         return '<div class="pls-single-category" data-show-tier-badges="' . esc_attr( $atts['show_tier_badges'] ) . '" data-show-starting-price="' . esc_attr( $atts['show_starting_price'] ) . '"></div>';
-    }
-
-    /**
-     * Inline configurator shortcode (v4.9.99 feature).
-     * Usage: [pls_configurator product_id="123"] or [pls_configurator_inline product_id="123"]
-     *
-     * @param array $atts Shortcode attributes.
-     * @return string HTML output.
-     */
-    public static function configurator_shortcode( $atts ) {
-        $atts = shortcode_atts( array(
-            'product_id' => 0,
-            'instance_id' => '',
-        ), $atts, 'pls_configurator' );
-
-        $product_id = absint( $atts['product_id'] );
-        
-        // If no product_id provided, try to detect from current product page
-        if ( ! $product_id && is_product() ) {
-            global $product;
-            if ( $product ) {
-                $product_id = $product->get_id();
-            }
-        }
-
-        if ( ! $product_id ) {
-            return '<p class="pls-error">' . esc_html__( 'Product ID required. Usage: [pls_configurator product_id="123"]', 'pls-private-label-store' ) . '</p>';
-        }
-
-        $product = wc_get_product( $product_id );
-        if ( ! $product ) {
-            return '<p class="pls-error">' . esc_html__( 'Product not found.', 'pls-private-label-store' ) . '</p>';
-        }
-
-        // Ensure frontend display assets are loaded
-        require_once PLS_PLS_DIR . 'includes/frontend/class-pls-frontend-display.php';
-        PLS_Frontend_Display::register_assets();
-        wp_enqueue_style( 'pls-frontend-display' );
-        wp_enqueue_script( 'pls-offers' );
-
-        // Render inline configurator
-        return PLS_Frontend_Display::render_configurator_inline( $product, $atts['instance_id'] );
     }
 }
