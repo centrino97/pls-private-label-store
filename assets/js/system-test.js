@@ -24,6 +24,9 @@
             this.discoverCategories();
             this.bindEvents();
             this.initTemplates();
+            
+            // Try to restore test results from localStorage
+            this.restoreTestResults();
         },
 
         /**
@@ -146,6 +149,9 @@
                     health: total > 0 ? Math.round((this.countStatus('pass') / total) * 100) : 0
                 }
             };
+            
+            // Persist to localStorage for later retrieval
+            this.saveTestResults();
 
             this.isRunning = false;
             $('#pls-run-all-tests').removeClass('is-loading');
@@ -407,9 +413,131 @@
         },
 
         /**
+         * Save test results to localStorage.
+         */
+        saveTestResults: function() {
+            if (this.allTestResults && typeof Storage !== 'undefined') {
+                try {
+                    localStorage.setItem('pls_test_results', JSON.stringify(this.allTestResults));
+                    localStorage.setItem('pls_test_results_timestamp', new Date().toISOString());
+                } catch (e) {
+                    console.warn('Failed to save test results to localStorage:', e);
+                }
+            }
+        },
+
+        /**
+         * Restore test results from localStorage.
+         */
+        restoreTestResults: function() {
+            if (typeof Storage !== 'undefined') {
+                try {
+                    const saved = localStorage.getItem('pls_test_results');
+                    if (saved) {
+                        this.allTestResults = JSON.parse(saved);
+                        // If summary is visible, results were already displayed
+                        const $summary = $('#pls-test-summary');
+                        if ($summary.is(':visible') && !this.allTestResults) {
+                            // Try to reconstruct from DOM
+                            this.reconstructResultsFromDOM();
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Failed to restore test results from localStorage:', e);
+                }
+            }
+        },
+
+        /**
+         * Reconstruct test results from DOM if they're displayed but not in memory.
+         */
+        reconstructResultsFromDOM: function() {
+            const $summary = $('#pls-test-summary');
+            if (!$summary.is(':visible')) {
+                return null;
+            }
+
+            // Check if we have summary stats
+            const passed = parseInt($('#stat-passed').text()) || 0;
+            const failed = parseInt($('#stat-failed').text()) || 0;
+            const warnings = parseInt($('#stat-warnings').text()) || 0;
+            const skipped = parseInt($('#stat-skipped').text()) || 0;
+            const health = parseInt($('#health-score').text()) || 0;
+
+            if (passed === 0 && failed === 0 && warnings === 0 && skipped === 0) {
+                return null; // No results to reconstruct
+            }
+
+            // Reconstruct results from displayed test categories
+            const results = {};
+            const categories = [];
+            
+            $('.pls-test-category').each(function() {
+                const category = $(this).data('category');
+                if (!category) return;
+                
+                categories.push(category);
+                const categoryResults = [];
+                
+                // Extract test results from DOM
+                $(this).find('.test-result').each(function() {
+                    const $result = $(this);
+                    const status = $result.hasClass('test-pass') ? 'pass' :
+                                  $result.hasClass('test-fail') ? 'fail' :
+                                  $result.hasClass('test-warning') ? 'warning' : 'skip';
+                    
+                    const name = $result.find('.result-name').text().trim() || 'Unknown Test';
+                    const message = $result.find('.result-message').text().trim() || '';
+                    const fix = $result.find('.result-fix').text().replace('Fix:', '').trim() || '';
+                    
+                    categoryResults.push({
+                        name: name,
+                        status: status,
+                        message: message,
+                        fix: fix
+                    });
+                });
+                
+                if (categoryResults.length > 0) {
+                    results[category] = categoryResults;
+                }
+            });
+
+            if (categories.length === 0 || Object.keys(results).length === 0) {
+                return null;
+            }
+
+            // Reconstruct allTestResults object
+            this.allTestResults = {
+                timestamp: new Date().toISOString(),
+                categories: categories,
+                results: results,
+                summary: {
+                    passed: passed,
+                    failed: failed,
+                    warnings: warnings,
+                    skipped: skipped,
+                    health: health
+                }
+            };
+
+            return this.allTestResults;
+        },
+
+        /**
          * Download test results as TXT file.
          */
         downloadTestResults: function() {
+            // Try to restore from localStorage first
+            if (!this.allTestResults) {
+                this.restoreTestResults();
+            }
+            
+            // Try to reconstruct from DOM if still not available
+            if (!this.allTestResults) {
+                this.reconstructResultsFromDOM();
+            }
+            
             if (!this.allTestResults) {
                 alert('No test results available. Please run tests first.');
                 return;
@@ -419,18 +547,38 @@
             const categoryLabels = {
                 'pls_info': 'PLS Info & Version',
                 'server_config': 'Server Configuration',
-                'wc_settings': 'WooCommerce Settings',
-                'user_roles': 'User Roles & Capabilities',
                 'database': 'Database',
                 'product_options': 'Product Options',
+                'product_profiles': 'Product Profiles',
+                'tier_rules': 'Tier Rules System',
+                'swatches': 'Swatch System',
+                'wc_settings': 'WooCommerce Settings',
                 'products_sync': 'Products Sync',
                 'variations': 'Variations',
+                'bundle_cart': 'Bundle Cart Logic',
+                'stock_management': 'Stock Management',
+                'cost_management': 'Cost Management',
+                'marketing_costs': 'Marketing Costs',
+                'revenue_snapshots': 'Revenue Snapshots',
+                'revenue': 'Revenue',
                 'bundles': 'Bundles',
                 'wc_orders': 'WooCommerce Orders',
                 'custom_orders': 'Custom Orders',
                 'commissions': 'Commissions',
-                'revenue': 'Revenue',
-                'frontend_display': 'Frontend Display'
+                'commission_reports': 'Commission Reports',
+                'user_roles': 'User Roles & Capabilities',
+                'ingredient_sync': 'Ingredient Sync',
+                'shortcodes': 'Shortcodes',
+                'ajax_endpoints': 'AJAX Endpoints',
+                'onboarding': 'Onboarding/Help System',
+                'admin_filter': 'Admin Dashboard Filter',
+                'seo_integration': 'SEO Integration',
+                'frontend_display': 'Frontend Display',
+                'tier_unlocking': 'Tier-Based Unlocking',
+                'inline_configurator': 'Inline Configurator',
+                'cro_features': 'CRO Features',
+                'sample_data_completeness': 'Sample Data Completeness',
+                'landing_pages': 'Landing Pages'
             };
 
             let content = 'PLS System Test Results\n';
@@ -613,6 +761,21 @@
                 $category.find('.toggle-details').hide();
                 this.collapseCategory($category);
             });
+        },
+
+        /**
+         * Count tests by status.
+         */
+        countStatus: function(status) {
+            let count = 0;
+            Object.values(this.results).forEach(categoryResults => {
+                categoryResults.forEach(result => {
+                    if (result.status === status) {
+                        count++;
+                    }
+                });
+            });
+            return count;
         },
 
         /**

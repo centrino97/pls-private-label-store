@@ -39,6 +39,9 @@ final class PLS_SEO_Integration {
         add_filter( 'wpseo_metadesc', array( __CLASS__, 'auto_generate_product_description' ), 10, 1 );
         add_action( 'wp_head', array( __CLASS__, 'output_product_schema' ), 5 );
         add_action( 'wp_head', array( __CLASS__, 'output_og_tags' ), 5 );
+        
+        // Hook into product sync to auto-populate SEO meta
+        add_action( 'pls_product_synced', array( __CLASS__, 'on_product_synced' ), 10, 2 );
 
         // Category page SEO
         add_action( 'woocommerce_archive_description', array( __CLASS__, 'category_seo_content' ), 5 );
@@ -651,6 +654,13 @@ final class PLS_SEO_Integration {
     }
 
     /**
+     * Hook callback: Sync SEO meta when product is synced.
+     */
+    public static function on_product_synced( $base_product_id, $wc_product_id ) {
+        self::sync_seo_meta_to_wc_product( $base_product_id, $wc_product_id );
+    }
+
+    /**
      * Sync SEO meta to WooCommerce product.
      */
     public static function sync_seo_meta_to_wc_product( $base_product_id, $wc_product_id ) {
@@ -677,19 +687,49 @@ final class PLS_SEO_Integration {
         $yoast_title = get_post_meta( $wc_product_id, '_yoast_wpseo_title', true );
         $yoast_desc = get_post_meta( $wc_product_id, '_yoast_wpseo_metadesc', true );
 
-        // Auto-generate title if not set
+        // Auto-generate title if not set (generate directly, not via filter)
         if ( empty( $yoast_title ) ) {
-            $title = self::auto_generate_product_title( '' );
+            $product_name = $product->get_name();
+            $site_name = get_bloginfo( 'name' );
+            
+            // Get tier info
+            global $wpdb;
+            $tiers = $wpdb->get_results( $wpdb->prepare(
+                "SELECT units FROM {$wpdb->prefix}pls_pack_tier WHERE base_product_id = %d AND is_enabled = 1 ORDER BY units ASC LIMIT 3",
+                $base_product_id
+            ) );
+            
+            $tier_info = '';
+            if ( ! empty( $tiers ) ) {
+                $tier_units = array();
+                foreach ( $tiers as $tier ) {
+                    $tier_units[] = $tier->units;
+                }
+                $tier_info = ' | ' . implode( ', ', $tier_units ) . ' units';
+            }
+            
+            $title = $product_name . $tier_info . ' | ' . $site_name;
             if ( ! empty( $title ) ) {
                 update_post_meta( $wc_product_id, '_yoast_wpseo_title', $title );
             }
         }
 
-        // Auto-generate description if not set
+        // Auto-generate description if not set (generate directly, not via filter)
         if ( empty( $yoast_desc ) ) {
-            $desc = self::auto_generate_product_description( '' );
-            if ( ! empty( $desc ) ) {
-                update_post_meta( $wc_product_id, '_yoast_wpseo_metadesc', $desc );
+            $desc_text = '';
+            if ( ! empty( $profile->short_description ) ) {
+                $desc_text = wp_strip_all_tags( $profile->short_description );
+            } elseif ( ! empty( $profile->long_description ) ) {
+                $desc_text = wp_strip_all_tags( $profile->long_description );
+            }
+            
+            // Limit to 155 characters for meta description
+            if ( strlen( $desc_text ) > 155 ) {
+                $desc_text = substr( $desc_text, 0, 152 ) . '...';
+            }
+            
+            if ( ! empty( $desc_text ) ) {
+                update_post_meta( $wc_product_id, '_yoast_wpseo_metadesc', $desc_text );
             }
         }
     }

@@ -829,6 +829,49 @@ final class PLS_Frontend_Display {
     }
 
     /**
+     * Render inline configurator (v4.9.99 feature).
+     * This renders the configurator directly in the page flow (not in a modal).
+     *
+     * @param WC_Product $product The product.
+     * @param string     $instance_id Optional unique ID for multiple instances on same page.
+     * @return string HTML output.
+     */
+    public static function render_configurator_inline( $product, $instance_id = '' ) {
+        if ( ! $product ) {
+            return '';
+        }
+
+        // Get product profile
+        global $wpdb;
+        $base_product = $wpdb->get_row( $wpdb->prepare(
+            "SELECT * FROM {$wpdb->prefix}pls_base_product WHERE wc_product_id = %d LIMIT 1",
+            $product->get_id()
+        ), OBJECT );
+
+        if ( ! $base_product ) {
+            return '';
+        }
+
+        $profile = PLS_Repo_Product_Profile::get( $base_product->id );
+        if ( ! $profile ) {
+            return '';
+        }
+
+        // Generate unique instance ID if not provided
+        if ( empty( $instance_id ) ) {
+            $instance_id = 'pls-config-' . $product->get_id() . '-' . wp_generate_password( 6, false );
+        }
+
+        ob_start();
+        ?>
+        <div class="pls-configurator-inline" id="<?php echo esc_attr( $instance_id ); ?>" data-product-id="<?php echo esc_attr( $product->get_id() ); ?>">
+            <?php self::render_full_configurator( $product, $profile ); ?>
+        </div>
+        <?php
+        return ob_get_clean();
+    }
+
+    /**
      * Render the pack tier configurator.
      *
      * @param WC_Product $product The product.

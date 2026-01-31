@@ -511,7 +511,7 @@ final class PLS_WC_Sync {
             }
         }
 
-        // Update product status if needed
+        // Update product status if needed - ensure live products are published
         if ( $product->get_status() !== $status ) {
             if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
                 PLS_Debug::log_sync( 'sync_product_status_update', array(
@@ -522,6 +522,13 @@ final class PLS_WC_Sync {
                 ) );
             }
             $product->set_status( $status );
+            $product->save(); // Save status change immediately
+        }
+        
+        // Ensure live products are published (double-check)
+        if ( 'live' === $base->status && 'publish' !== $product->get_status() ) {
+            $product->set_status( 'publish' );
+            $product->save();
         }
 
         // Categories from PLS (comma-separated IDs in category_path).
@@ -746,8 +753,13 @@ final class PLS_WC_Sync {
                 // Price in DB is per unit, WooCommerce variation needs total price
                 $total_price = $tier_data['price'] * $tier_data['units'];
                 $variation->set_regular_price( $total_price );
+                $variation->set_price( $total_price ); // Also set price (used by WooCommerce)
                 $variation->set_status( 'publish' );
                 $variation->save();
+                
+                // Force price update via post meta to ensure persistence
+                update_post_meta( $variation->get_id(), '_regular_price', $total_price );
+                update_post_meta( $variation->get_id(), '_price', $total_price );
 
                 // Store tier metadata
                 $tier_level = PLS_Tier_Rules::get_tier_level_from_value( $tier_value->id );
@@ -868,8 +880,13 @@ final class PLS_WC_Sync {
                 // Price in DB is per unit, WooCommerce variation needs total price
                 $total_price = $tier->price * $tier->units;
                 $variation->set_regular_price( $total_price );
+                $variation->set_price( $total_price ); // Also set price (used by WooCommerce)
                 $variation->set_status( 'publish' );
                 $variation->save();
+                
+                // Force price update via post meta to ensure persistence
+                update_post_meta( $variation->get_id(), '_regular_price', $total_price );
+                update_post_meta( $variation->get_id(), '_price', $total_price );
 
                 // Store tier metadata
                 update_post_meta( $variation->get_id(), '_pls_units', $tier->units );

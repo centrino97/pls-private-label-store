@@ -24,6 +24,10 @@ final class PLS_Shortcodes {
         add_shortcode( 'pls_single_category', array( __CLASS__, 'single_category_shortcode' ) );
         add_shortcode( 'pls_shop_page', array( __CLASS__, 'shop_page_shortcode' ) );
         
+        // Inline configurator shortcode (v4.9.99 feature)
+        add_shortcode( 'pls_configurator', array( __CLASS__, 'configurator_shortcode' ) );
+        add_shortcode( 'pls_configurator_inline', array( __CLASS__, 'configurator_shortcode' ) );
+        
         // Preview endpoint for admin preview
         add_action( 'template_redirect', array( __CLASS__, 'handle_preview_request' ) );
     }
@@ -778,5 +782,47 @@ final class PLS_Shortcodes {
         // Return empty string - the hooks handle the display
         // But add a wrapper div for potential future enhancements
         return '<div class="pls-single-category" data-show-tier-badges="' . esc_attr( $atts['show_tier_badges'] ) . '" data-show-starting-price="' . esc_attr( $atts['show_starting_price'] ) . '"></div>';
+    }
+
+    /**
+     * Inline configurator shortcode (v4.9.99 feature).
+     * Usage: [pls_configurator product_id="123"] or [pls_configurator_inline product_id="123"]
+     *
+     * @param array $atts Shortcode attributes.
+     * @return string HTML output.
+     */
+    public static function configurator_shortcode( $atts ) {
+        $atts = shortcode_atts( array(
+            'product_id' => 0,
+            'instance_id' => '',
+        ), $atts, 'pls_configurator' );
+
+        $product_id = absint( $atts['product_id'] );
+        
+        // If no product_id provided, try to detect from current product page
+        if ( ! $product_id && is_product() ) {
+            global $product;
+            if ( $product ) {
+                $product_id = $product->get_id();
+            }
+        }
+
+        if ( ! $product_id ) {
+            return '<p class="pls-error">' . esc_html__( 'Product ID required. Usage: [pls_configurator product_id="123"]', 'pls-private-label-store' ) . '</p>';
+        }
+
+        $product = wc_get_product( $product_id );
+        if ( ! $product ) {
+            return '<p class="pls-error">' . esc_html__( 'Product not found.', 'pls-private-label-store' ) . '</p>';
+        }
+
+        // Ensure frontend display assets are loaded
+        require_once PLS_PLS_DIR . 'includes/frontend/class-pls-frontend-display.php';
+        PLS_Frontend_Display::register_assets();
+        wp_enqueue_style( 'pls-frontend-display' );
+        wp_enqueue_script( 'pls-offers' );
+
+        // Render inline configurator
+        return PLS_Frontend_Display::render_configurator_inline( $product, $atts['instance_id'] );
     }
 }

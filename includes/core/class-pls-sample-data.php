@@ -169,7 +169,7 @@ final class PLS_Sample_Data {
                     }
                 }
                 
-                // Step 7.5: Verify sync integrity
+                // Step 7.5: Verify sync integrity and fix issues
                 $action_log[] = array( 'message' => 'Step 7.5: Verifying sync integrity...', 'type' => 'info' );
                 error_log( '[PLS Sample Data] Step 7.5: Verifying sync integrity...' );
                 $verify_result = self::verify_sync_integrity();
@@ -189,6 +189,25 @@ final class PLS_Sample_Data {
                                 PLS_WC_Sync::sync_base_product_to_wc( $product_id );
                             }
                         }
+                    }
+                }
+                
+                // Step 7.6: Post-sync fixes - ensure all products are published and prices are correct
+                $action_log[] = array( 'message' => 'Step 7.6: Applying post-sync fixes...', 'type' => 'info' );
+                error_log( '[PLS Sample Data] Step 7.6: Applying post-sync fixes...' );
+                $fix_result = self::post_sync_fixes();
+                if ( is_array( $fix_result ) ) {
+                    if ( $fix_result['products_fixed'] > 0 ) {
+                        $action_log[] = array( 'message' => '✓ Fixed ' . $fix_result['products_fixed'] . ' products (published and price updates).', 'type' => 'success' );
+                        error_log( '[PLS Sample Data] ✓ Post-sync fixes applied: ' . $fix_result['products_fixed'] . ' products fixed' );
+                    }
+                    if ( $fix_result['variations_fixed'] > 0 ) {
+                        $action_log[] = array( 'message' => '✓ Fixed ' . $fix_result['variations_fixed'] . ' variation prices.', 'type' => 'success' );
+                        error_log( '[PLS Sample Data] ✓ Variation prices fixed: ' . $fix_result['variations_fixed'] . ' variations' );
+                    }
+                    if ( $fix_result['seo_meta_synced'] > 0 ) {
+                        $action_log[] = array( 'message' => '✓ Synced SEO meta for ' . $fix_result['seo_meta_synced'] . ' products.', 'type' => 'success' );
+                        error_log( '[PLS Sample Data] ✓ SEO meta synced: ' . $fix_result['seo_meta_synced'] . ' products' );
                     }
                 }
             } else {
@@ -685,6 +704,7 @@ final class PLS_Sample_Data {
                 if ( ! is_wp_error( $term ) ) {
                     $term_id = $term['term_id'];
                     update_term_meta( $term_id, '_pls_min_tier_level', $data['min_tier'] );
+                    update_term_meta( $term_id, '_pls_ingredient_min_tier_level', $data['min_tier'] ); // Also set expected meta key
                     // Sync to attribute system
                     PLS_Ingredient_Sync::sync_ingredient_to_attribute( $term_id );
                     
@@ -703,6 +723,7 @@ final class PLS_Sample_Data {
             } else {
                 $term_id = is_array( $term ) ? $term['term_id'] : $term->term_id;
                 update_term_meta( $term_id, '_pls_min_tier_level', $data['min_tier'] );
+                update_term_meta( $term_id, '_pls_ingredient_min_tier_level', $data['min_tier'] ); // Also set expected meta key
                 PLS_Ingredient_Sync::sync_ingredient_to_attribute( $term_id );
                 
                 // Update tier rules
@@ -1220,14 +1241,8 @@ final class PLS_Sample_Data {
                 continue;
             }
 
-            // Determine product status: most products are live, 2 are draft
-            static $draft_count = 0;
+            // All products should be live for proper functionality
             $product_status = 'live';
-            if ( $draft_count < 2 ) {
-                // Make first 2 products draft
-                $product_status = 'draft';
-                $draft_count++;
-            }
 
             // Ensure name is a string to prevent null warnings
             $product_name = isset( $product_data['name'] ) && is_string( $product_data['name'] ) ? $product_data['name'] : '';
@@ -1251,6 +1266,11 @@ final class PLS_Sample_Data {
                 'slug' => $product_slug,
                 'status' => $product_status,
                 'category_path' => (string) $category_term->term_id,
+                'manage_stock' => 1, // Enable stock management
+                'stock_quantity' => 1000, // Set initial stock quantity
+                'stock_status' => 'instock', // Set stock status
+                'backorders_allowed' => 0, // No backorders
+                'low_stock_threshold' => 50, // Low stock threshold
             ) );
 
             if ( ! $product_id ) {
@@ -1610,6 +1630,20 @@ final class PLS_Sample_Data {
                 }
             }
             
+            // Get or create product images
+            $featured_image_id = self::get_or_create_product_image( $product_name, $product_data['category'] );
+            $gallery_image_ids = array();
+            if ( $featured_image_id ) {
+                $gallery_image_ids[] = $featured_image_id;
+            }
+            // Add 1-2 additional gallery images if available
+            for ( $i = 0; $i < 2; $i++ ) {
+                $gallery_img = self::get_or_create_product_image( $product_name . ' ' . ( $i + 2 ), $product_data['category'], true );
+                if ( $gallery_img && ! in_array( $gallery_img, $gallery_image_ids, true ) ) {
+                    $gallery_image_ids[] = $gallery_img;
+                }
+            }
+
             PLS_Repo_Product_Profile::upsert( $product_id, array(
                 'short_description' => $product_data['description'],
                 'long_description' => $product_data['description'] . ' ' . $product_data['directions'],
@@ -1619,6 +1653,8 @@ final class PLS_Sample_Data {
                 'key_ingredients_json' => $key_ingredients_array,
                 'ingredients_list' => implode( ',', $ingredient_ids ), // ALL ingredients
                 'basics_json' => $basics_attrs, // Will be JSON encoded by upsert method
+                'featured_image_id' => $featured_image_id ? absint( $featured_image_id ) : 0,
+                'gallery_ids' => ! empty( $gallery_image_ids ) ? $gallery_image_ids : '',
                 'label_enabled' => 1,
                 'label_price_per_unit' => 0.50,
                 'label_requires_file' => 1,
@@ -1665,6 +1701,39 @@ final class PLS_Sample_Data {
             error_log( '[PLS Sample Data] ERROR: Product creation failed. Transaction rolled back. Error: ' . $e->getMessage() );
             throw $e;
         }
+    }
+
+    /**
+     * Get or create product image for sample data.
+     * Tries to find existing images in media library, or returns null if none found.
+     *
+     * @param string $product_name Product name.
+     * @param string $category Category name.
+     * @param bool   $is_gallery Whether this is a gallery image (not featured).
+     * @return int|null Attachment ID or null.
+     */
+    private static function get_or_create_product_image( $product_name, $category, $is_gallery = false ) {
+        // Try to find existing images in media library
+        $args = array(
+            'post_type' => 'attachment',
+            'post_mime_type' => 'image',
+            'posts_per_page' => 100,
+            'post_status' => 'inherit',
+            'orderby' => 'rand',
+        );
+
+        $attachments = get_posts( $args );
+        
+        if ( ! empty( $attachments ) ) {
+            // Use random existing image
+            $attachment = $attachments[ array_rand( $attachments ) ];
+            return $attachment->ID;
+        }
+
+        // If no images exist, try to create a placeholder using wp_insert_attachment
+        // For now, return null - images can be added manually
+        // In a real scenario, you might want to download placeholder images from a service
+        return null;
     }
 
     /**
@@ -1958,6 +2027,117 @@ final class PLS_Sample_Data {
             'missing_wc_products' => $missing_wc_products,
             'not_variable' => $not_variable,
             'missing_variations' => $missing_variations,
+        );
+    }
+
+    /**
+     * Post-sync fixes: Ensure all products are published and variation prices are correct.
+     *
+     * @return array Fix results.
+     */
+    private static function post_sync_fixes() {
+        if ( ! self::is_woocommerce_active() ) {
+            return array( 'products_fixed' => 0, 'variations_fixed' => 0 );
+        }
+
+        require_once PLS_PLS_DIR . 'includes/wc/class-pls-wc-sync.php';
+
+        $products = PLS_Repo_Base_Product::all();
+        $products_fixed = 0;
+        $variations_fixed = 0;
+        $seo_meta_synced = 0;
+
+        foreach ( $products as $product ) {
+            if ( ! $product->wc_product_id ) {
+                continue;
+            }
+
+            $wc_product = wc_get_product( $product->wc_product_id );
+            if ( ! $wc_product ) {
+                continue;
+            }
+
+            // Fix 1: Ensure live products are published
+            if ( 'live' === $product->status && 'publish' !== $wc_product->get_status() ) {
+                $wc_product->set_status( 'publish' );
+                $wc_product->save();
+                $products_fixed++;
+                error_log( '[PLS Sample Data] Fixed: Product "' . $product->name . '" set to published' );
+            }
+
+            // Fix 2: Ensure variation prices are correct
+            if ( $wc_product->is_type( 'variable' ) ) {
+                $variations = $wc_product->get_children();
+                $tiers = PLS_Repo_Pack_Tier::for_base( $product->id );
+                
+                foreach ( $variations as $variation_id ) {
+                    $variation = wc_get_product( $variation_id );
+                    if ( ! $variation || ! $variation instanceof WC_Product_Variation ) {
+                        continue;
+                    }
+
+                    // Get units from meta
+                    $units = get_post_meta( $variation_id, '_pls_units', true );
+                    if ( ! $units ) {
+                        continue;
+                    }
+
+                    // Find matching tier
+                    $matching_tier = null;
+                    foreach ( $tiers as $tier ) {
+                        if ( (int) $tier->units === (int) $units && (int) $tier->is_enabled === 1 ) {
+                            $matching_tier = $tier;
+                            break;
+                        }
+                    }
+
+                    if ( $matching_tier ) {
+                        $expected_price = $matching_tier->price * $matching_tier->units;
+                        $current_price = (float) $variation->get_regular_price();
+                        
+                        // Allow small difference (0.01) for rounding
+                        if ( abs( $current_price - $expected_price ) > 0.01 ) {
+                            $variation->set_regular_price( $expected_price );
+                            $variation->set_price( $expected_price );
+                            $variation->save();
+                            
+                            // Force update via post meta
+                            update_post_meta( $variation_id, '_regular_price', $expected_price );
+                            update_post_meta( $variation_id, '_price', $expected_price );
+                            
+                            $variations_fixed++;
+                            error_log( '[PLS Sample Data] Fixed: Variation #' . $variation_id . ' price updated from ' . $current_price . ' to ' . $expected_price );
+                        }
+                    }
+                }
+            }
+            
+            // Fix 3: Sync SEO meta if not set
+            if ( class_exists( 'PLS_SEO_Integration' ) && $product->wc_product_id ) {
+                $yoast_title = get_post_meta( $product->wc_product_id, '_yoast_wpseo_title', true );
+                $yoast_desc = get_post_meta( $product->wc_product_id, '_yoast_wpseo_metadesc', true );
+                
+                // Only sync if meta is missing
+                if ( empty( $yoast_title ) || empty( $yoast_desc ) ) {
+                    PLS_SEO_Integration::sync_seo_meta_to_wc_product( $product->id, $product->wc_product_id );
+                    $seo_meta_synced++;
+                    error_log( '[PLS Sample Data] Synced SEO meta for product "' . $product->name . '"' );
+                }
+            }
+        }
+
+        // Clear caches after fixes
+        wp_cache_flush();
+        foreach ( $products as $product ) {
+            if ( $product->wc_product_id ) {
+                wc_delete_product_transients( $product->wc_product_id );
+            }
+        }
+
+        return array(
+            'products_fixed' => $products_fixed,
+            'variations_fixed' => $variations_fixed,
+            'seo_meta_synced' => $seo_meta_synced,
         );
     }
 

@@ -65,6 +65,9 @@ final class PLS_Onboarding {
     public static function get_helper_content( $page ) {
         $content = array();
 
+        // Normalize page name (handle both 'pls-*' and plain names)
+        $page = str_replace( 'pls-', '', $page );
+
         // Dashboard guide
         if ( 'dashboard' === $page ) {
             $content = array(

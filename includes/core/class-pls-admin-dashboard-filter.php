@@ -26,10 +26,7 @@ final class PLS_Admin_Dashboard_Filter {
      * Initialize dashboard filtering.
      */
     public static function init() {
-        if ( ! self::should_filter_dashboard() ) {
-            return;
-        }
-
+        // Always register hooks - callbacks will check if filtering is needed
         // Remove all admin menu items except PLS and WooCommerce
         add_action( 'admin_menu', array( __CLASS__, 'remove_admin_menus' ), 999 );
         
@@ -79,6 +76,10 @@ final class PLS_Admin_Dashboard_Filter {
      * Remove admin menu items except PLS and WooCommerce.
      */
     public static function remove_admin_menus() {
+        if ( ! self::should_filter_dashboard() ) {
+            return;
+        }
+        
         global $menu, $submenu;
 
         // List of menu slugs to keep
@@ -130,6 +131,10 @@ final class PLS_Admin_Dashboard_Filter {
      * Remove admin bar items except essential ones.
      */
     public static function remove_admin_bar_items( $wp_admin_bar ) {
+        if ( ! self::should_filter_dashboard() ) {
+            return;
+        }
+        
         if ( ! $wp_admin_bar ) {
             return;
         }
@@ -150,6 +155,10 @@ final class PLS_Admin_Dashboard_Filter {
      * Redirect away from restricted admin pages.
      */
     public static function redirect_restricted_pages() {
+        if ( ! self::should_filter_dashboard() ) {
+            return;
+        }
+        
         $screen = get_current_screen();
         if ( ! $screen ) {
             return;
