@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 5.1.0
+Stable tag: 5.2.0
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,23 @@ and provides shortcodes for seamless Elementor Theme Builder integration.
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 5.2.0 =
+* **MAJOR UI/UX OVERHAUL:** Product Creation Modal - Apple-inspired design with fullscreen layout
+* **NEW:** Beta Features System - Toggle to enable/disable experimental features in Settings
+* **NEW:** Ingredients Tab System - Three tabs: "All Ingredients", "Base Ingredients (INCI)", "Unlockable (T3+)"
+* **NEW:** Tier Badges - Visual indicators showing ingredient tier levels (INCI, T1-T2, T3+)
+* **IMPROVED:** Modal Layout - Truly fullscreen (100vw/100vh) with improved spacing (32px padding)
+* **IMPROVED:** Button Design - More compact (6px 14px padding), Apple-style (#007AFF), consistent heights (36px)
+* **IMPROVED:** Split-Screen Preview - Perfect 50/50 split when both Builder and Preview active
+* **IMPROVED:** Fullscreen Preview Mode - Preview-only mode hides form completely
+* **IMPROVED:** System Test - Beta test categories hidden when beta features disabled
+* **IMPROVED:** Typography - System fonts, better line-height (1.6), improved readability
+* **IMPROVED:** Space Optimization - Better use of horizontal space, compact stepper navigation
+* **IMPROVED:** Ingredient Filtering - Tab-based filtering by tier level with clear visual distinction
+* **IMPROVED:** Preview System - Smooth transitions between builder-only, split-screen, and fullscreen modes
+* **FIXED:** Ingredient tier information now properly passed to JavaScript
+* **FIXED:** Tab descriptions update dynamically based on active tab
+
 = 5.1.0 =
 * **MAJOR RELEASE:** Production-Ready Release with Complete Feature Implementation
 * **NEW:** Implemented bundle offers system - Real bundle eligibility checking and offer display

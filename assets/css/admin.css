@@ -108,27 +108,31 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: var(--pls-space-sm) var(--pls-space-lg);
-  font-size: var(--pls-font-size-base);
+  padding: 6px 14px;
+  font-size: 14px;
   font-weight: 500;
-  border-radius: var(--pls-radius-md);
+  border-radius: 8px;
   border: 1px solid transparent;
   cursor: pointer;
   font-family: var(--pls-font-family);
-  transition: none;
+  transition: all 0.15s ease;
+  height: 36px;
+  gap: 6px;
 }
 
 .pls-btn--primary,
 .button-primary.pls-btn {
-  background: var(--pls-accent);
+  background: #007AFF;
   color: #fff;
-  border-color: var(--pls-accent);
+  border-color: #007AFF;
+  box-shadow: 0 1px 2px rgba(0, 122, 255, 0.2);
 }
 
 .pls-btn--primary:hover,
 .button-primary.pls-btn:hover {
-  background: var(--pls-accent-hover);
-  border-color: var(--pls-accent-hover);
+  background: #0066CC;
+  border-color: #0066CC;
+  box-shadow: 0 2px 4px rgba(0, 122, 255, 0.3);
 }
 
 .pls-btn--secondary {
@@ -164,8 +168,9 @@
 }
 
 .pls-btn--sm {
-  padding: var(--pls-space-xs) var(--pls-space-md);
-  font-size: var(--pls-font-size-sm);
+  padding: 4px 12px;
+  font-size: 13px;
+  height: 32px;
 }
 
 /* Form Inputs */
@@ -2606,20 +2611,28 @@ body.pls-modal-open {
 /* WordPress Button Compatibility */
 .pls-wrap .button {
   font-family: var(--pls-font-family);
-  font-size: var(--pls-font-size-base);
-  border-radius: var(--pls-radius-md);
-  transition: none;
+  font-size: 14px;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+  padding: 6px 14px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
 .pls-wrap .button-primary {
-  background: var(--pls-accent);
-  border-color: var(--pls-accent);
+  background: #007AFF;
+  border-color: #007AFF;
   color: #fff;
+  box-shadow: 0 1px 2px rgba(0, 122, 255, 0.2);
 }
 
 .pls-wrap .button-primary:hover {
-  background: var(--pls-accent-hover);
-  border-color: var(--pls-accent-hover);
+  background: #0066CC;
+  border-color: #0066CC;
+  box-shadow: 0 2px 4px rgba(0, 122, 255, 0.3);
 }
 
 .pls-wrap .button-secondary {
@@ -2634,8 +2647,9 @@ body.pls-modal-open {
 }
 
 .pls-wrap .button-small {
-  padding: var(--pls-space-xs) var(--pls-space-md);
-  font-size: var(--pls-font-size-sm);
+  padding: 4px 12px;
+  font-size: 13px;
+  height: 32px;
 }
 
 .pls-wrap .button-link-delete {
@@ -3381,6 +3395,49 @@ a[title]:hover::before {
    Scalable design for 100+ ingredients
    ============================================ */
 
+/* Ingredients Tabs */
+.pls-ingredients-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 16px;
+  background: #fff;
+}
+
+.pls-tab {
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #64748b;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: var(--pls-font-family);
+  position: relative;
+  margin-bottom: -1px;
+}
+
+.pls-tab:hover {
+  color: #334155;
+  background: #f8fafc;
+}
+
+.pls-tab.is-active {
+  color: #007AFF;
+  border-bottom-color: #007AFF;
+  background: transparent;
+}
+
+.pls-tab-description {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: #f8fafc;
+  border-left: 3px solid #007AFF;
+  border-radius: 6px;
+}
+
 .pls-ingredients-container {
   display: flex;
   flex-direction: column;
@@ -3528,6 +3585,39 @@ a[title]:hover::before {
 
 .pls-ingredients-table tbody tr.is-key {
   background: #fef3c7;
+}
+
+.pls-ingredients-table tbody tr.is-unlockable {
+  border-left: 3px solid #6366f1;
+}
+
+/* Tier Badges */
+.pls-tier-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.pls-tier-badge--base {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.pls-tier-badge--unlockable {
+  background: #6366f1;
+  color: #fff;
+}
+
+.pls-ingredient-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .pls-ingredients-table tbody tr.is-selected.is-key {

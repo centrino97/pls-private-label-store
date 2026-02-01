@@ -55,6 +55,9 @@ if ( isset( $_POST['pls_save_settings'] ) && check_admin_referer( 'pls_save_sett
     }
     update_option( 'pls_custom_order_thank_you_url', $thank_you_url );
 
+    // Save beta features setting
+    $beta_enabled = isset( $_POST['pls_beta_features_enabled'] ) && '1' === $_POST['pls_beta_features_enabled'];
+    update_option( 'pls_beta_features_enabled', $beta_enabled ? 1 : 0 );
 
     $message = 'settings-saved';
 
@@ -87,6 +90,10 @@ $custom_order_rate_below = isset( $custom_order_config['rate_below'] ) ? floatva
 $custom_order_rate_above = isset( $custom_order_config['rate_above'] ) ? floatval( $custom_order_config['rate_above'] ) : 5.00;
 $email_recipients = get_option( 'pls_commission_email_recipients', array() );
 $email_recipients_string = is_array( $email_recipients ) ? implode( ', ', $email_recipients ) : '';
+
+// Get beta features setting
+require_once PLS_PLS_DIR . 'includes/core/class-pls-beta-features.php';
+$beta_features_enabled = PLS_Beta_Features::is_enabled();
 
 if ( isset( $_GET['message'] ) && 'settings-saved' === $_GET['message'] ) {
     echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Settings saved successfully.', 'pls-private-label-store' ) . '</p></div>';
@@ -310,6 +317,33 @@ if ( isset( $_GET['message'] ) && 'sample-data-generated' === $_GET['message'] )
                             <td>
                                 <input type="url" name="pls_custom_order_thank_you_url" id="pls_custom_order_thank_you_url" value="<?php echo esc_attr( $thank_you_url ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'https://yoursite.com/thank-you', 'pls-private-label-store' ); ?>" />
                                 <p class="description"><?php esc_html_e( 'URL to redirect users after submitting custom order form. Leave empty to show success message on same page.', 'pls-private-label-store' ); ?></p>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Beta Features -->
+            <div class="pls-accordion__item">
+                <button type="button" class="pls-accordion__header">
+                    <?php esc_html_e( 'Beta Features', 'pls-private-label-store' ); ?>
+                </button>
+                <div class="pls-accordion__content">
+                    <p class="description" style="margin-top: 0;"><?php esc_html_e( 'Beta features are experimental and may change. Enable to access advanced features and test categories.', 'pls-private-label-store' ); ?></p>
+                    
+                    <table class="form-table" style="margin-top: 16px;">
+                        <tr>
+                            <th scope="row">
+                                <label for="pls_beta_features_enabled"><?php esc_html_e( 'Enable Beta Features', 'pls-private-label-store' ); ?></label>
+                            </th>
+                            <td>
+                                <label class="pls-toggle-switch">
+                                    <input type="checkbox" name="pls_beta_features_enabled" id="pls_beta_features_enabled" value="1" <?php checked( $beta_features_enabled ); ?> />
+                                    <span class="pls-toggle-switch__slider"></span>
+                                </label>
+                                <p class="description" style="margin-top: 8px;">
+                                    <?php esc_html_e( 'When enabled, you\'ll have access to experimental features including tier-based unlocking, inline configurator, CRO features, and additional system test categories.', 'pls-private-label-store' ); ?>
+                                </p>
                             </td>
                         </tr>
                     </table>

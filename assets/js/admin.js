@@ -108,13 +108,13 @@
       var keySelected = [];
       var keyLimit = 5;
 
-      // v4.9.99: Table-based ingredient UI with pagination
+      // v5.2.0: Table-based ingredient UI with pagination and tabs
       var ingredientPagination = {
         currentPage: 1,
         perPage: 50,
         totalItems: 0,
         filteredItems: [],
-        currentFilter: 'all', // 'all', 'selected', 'key'
+        currentTab: 'all', // 'all', 'base', 'unlockable'
         searchTerm: ''
       };
 
@@ -147,16 +147,19 @@
         return label;
       }
 
-      // v4.9.99: Render ingredient as table row
-      function renderIngredientTableRow(term, isSelected, isKey){
+      // v5.2.0: Render ingredient as table row with tier badges
+      function renderIngredientTableRow(term, isSelected, isKey, tierLevel){
         var iconSrc = term.icon || defaultIngredientIcon;
-        var tierLevel = term.min_tier_level || 1;
+        tierLevel = tierLevel || parseInt(term.min_tier_level || term.tierLevel || 1, 10);
         var isT3Plus = tierLevel >= 3;
+        var isBase = tierLevel <= 2;
         
         var row = $('<tr></tr>')
           .attr('data-ingredient-id', term.id)
+          .attr('data-tier-level', tierLevel)
           .toggleClass('is-selected', isSelected)
-          .toggleClass('is-key', isKey);
+          .toggleClass('is-key', isKey)
+          .toggleClass('is-unlockable', isT3Plus);
         
         // Select checkbox
         var selectTd = $('<td class="pls-col-select"></td>');
@@ -173,9 +176,17 @@
         }
         row.append(iconTd);
         
-        // Name & Description
+        // Name & Description with tier badge
         var nameTd = $('<td class="pls-col-name"></td>');
-        nameTd.append($('<div class="pls-ingredient-name"></div>').text(term.name || term.label || ('#'+term.id)));
+        var nameDiv = $('<div class="pls-ingredient-name"></div>');
+        nameDiv.append($('<span></span>').text(term.name || term.label || ('#'+term.id)));
+        
+        // Add tier badge
+        var badgeClass = isT3Plus ? 'pls-tier-badge pls-tier-badge--unlockable' : 'pls-tier-badge pls-tier-badge--base';
+        var badgeText = isT3Plus ? 'T3+' : (tierLevel === 1 ? 'INCI' : 'T' + tierLevel);
+        nameDiv.append($('<span class="' + badgeClass + '"></span>').text(badgeText));
+        
+        nameTd.append(nameDiv);
         if (term.short_description) {
           nameTd.append($('<div class="pls-ingredient-desc"></div>').text(term.short_description));
         }
@@ -190,7 +201,7 @@
             .prop('disabled', !isSelected || (keySelected.length >= keyLimit && !isKey));
           keyTd.append(keyInput);
         } else if (isSelected && !isT3Plus) {
-          keyTd.append($('<span class="pls-tier-indicator">T3+ only</span>'));
+          keyTd.append($('<span class="pls-tier-indicator" style="font-size: 11px; color: #94a3b8;">T3+ only</span>'));
         }
         row.append(keyTd);
         
@@ -209,18 +220,32 @@
         });
       }
 
-      // v4.9.99: Get filtered ingredient list
+      // v5.2.0: Get filtered ingredient list with tier-based filtering
       function getFilteredIngredients(){
         var selectedIds = getSelectedIngredientIds();
         var keyIds = getKeyIngredientIds();
         var search = ingredientPagination.searchTerm.toLowerCase();
-        var filter = ingredientPagination.currentFilter;
+        var currentTab = ingredientPagination.currentTab;
         
         var items = [];
         Object.values(ingredientMap).forEach(function(term){
           var normId = parseInt(term.term_id || term.id, 10);
           if (!normId) return;
           term.id = normId;
+          
+          // Get tier level (default to 1 if not set)
+          var tierLevel = parseInt(term.min_tier_level || term.tier_level || 1, 10);
+          term.tierLevel = tierLevel;
+          
+          // Apply tab filter
+          if (currentTab === 'base') {
+            // Base ingredients: tier 1-2
+            if (tierLevel > 2) return;
+          } else if (currentTab === 'unlockable') {
+            // Unlockable ingredients: tier 3+
+            if (tierLevel < 3) return;
+          }
+          // 'all' tab shows everything
           
           // Apply search filter
           if (search) {
@@ -232,20 +257,19 @@
           var isSelected = selectedIds.indexOf(normId) !== -1;
           var isKey = keyIds.indexOf(normId) !== -1;
           
-          if (filter === 'selected' && !isSelected) return;
-          if (filter === 'key' && !isKey) return;
-          
           items.push({
             term: term,
             isSelected: isSelected,
-            isKey: isKey
+            isKey: isKey,
+            tierLevel: tierLevel
           });
         });
         
-        // Sort: selected first, then alphabetical
+        // Sort: selected first, then by tier level, then alphabetical
         items.sort(function(a, b){
           if (a.isSelected && !b.isSelected) return -1;
           if (!a.isSelected && b.isSelected) return 1;
+          if (a.tierLevel !== b.tierLevel) return a.tierLevel - b.tierLevel;
           return (a.term.name || '').localeCompare(b.term.name || '');
         });
         
@@ -312,7 +336,7 @@
           wrap.closest('.pls-ingredients-table-wrapper').find('table').show();
           
           pageItems.forEach(function(item){
-            wrap.append(renderIngredientTableRow(item.term, item.isSelected, item.isKey));
+            wrap.append(renderIngredientTableRow(item.term, item.isSelected, item.isKey, item.tierLevel));
           });
         }
         
@@ -404,14 +428,22 @@
         renderIngredientList(ingredientPagination.searchTerm);
       });
 
-      // v4.9.99: Filter button handlers
-      $(document).on('click', '.pls-filter-btn', function(){
-        var filter = $(this).data('filter');
-        $('.pls-filter-btn').removeClass('is-active');
+      // v5.2.0: Tab handlers for ingredients
+      $(document).on('click', '.pls-ingredients-tabs .pls-tab', function(){
+        var tab = $(this).data('tab');
+        $('.pls-ingredients-tabs .pls-tab').removeClass('is-active');
         $(this).addClass('is-active');
-        ingredientPagination.currentFilter = filter;
+        ingredientPagination.currentTab = tab;
         ingredientPagination.currentPage = 1;
         renderIngredientList(ingredientPagination.searchTerm);
+        
+        // Update tab description
+        var descriptions = {
+          'all': '<?php esc_js_e( 'All ingredients are shown. Base ingredients are included in all products. Tier 3+ customers can unlock additional ingredients.', 'pls-private-label-store' ); ?>',
+          'base': '<?php esc_js_e( 'Base ingredients (Tier 1-2) are included in all products. These are standard INCI ingredients available to all customers.', 'pls-private-label-store' ); ?>',
+          'unlockable': '<?php esc_js_e( 'Unlockable ingredients (Tier 3+) are only available to customers who have reached Tier 3 or higher. These can be marked as key ingredients.', 'pls-private-label-store' ); ?>'
+        };
+        $('#pls-tab-description p').text(descriptions[tab] || descriptions['all']);
       });
 
       // v4.9.99: Select all visible handler

@@ -15,6 +15,10 @@ if ( ! class_exists( 'PLS_System_Test' ) ) {
     require_once PLS_PLS_DIR . 'includes/core/class-pls-system-test.php';
 }
 
+// Check if beta features are enabled
+require_once PLS_PLS_DIR . 'includes/core/class-pls-beta-features.php';
+$beta_features_enabled = PLS_Beta_Features::is_enabled();
+
 // Get quick stats
 $stats = PLS_System_Test::get_quick_stats();
 
@@ -78,12 +82,13 @@ $test_categories = array(
         'group'       => 'core',
     ),
     
-    // WooCommerce Sync
+    // WooCommerce Sync (Beta)
     'wc_settings'       => array(
         'label'       => 'WooCommerce Settings',
         'description' => 'Currency, taxes, payment gateways, and shipping zones.',
         'icon'        => 'admin-settings',
         'group'       => 'wc_sync',
+        'beta'        => true,
     ),
     'products_sync'     => array(
         'label'       => 'Products Sync',
@@ -104,12 +109,13 @@ $test_categories = array(
         'group'       => 'wc_sync',
     ),
     
-    // Data Management
+    // Data Management (Beta)
     'stock_management'   => array(
         'label'       => 'Stock Management',
         'description' => 'Verify stock tracking, quantities, and WooCommerce sync.',
         'icon'        => 'database-export',
         'group'       => 'data',
+        'beta'        => true,
     ),
     'cost_management'    => array(
         'label'       => 'Cost Management',
@@ -222,36 +228,41 @@ $test_categories = array(
         'group'       => 'frontend',
     ),
     
-    // v4.9.99 Features
+    // v4.9.99 Features (Beta)
     'tier_unlocking'    => array(
         'label'       => 'Tier-Based Unlocking',
         'description' => 'Test tier-based ingredient and fragrance unlocking system.',
         'icon'        => 'unlock',
         'group'       => 'v4.9.99',
+        'beta'        => true,
     ),
     'inline_configurator' => array(
         'label'       => 'Inline Configurator',
         'description' => 'Verify inline configurator method exists and supports multiple instances.',
         'icon'        => 'admin-customizer',
         'group'       => 'v4.9.99',
+        'beta'        => true,
     ),
     'cro_features'      => array(
         'label'       => 'CRO Features',
         'description' => 'Test multiple CTAs, long-form content, and social proof sections.',
         'icon'        => 'chart-area',
         'group'       => 'v4.9.99',
+        'beta'        => true,
     ),
     'sample_data_completeness' => array(
         'label'       => 'Sample Data Completeness',
         'description' => 'Verify sample data has full complexity: 3-5 products, tier-based ingredients/fragrances, all bundle rules.',
         'icon'        => 'database-add',
         'group'       => 'v4.9.99',
+        'beta'        => true,
     ),
     'landing_pages'     => array(
         'label'       => 'Landing Pages',
         'description' => 'Test landing page post type, keyword mapping, and product integration.',
         'icon'        => 'admin-page',
         'group'       => 'v4.9.99',
+        'beta'        => true,
     ),
 );
 ?>
@@ -471,6 +482,23 @@ $test_categories = array(
         
         // Display grouped tests
         foreach ( $grouped_tests as $group_key => $tests ) :
+            // Hide beta test groups if beta features are disabled
+            if ( 'v4.9.99' === $group_key && ! $beta_features_enabled ) {
+                continue;
+            }
+            
+            // Filter out beta tests if beta features are disabled
+            if ( ! $beta_features_enabled ) {
+                $tests = array_filter( $tests, function( $category ) {
+                    return ! isset( $category['beta'] ) || ! $category['beta'];
+                } );
+            }
+            
+            // Skip empty groups
+            if ( empty( $tests ) ) {
+                continue;
+            }
+            
             $group_label = isset( $group_labels[ $group_key ] ) ? $group_labels[ $group_key ] : ucfirst( $group_key );
             ?>
             <div class="pls-test-group" data-group="<?php echo esc_attr( $group_key ); ?>">
@@ -480,7 +508,12 @@ $test_categories = array(
                         (<?php echo count( $tests ); ?> tests)
                     </span>
                 </h2>
-                <?php foreach ( $tests as $key => $category ) : ?>
+                <?php foreach ( $tests as $key => $category ) : 
+                    // Skip beta tests if beta features are disabled
+                    if ( ! $beta_features_enabled && isset( $category['beta'] ) && $category['beta'] ) {
+                        continue;
+                    }
+                ?>
                     <div class="pls-test-category" data-category="<?php echo esc_attr( $key ); ?>">
                         <div class="category-header">
                             <div class="category-info">
@@ -506,6 +539,16 @@ $test_categories = array(
             </div>
         <?php endforeach; ?>
     </div>
+    
+    <?php if ( ! $beta_features_enabled ) : ?>
+        <div style="margin-top: 32px; padding: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
+            <p style="margin: 0; color: #666; font-size: 14px;">
+                <strong><?php esc_html_e( 'Beta Features Disabled', 'pls-private-label-store' ); ?></strong><br>
+                <?php esc_html_e( 'Enable beta features in Settings to see additional test categories including tier-based unlocking, inline configurator, CRO features, and more.', 'pls-private-label-store' ); ?>
+                <a href="<?php echo esc_url( admin_url( 'admin.php?page=pls-settings' ) ); ?>" style="margin-left: 8px; color: #007AFF; text-decoration: none;"><?php esc_html_e( 'Go to Settings', 'pls-private-label-store' ); ?></a>
+            </p>
+        </div>
+    <?php endif; ?>
 
 </div>
 

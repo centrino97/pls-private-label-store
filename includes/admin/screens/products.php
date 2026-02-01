@@ -77,7 +77,7 @@ wp_add_inline_style( 'pls-admin', '
 /* Modal Header */
 #pls-product-modal .pls-modal__head {
     flex-shrink: 0;
-    padding: 16px 24px;
+    padding: 20px 32px;
     border-bottom: 1px solid #e2e8f0;
     background: #fff;
     display: flex;
@@ -88,31 +88,38 @@ wp_add_inline_style( 'pls-admin', '
 /* Mode Toggle (Builder/Preview) */
 #pls-product-modal .pls-mode-toggle {
     flex-shrink: 0;
-    padding: 12px 24px;
+    padding: 10px 32px;
     background: #f8fafc;
     border-bottom: 1px solid #e2e8f0;
     display: flex;
     gap: 8px;
+    align-items: center;
 }
 
 #pls-product-modal .pls-mode-btn {
-    padding: 8px 16px;
-    border-radius: 6px;
+    padding: 6px 14px;
+    border-radius: 8px;
     border: 1px solid #e2e8f0;
     background: #fff;
     cursor: pointer;
     font-weight: 500;
+    font-size: 14px;
     transition: all 0.15s ease;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 #pls-product-modal .pls-mode-btn:hover {
     background: #f1f5f9;
+    border-color: #cbd5e1;
 }
 
 #pls-product-modal .pls-mode-btn.is-active {
-    background: #2271b1;
+    background: #007AFF;
     color: #fff;
-    border-color: #2271b1;
+    border-color: #007AFF;
 }
 
 /* Form Container */
@@ -121,7 +128,7 @@ wp_add_inline_style( 'pls-admin', '
     overflow-y: auto;
     display: flex !important;
     flex-direction: column !important;
-    padding: 0 24px 24px 24px;
+    padding: 0 32px 32px 32px;
     min-height: 0;
 }
 
@@ -171,12 +178,13 @@ wp_add_inline_style( 'pls-admin', '
 /* Modal Footer */
 #pls-product-modal .pls-modal__footer {
     flex-shrink: 0;
-    padding: 16px 24px;
+    padding: 16px 32px;
     border-top: 1px solid #e2e8f0;
     background: #f8fafc;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 12px;
 }
 
 /* Preview Panel Styling */
@@ -605,18 +613,33 @@ wp_localize_script(
                   </div>
                 </div>
                 
-                <!-- Search & Filter Bar -->
+                <!-- Ingredients Tabs -->
+                <div class="pls-ingredients-tabs">
+                  <button type="button" class="pls-tab is-active" data-tab="all">
+                    <?php esc_html_e( 'All Ingredients', 'pls-private-label-store' ); ?>
+                  </button>
+                  <button type="button" class="pls-tab" data-tab="base">
+                    <?php esc_html_e( 'Base Ingredients (INCI)', 'pls-private-label-store' ); ?>
+                  </button>
+                  <button type="button" class="pls-tab" data-tab="unlockable">
+                    <?php esc_html_e( 'Unlockable (T3+)', 'pls-private-label-store' ); ?>
+                  </button>
+                </div>
+                
+                <!-- Search Bar -->
                 <div class="pls-ingredients-toolbar">
                   <div class="pls-search-box">
                     <span class="dashicons dashicons-search" style="color: #94a3b8;"></span>
                     <input type="search" id="pls-ingredient-search" placeholder="<?php esc_attr_e( 'Search ingredients...', 'pls-private-label-store' ); ?>" />
                     <span class="pls-search-count" id="pls-search-count"></span>
                   </div>
-                  <div class="pls-filter-buttons">
-                    <button type="button" class="pls-filter-btn is-active" data-filter="all"><?php esc_html_e( 'All', 'pls-private-label-store' ); ?></button>
-                    <button type="button" class="pls-filter-btn" data-filter="selected"><?php esc_html_e( 'Selected', 'pls-private-label-store' ); ?></button>
-                    <button type="button" class="pls-filter-btn" data-filter="key"><?php esc_html_e( 'Key Only', 'pls-private-label-store' ); ?></button>
-                  </div>
+                </div>
+                
+                <!-- Tab Description -->
+                <div class="pls-tab-description" id="pls-tab-description">
+                  <p class="pls-subtle" style="margin: 0 0 12px 0; font-size: 13px; color: #64748b;">
+                    <?php esc_html_e( 'Base ingredients are included in all products. Tier 3+ customers can unlock additional ingredients.', 'pls-private-label-store' ); ?>
+                  </p>
                 </div>
                 
                 <!-- Ingredients Table -->

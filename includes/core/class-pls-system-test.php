@@ -40,6 +40,10 @@ final class PLS_System_Test {
     public static function run_all_tests() {
         $results = array();
         
+        // Check if beta features are enabled
+        require_once PLS_PLS_DIR . 'includes/core/class-pls-beta-features.php';
+        $beta_enabled = PLS_Beta_Features::is_enabled();
+        
         // Run each test with error handling to ensure all tests execute even if one fails
         $test_methods = array(
             // Core Tests
@@ -52,13 +56,11 @@ final class PLS_System_Test {
             'swatches'              => 'test_swatches',
             
             // WooCommerce Sync
-            'wc_settings'           => 'test_wc_settings',
             'products_sync'         => 'test_products_sync',
             'variations'            => 'test_variations',
             'bundle_cart'           => 'test_bundle_cart',
             
             // Data Management
-            'stock_management'      => 'test_stock_management',
             'cost_management'       => 'test_cost_management',
             'marketing_costs'       => 'test_marketing_costs',
             'revenue_snapshots'     => 'test_revenue_snapshots',
@@ -84,14 +86,18 @@ final class PLS_System_Test {
             
             // Frontend
             'frontend_display'      => 'test_frontend_display',
-            
-            // v4.9.99 Features
-            'tier_unlocking'        => 'test_tier_unlocking',
-            'inline_configurator'   => 'test_inline_configurator',
-            'cro_features'          => 'test_cro_features',
-            'sample_data_completeness' => 'test_sample_data_completeness',
-            'landing_pages'         => 'test_landing_pages',
         );
+        
+        // Add beta tests only if beta features are enabled
+        if ( $beta_enabled ) {
+            $test_methods['wc_settings'] = 'test_wc_settings';
+            $test_methods['stock_management'] = 'test_stock_management';
+            $test_methods['tier_unlocking'] = 'test_tier_unlocking';
+            $test_methods['inline_configurator'] = 'test_inline_configurator';
+            $test_methods['cro_features'] = 'test_cro_features';
+            $test_methods['sample_data_completeness'] = 'test_sample_data_completeness';
+            $test_methods['landing_pages'] = 'test_landing_pages';
+        }
         
         foreach ( $test_methods as $key => $method ) {
             try {

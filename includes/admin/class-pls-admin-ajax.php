@@ -166,6 +166,12 @@ final class PLS_Admin_Ajax {
                 }
             }
             
+            // Also check term meta directly as fallback
+            $term_meta_tier = get_term_meta( $term->term_id, '_pls_ingredient_min_tier_level', true );
+            if ( $term_meta_tier ) {
+                $min_tier_level = absint( $term_meta_tier );
+            }
+            
             $payload[] = array(
                 'id'                => $term->term_id,
                 'term_id'           => $term->term_id,
@@ -174,6 +180,7 @@ final class PLS_Admin_Ajax {
                 'short_description' => sanitize_text_field( (string) get_term_meta( $term->term_id, 'pls_ingredient_short_desc', true ) ),
                 'icon'              => PLS_Taxonomies::icon_for_term( $term->term_id ),
                 'min_tier_level'    => $min_tier_level,
+                'tier_level'        => $min_tier_level, // Alias for compatibility
             );
         }
 
