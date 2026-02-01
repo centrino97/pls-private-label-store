@@ -39,6 +39,7 @@ wp_add_inline_style( 'pls-admin', '
 /* ============================================
    Product Modal - FULLSCREEN Editor
    ============================================ */
+/* Override all base modal styles for fullscreen product modal */
 .pls-modal#pls-product-modal,
 #pls-product-modal.pls-modal {
     position: fixed !important;
@@ -48,6 +49,8 @@ wp_add_inline_style( 'pls-admin', '
     bottom: 0 !important;
     width: 100vw !important;
     height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
     z-index: 100000 !important;
     background: rgba(0,0,0,0.85) !important;
     padding: 0 !important;
@@ -55,11 +58,14 @@ wp_add_inline_style( 'pls-admin', '
     display: flex !important;
     justify-content: stretch !important;
     align-items: stretch !important;
+    border-radius: 0 !important;
+    overflow: hidden !important;
 }
 
 .pls-modal#pls-product-modal .pls-modal__dialog,
 #pls-product-modal.pls-modal .pls-modal__dialog,
 #pls-product-modal .pls-modal__dialog {
+    position: relative !important;
     max-width: 100vw !important;
     width: 100vw !important;
     height: 100vh !important;
@@ -72,6 +78,7 @@ wp_add_inline_style( 'pls-admin', '
     box-shadow: none !important;
     background: #fff !important;
     overflow: hidden !important;
+    transform: none !important;
 }
 
 /* Modal Header */
@@ -83,17 +90,22 @@ wp_add_inline_style( 'pls-admin', '
     display: flex;
     justify-content: space-between;
     align-items: center;
+    min-height: 64px;
 }
 
-/* Mode Toggle (Builder/Preview) */
-#pls-product-modal .pls-mode-toggle {
-    flex-shrink: 0;
-    padding: 10px 32px;
-    background: #f8fafc;
-    border-bottom: 1px solid #e2e8f0;
+#pls-product-modal .pls-modal__head h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+/* Mode Toggle (Builder/Preview) - Now inline in header */
+#pls-product-modal .pls-modal__head .pls-mode-toggle {
     display: flex;
-    gap: 8px;
+    gap: 4px;
     align-items: center;
+    margin-right: 8px;
 }
 
 #pls-product-modal .pls-mode-btn {
@@ -175,8 +187,13 @@ wp_add_inline_style( 'pls-admin', '
     flex-direction: column !important;
 }
 
-/* Modal Footer */
+/* Modal Footer - Sticky at bottom */
 #pls-product-modal .pls-modal__footer {
+    position: sticky;
+    bottom: 0;
+    background: #fff;
+    border-top: 1px solid #e2e8f0;
+    z-index: 10;
     flex-shrink: 0;
     padding: 16px 32px;
     border-top: 1px solid #e2e8f0;
@@ -402,51 +419,76 @@ wp_localize_script(
   <div class="pls-modal" id="pls-product-modal">
     <div class="pls-modal__dialog">
       <div class="pls-modal__head">
-        <div>
+        <div style="flex: 1;">
           <h2 id="pls-modal-title"><?php esc_html_e( 'Create product', 'pls-private-label-store' ); ?></h2>
-          <p class="description"><?php esc_html_e( 'Minimal, responsive editor with instant saves.', 'pls-private-label-store' ); ?></p>
         </div>
         <div style="display: flex; align-items: center; gap: 12px;">
+          <div class="pls-mode-toggle" style="display: flex; gap: 4px; margin-right: 8px;">
+            <button type="button" class="pls-mode-btn is-active" data-mode="builder"><?php esc_html_e( 'Builder', 'pls-private-label-store' ); ?></button>
+            <button type="button" class="pls-mode-btn" data-mode="preview"><?php esc_html_e( 'Preview', 'pls-private-label-store' ); ?></button>
+          </div>
           <button type="button" class="button pls-help-button pls-modal-help-button" id="pls-product-modal-help" title="<?php esc_attr_e( 'View Help Guide', 'pls-private-label-store' ); ?>" style="width: 32px; height: 32px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; background: var(--pls-accent-light, #E5F2FF); color: var(--pls-accent, #007AFF); border: 1px solid var(--pls-accent, #007AFF); cursor: pointer;">?</button>
           <button type="button" class="pls-modal__close" aria-label="Close">×</button>
         </div>
-      </div>
-      <div class="pls-mode-toggle">
-        <button type="button" class="pls-mode-btn is-active" data-mode="builder"><?php esc_html_e( 'Builder', 'pls-private-label-store' ); ?></button>
-        <button type="button" class="pls-mode-btn" data-mode="preview"><?php esc_html_e( 'Preview', 'pls-private-label-store' ); ?></button>
       </div>
       <form method="post" class="pls-modern-form" id="pls-product-form">
         <?php wp_nonce_field( 'pls_product_modal_save' ); ?>
         <input type="hidden" name="pls_product_modal_save" value="1" />
         <input type="hidden" name="id" id="pls-product-id" />
         <input type="hidden" name="gallery_ids" id="pls-gallery-ids" />
-        <div class="notice notice-error pls-form-errors" id="pls-product-errors" style="display:none;">
-          <p><?php esc_html_e( 'Please review the highlighted issues before saving.', 'pls-private-label-store' ); ?></p>
-          <ul></ul>
+        <!-- Success Message -->
+        <div class="notice notice-success pls-form-success" id="pls-product-success" style="display:none; position: sticky; top: 0; z-index: 1000; margin: 0 0 16px 0;">
+          <p style="margin: 0; font-weight: 500;">
+            <span style="display: inline-block; margin-right: 8px;">✓</span>
+            <span id="pls-success-message"><?php esc_html_e( 'Product saved successfully!', 'pls-private-label-store' ); ?></span>
+          </p>
+        </div>
+        
+        <!-- Error Messages - Sticky at Top -->
+        <div class="notice notice-error pls-form-errors" id="pls-product-errors" style="display:none; position: sticky; top: 0; z-index: 1000; margin: 0 0 16px 0; background: #d63638; color: #fff; border-left-color: #d63638;">
+          <p style="margin: 0 0 8px 0; font-weight: 600;">
+            <span style="display: inline-block; margin-right: 8px;">⚠️</span>
+            <span id="pls-error-count">0</span> <?php esc_html_e( 'error(s) found. Please fix before saving.', 'pls-private-label-store' ); ?>
+          </p>
+          <ul style="margin: 0; padding-left: 20px;"></ul>
         </div>
 
         <div class="pls-stepper">
+          <div class="pls-stepper__header">
+            <div class="pls-stepper__progress">
+              <span class="pls-stepper__progress-text" id="pls-stepper-progress">Step 1 of 5</span>
+              <span class="pls-stepper__progress-bar">
+                <span class="pls-stepper__progress-fill" id="pls-stepper-progress-fill" style="width: 20%;"></span>
+              </span>
+              <span class="pls-stepper__progress-percent" id="pls-stepper-percent">20% Complete</span>
+            </div>
+          </div>
           <div class="pls-stepper__nav" id="pls-stepper-nav">
             <button type="button" class="pls-stepper__item is-active" data-step="general">
               <span class="pls-stepper__item-number">1</span>
-              <?php esc_html_e( 'General', 'pls-private-label-store' ); ?>
+              <span class="pls-stepper__item-label"><?php esc_html_e( 'General', 'pls-private-label-store' ); ?></span>
+              <span class="pls-stepper__item-check" style="display: none;">✓</span>
             </button>
             <button type="button" class="pls-stepper__item" data-step="data">
               <span class="pls-stepper__item-number">2</span>
-              <?php esc_html_e( 'Data', 'pls-private-label-store' ); ?>
+              <span class="pls-stepper__item-label"><?php esc_html_e( 'Data', 'pls-private-label-store' ); ?></span>
+              <span class="pls-stepper__item-check" style="display: none;">✓</span>
             </button>
             <button type="button" class="pls-stepper__item" data-step="ingredients">
               <span class="pls-stepper__item-number">3</span>
-              <?php esc_html_e( 'Ingredients', 'pls-private-label-store' ); ?>
+              <span class="pls-stepper__item-label"><?php esc_html_e( 'Ingredients', 'pls-private-label-store' ); ?></span>
+              <span class="pls-stepper__item-check" style="display: none;">✓</span>
             </button>
             <button type="button" class="pls-stepper__item" data-step="packs">
               <span class="pls-stepper__item-number">4</span>
               <span class="pls-primary-badge" style="background: #2271b1; color: #fff; padding: 2px 6px; border-radius: 2px; font-size: 9px; margin-right: 6px;">PRIMARY</span>
-              <?php esc_html_e( 'Pack tiers', 'pls-private-label-store' ); ?>
+              <span class="pls-stepper__item-label"><?php esc_html_e( 'Pack tiers', 'pls-private-label-store' ); ?></span>
+              <span class="pls-stepper__item-check" style="display: none;">✓</span>
             </button>
             <button type="button" class="pls-stepper__item" data-step="attributes">
               <span class="pls-stepper__item-number">5</span>
-              <?php esc_html_e( 'Product options', 'pls-private-label-store' ); ?>
+              <span class="pls-stepper__item-label"><?php esc_html_e( 'Product options', 'pls-private-label-store' ); ?></span>
+              <span class="pls-stepper__item-check" style="display: none;">✓</span>
             </button>
           </div>
 
@@ -638,8 +680,13 @@ wp_localize_script(
                 <!-- Tab Description -->
                 <div class="pls-tab-description" id="pls-tab-description">
                   <p class="pls-subtle" style="margin: 0 0 12px 0; font-size: 13px; color: #64748b;">
-                    <?php esc_html_e( 'Base ingredients are included in all products. Tier 3+ customers can unlock additional ingredients.', 'pls-private-label-store' ); ?>
+                    <span id="pls-tab-description-text"><?php esc_html_e( 'All ingredients are shown. Base ingredients are included in all products. Tier 3+ customers can unlock additional ingredients.', 'pls-private-label-store' ); ?></span>
                   </p>
+                  <div id="pls-tab-counts" style="display: flex; gap: 16px; font-size: 12px; color: #64748b; margin-top: 4px;">
+                    <span id="pls-tab-count-all">All: <strong>0</strong></span>
+                    <span id="pls-tab-count-base">Base: <strong>0</strong></span>
+                    <span id="pls-tab-count-unlockable">Unlockable: <strong>0</strong></span>
+                  </div>
                 </div>
                 
                 <!-- Ingredients Table -->
@@ -725,10 +772,17 @@ wp_localize_script(
                         <input type="number" name="pack_tiers[<?php echo esc_attr( $i ); ?>][units]" value="<?php echo esc_attr( $units ); ?>" min="1" />
                       </label>
                       <label><?php esc_html_e( 'Price per unit', 'pls-private-label-store' ); ?>
-                        <input type="number" step="0.01" class="pls-price-input" name="pack_tiers[<?php echo esc_attr( $i ); ?>][price]" value="<?php echo esc_attr( $price ); ?>" min="0" />
+                        <span class="pls-help-icon" title="<?php esc_attr_e( 'This is the price customers pay per unit. Total price = price per unit × units.', 'pls-private-label-store' ); ?>" style="cursor: help; margin-left: 4px; display: inline-block; width: 14px; height: 14px; line-height: 14px; text-align: center; border-radius: 50%; background: #E5F2FF; color: #007AFF; font-size: 11px; font-weight: 600;">ⓘ</span>
+                        <input type="number" step="0.01" class="pls-price-input pls-tier-price-input" name="pack_tiers[<?php echo esc_attr( $i ); ?>][price]" value="<?php echo esc_attr( $price ); ?>" min="0" data-units="<?php echo esc_attr( $units ); ?>" />
                       </label>
-                      <div style="padding: 8px 0;">
-                        <strong style="color: #2271b1;"><?php esc_html_e( 'Total:', 'pls-private-label-store' ); ?> $<span class="pls-tier-total"><?php echo number_format( $units * $price, 2 ); ?></span></strong>
+                      <div style="margin-top: 8px; padding: 10px 12px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 8px; border-left: 3px solid #007AFF;">
+                        <div style="font-size: 12px; color: #64748b; margin-bottom: 4px;"><?php esc_html_e( 'Price Breakdown', 'pls-private-label-store' ); ?></div>
+                        <div style="font-size: 13px; color: #334155; margin-bottom: 2px;">
+                          $<span class="pls-tier-price-display"><?php echo number_format( $price, 2 ); ?></span> <?php esc_html_e( 'per unit', 'pls-private-label-store' ); ?> × <span class="pls-tier-units-display"><?php echo esc_html( $units ); ?></span> <?php esc_html_e( 'units', 'pls-private-label-store' ); ?>
+                        </div>
+                        <div style="font-size: 16px; font-weight: 700; color: #007AFF; margin-top: 4px;">
+                          <?php esc_html_e( 'Total:', 'pls-private-label-store' ); ?> $<span class="pls-tier-total"><?php echo number_format( $units * $price, 2 ); ?></span>
+                        </div>
                       </div>
                       <label class="pls-inline-checkbox"><input type="checkbox" name="pack_tiers[<?php echo esc_attr( $i ); ?>][enabled]" checked /> <?php esc_html_e( 'Enabled', 'pls-private-label-store' ); ?></label>
                     </div>
@@ -1031,12 +1085,27 @@ wp_localize_script(
 
         <div class="pls-modal__footer">
           <div class="pls-stepper__controls">
-            <button type="button" class="button" id="pls-step-prev"><?php esc_html_e( 'Back', 'pls-private-label-store' ); ?></button>
-            <button type="button" class="button button-primary" id="pls-step-next"><?php esc_html_e( 'Next', 'pls-private-label-store' ); ?></button>
+            <button type="button" class="button pls-btn--secondary" id="pls-step-prev">
+              <span style="display: inline-block; margin-right: 6px;">←</span>
+              <?php esc_html_e( 'Back', 'pls-private-label-store' ); ?>
+            </button>
+            <button type="button" class="button button-primary" id="pls-step-next">
+              <?php esc_html_e( 'Next', 'pls-private-label-store' ); ?>
+              <span style="display: inline-block; margin-left: 6px;">→</span>
+            </button>
           </div>
           <div class="pls-stepper__actions">
-            <button type="button" class="button" id="pls-modal-cancel"><?php esc_html_e( 'Cancel', 'pls-private-label-store' ); ?></button>
-            <button type="submit" class="button button-primary button-hero"><?php esc_html_e( 'Save product', 'pls-private-label-store' ); ?></button>
+            <button type="button" class="button pls-btn--secondary" id="pls-modal-cancel">
+              <span style="display: inline-block; margin-right: 6px;">×</span>
+              <?php esc_html_e( 'Cancel', 'pls-private-label-store' ); ?>
+            </button>
+            <button type="submit" class="button button-primary button-hero" id="pls-save-product-btn">
+              <span class="pls-save-icon" style="display: inline-block; margin-right: 6px;">✓</span>
+              <span class="pls-save-text"><?php esc_html_e( 'Save product', 'pls-private-label-store' ); ?></span>
+              <span class="pls-save-spinner" style="display: none; margin-left: 8px;">
+                <span class="spinner is-active" style="float: none; margin: 0; visibility: visible;"></span>
+              </span>
+            </button>
           </div>
         </div>
       </form>

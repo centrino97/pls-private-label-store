@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 5.2.1
+Stable tag: 5.3.0
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,31 @@ and provides shortcodes for seamless Elementor Theme Builder integration.
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 5.3.0 =
+* **MAJOR UI IMPROVEMENT:** Product creation modal is now truly fullscreen (100vw/100vh)
+* **IMPROVED:** Removed unnecessary description text from modal header
+* **FIXED:** Mode toggle buttons (Builder/Preview) now integrated into header - no more "buttons on top of buttons"
+* **IMPROVED:** Cleaner header layout with better spacing and alignment
+* **IMPROVED:** Sticky footer for better accessibility
+* **IMPROVED:** Enhanced visual hierarchy and spacing throughout modal
+* **POLISHED:** Better UX with integrated controls and cleaner interface
+
+= 5.2.2 =
+* **NEW:** Progress indicator showing "Step X of 5" with completion percentage
+* **NEW:** Visual completion checkmarks on completed steps
+* **NEW:** Required field indicators with red borders when empty
+* **NEW:** Sticky error messages at top with error count badge
+* **NEW:** Success banner with animation on product save
+* **NEW:** Loading spinner on Save button during save operation
+* **NEW:** Step validation - Next button disabled if current step has errors
+* **NEW:** Real-time field validation on blur/input
+* **NEW:** Ingredient tab counts (All/Base/Unlockable)
+* **NEW:** Enhanced pack tier price breakdown display
+* **NEW:** Button icons (Save ✓, Next →, Back ←, Cancel ×)
+* **IMPROVED:** Error messages auto-scroll to first error field
+* **IMPROVED:** Better visual feedback for all form interactions
+* **IMPROVED:** Price breakdown shows per-unit × units = total calculation
+
 = 5.2.1 =
 * **CRITICAL FIX:** Fixed JavaScript syntax error preventing product creation modal from opening
 * **FIXED:** Variation price test now correctly checks total price (price × units)

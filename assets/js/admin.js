@@ -22,21 +22,81 @@
     var stepOrder = ['general','data','ingredients','packs','attributes'];
     var defaultLabelGuide = 'https://bodocibiophysics.com/label-guide/';
     var currentStep = 0;
+    var completedSteps = [];
+
+    function updateProgressIndicator(){
+      var current = currentStep + 1;
+      var total = stepOrder.length;
+      var percent = Math.round((current / total) * 100);
+      
+      $('#pls-stepper-progress').text('Step ' + current + ' of ' + total);
+      $('#pls-stepper-progress-fill').css('width', percent + '%');
+      $('#pls-stepper-percent').text(percent + '% Complete');
+    }
+
+    function markStepCompleted(step){
+      if (completedSteps.indexOf(step) === -1) {
+        completedSteps.push(step);
+        $('.pls-stepper__item[data-step="'+step+'"]').addClass('is-completed');
+      }
+    }
+
+    function validateCurrentStep(){
+      var step = stepOrder[currentStep];
+      var errors = [];
+      var $panel = $('.pls-stepper__panel[data-step="'+step+'"]');
+      
+      // Check required fields
+      $panel.find('.pls-required-field').each(function(){
+        var $field = $(this);
+        var value = $field.val();
+        
+        if ($field.prop('required') && (!value || value.trim() === '')) {
+          $field.addClass('is-invalid');
+          errors.push($field.closest('label').find('label, .pls-micro').first().text() + ' is required');
+        } else {
+          $field.removeClass('is-invalid');
+        }
+      });
+      
+      // Update Next button
+      var $nextBtn = $('#pls-step-next');
+      if (errors.length > 0) {
+        $nextBtn.prop('disabled', true).attr('title', errors.length + ' error(s) on this step');
+      } else {
+        $nextBtn.prop('disabled', false).removeAttr('title');
+        markStepCompleted(step);
+      }
+      
+      return errors.length === 0;
+    }
 
     function updateStepControls(){
       $('#pls-step-prev').prop('disabled', currentStep === 0);
-      $('#pls-step-next').text(currentStep === stepOrder.length - 1 ? 'Review' : 'Next');
+      var nextText = currentStep === stepOrder.length - 1 ? 'Review' : 'Next';
+      $('#pls-step-next').text(nextText);
+      updateProgressIndicator();
+      validateCurrentStep();
     }
 
     function goToStep(step){
       var idx = stepOrder.indexOf(step);
       if (idx === -1){ return; }
+      
+      // Validate before leaving current step
+      if (!validateCurrentStep() && idx > currentStep) {
+        return; // Don't allow skipping ahead with errors
+      }
+      
       currentStep = idx;
       $('.pls-stepper__item').removeClass('is-active');
       $('.pls-stepper__item[data-step="'+step+'"]').addClass('is-active');
       $('.pls-stepper__panel').removeClass('is-active');
       $('.pls-stepper__panel[data-step="'+step+'"]').addClass('is-active');
       updateStepControls();
+      
+      // Scroll to top of form
+      $('#pls-product-form').scrollTop(0);
     }
 
     $('.pls-tabs-nav').on('click', '.nav-tab', function(e){
@@ -103,6 +163,12 @@
           term.id = parseInt(key, 10);
           ingredientMap[key] = term;
         });
+        // Initialize tab counts when ingredients are loaded
+        setTimeout(function(){
+          if (typeof updateTabCounts === 'function') {
+            updateTabCounts();
+          }
+        }, 100);
       }
       var defaultIngredientIcon = (window.PLS_ProductAdmin && PLS_ProductAdmin.defaultIngredientIcon) || ($('#pls-ingredient-chips').data('default-icon') || '');
       var keySelected = [];
@@ -349,6 +415,17 @@
         // Update selected count
         $('#pls-selected-count').text(selectedIds.length);
         
+        // Update key ingredient count
+        $('#pls-key-count-num').text(keyIds.length);
+        if (keyIds.length >= keyLimit) {
+          $('#pls-key-count-display').css('color', '#d63638');
+        } else {
+          $('#pls-key-count-display').css('color', '#6366f1');
+        }
+        
+        // Update tab counts
+        updateTabCounts();
+        
         // Update key ingredients display
         updateKeyIngredients(keyIds);
       }
@@ -428,6 +505,27 @@
         renderIngredientList(ingredientPagination.searchTerm);
       });
 
+      // Update tab ingredient counts
+      function updateTabCounts(){
+        var allCount = 0;
+        var baseCount = 0;
+        var unlockableCount = 0;
+        
+        Object.values(ingredientMap).forEach(function(term){
+          var tierLevel = parseInt(term.min_tier_level || term.tierLevel || 1, 10);
+          allCount++;
+          if (tierLevel <= 2) {
+            baseCount++;
+          } else {
+            unlockableCount++;
+          }
+        });
+        
+        $('#pls-tab-count-all strong').text(allCount);
+        $('#pls-tab-count-base strong').text(baseCount);
+        $('#pls-tab-count-unlockable strong').text(unlockableCount);
+      }
+
       // v5.2.0: Tab handlers for ingredients
       $(document).on('click', '.pls-ingredients-tabs .pls-tab', function(){
         var tab = $(this).data('tab');
@@ -443,8 +541,16 @@
           'base': 'Base ingredients (Tier 1-2) are included in all products. These are standard INCI ingredients available to all customers.',
           'unlockable': 'Unlockable ingredients (Tier 3+) are only available to customers who have reached Tier 3 or higher. These can be marked as key ingredients.'
         };
-        $('#pls-tab-description p').text(descriptions[tab] || descriptions['all']);
+        $('#pls-tab-description-text').text(descriptions[tab] || descriptions['all']);
+        
+        // Update tab counts
+        updateTabCounts();
       });
+      
+      // Initialize tab counts on load
+      if (Object.keys(ingredientMap).length > 0) {
+        updateTabCounts();
+      }
 
       // v4.9.99: Select all visible handler
       $(document).on('change', '#pls-select-all-ingredients', function(){
@@ -532,10 +638,22 @@
 
       // Helper function to update tier total - must be defined before resetModal
       function updateTierTotal(row){
-        var units = parseFloat(row.find('input[name*="[units]"]').val()) || 0;
-        var price = parseFloat(row.find('input[name*="[price]"]').val()) || 0;
-        var total = units * price;
-        row.find('.pls-tier-total').text(total.toFixed(2));
+        var $row = $(row);
+        var priceInput = $row.find('.pls-tier-price-input');
+        var unitsInput = $row.find('input[name*="[units]"]');
+        var price = parseFloat(priceInput.val()) || 0;
+        var units = parseInt(unitsInput.val(), 10) || 0;
+        var total = price * units;
+        
+        // Update total display
+        $row.find('.pls-tier-total').text(total.toFixed(2));
+        
+        // Update price breakdown display
+        $row.find('.pls-tier-price-display').text(price.toFixed(2));
+        $row.find('.pls-tier-units-display').text(units);
+        
+        // Update data attribute for units
+        priceInput.attr('data-units', units);
       }
 
       function resetModal(){
@@ -1430,6 +1548,13 @@
           term.id = parseInt(key, 10);
           ingredientMap[key] = term;
         });
+        
+        // Trigger event for tab counts update
+        setTimeout(function(){
+          if (typeof updateTabCounts === 'function') {
+            updateTabCounts();
+          }
+        }, 100);
         renderIngredientList(ingredientFilter);
         closeModalElement($('#pls-ingredient-create-modal'));
         $('#pls-new-ingredient-name').val('');
@@ -1609,14 +1734,41 @@
       });
     });
 
+    // Real-time validation on field blur
+    $(document).on('blur', '.pls-required-field', function(){
+      validateCurrentStep();
+    });
+
+    // Real-time validation on input change
+    $(document).on('input change', '.pls-required-field', function(){
+      var $field = $(this);
+      var value = $field.val();
+      if ($field.prop('required') && value && value.trim() !== '') {
+        $field.removeClass('is-invalid');
+      }
+      validateCurrentStep();
+    });
+
     $('#pls-stepper-nav').on('click', '.pls-stepper__item', function(){
       var step = $(this).data('step');
+      var idx = stepOrder.indexOf(step);
+      
+      // Don't allow skipping ahead with errors
+      if (idx > currentStep && !validateCurrentStep()) {
+        return;
+      }
+      
       goToStep(step);
     });
 
     $('#pls-step-next').on('click', function(){
+      if ($(this).prop('disabled')) {
+        return;
+      }
       if (currentStep < stepOrder.length - 1){
-        goToStep(stepOrder[currentStep + 1]);
+        if (validateCurrentStep()) {
+          goToStep(stepOrder[currentStep + 1]);
+        }
       }
     });
 
@@ -1736,17 +1888,36 @@
       });
 
       function renderErrors(errors){
-        var box = $('#pls-product-errors');
-        var list = box.find('ul');
-        list.empty();
-        errors.forEach(function(msg){ list.append('<li>'+msg+'</li>'); });
-        if (errors.length){
-          box.show();
-          $('html, body').animate({ scrollTop: box.offset().top - 40 }, 200);
+        hideSuccessMessage();
+        
+        var $errorBox = $('#pls-product-errors');
+        var $errorList = $errorBox.find('ul');
+        $errorList.empty();
+        
+        if (errors && errors.length > 0) {
+          $('#pls-error-count').text(errors.length);
+          errors.forEach(function(error){
+            var $li = $('<li></li>').text(error);
+            $errorList.append($li);
+          });
+          $errorBox.slideDown(300);
+          
+          // Scroll to error box
+          $('html, body').animate({
+            scrollTop: $errorBox.offset().top - 20
+          }, 300);
+          
+          // Highlight invalid fields
+          $('.pls-required-field.is-invalid').each(function(){
+            var $field = $(this);
+            $field.focus();
+            return false; // Only focus first error
+          });
         } else {
-          box.hide();
+          $errorBox.slideUp(300);
         }
       }
+      
 
       function validateProductForm(){
         var errors = [];
@@ -1919,6 +2090,23 @@
       renderErrors(errs);
     }
 
+    function showSuccessMessage(message){
+      var $success = $('#pls-product-success');
+      if (message) {
+        $('#pls-success-message').text(message);
+      }
+      $success.slideDown(300);
+      
+      // Hide after 5 seconds
+      setTimeout(function(){
+        $success.slideUp(300);
+      }, 5000);
+    }
+
+    function hideSuccessMessage(){
+      $('#pls-product-success').slideUp(300);
+    }
+
     function formatSyncStatus(status){
       if (!status){
         return 'Not synced yet.';
@@ -1975,27 +2163,66 @@
           return;
         }
         renderErrors([]);
+        
         var form = $(this);
-        var submitBtn = form.find('button[type=submit]');
-        var originalText = submitBtn.text();
+        var $submitBtn = $('#pls-save-product-btn');
+        var $saveText = $submitBtn.find('.pls-save-text');
+        var $saveSpinner = $submitBtn.find('.pls-save-spinner');
+        var originalText = $saveText.text();
+        
+        // Show loading state
+        $submitBtn.prop('disabled', true);
+        $saveText.text('Saving...');
+        $saveSpinner.show();
+        $('#pls-step-next, #pls-step-prev, #pls-modal-cancel').prop('disabled', true);
+        
         var payload = form.serializeArray();
         payload.push({ name: 'action', value: 'pls_save_product' });
         payload.push({ name: 'nonce', value: (window.PLS_Admin ? PLS_Admin.nonce : '') });
-        submitBtn.prop('disabled', true).text('Saving...');
+        
         $.post(ajaxurl, payload, function(resp){
           if (!resp || !resp.success || !resp.data || resp.data.ok === false){
             renderServerErrors(resp);
+            $submitBtn.prop('disabled', false);
+            $saveText.text(originalText);
+            $saveSpinner.hide();
+            $('#pls-step-next, #pls-step-prev, #pls-modal-cancel').prop('disabled', false);
             return;
           }
+          
+          // Show success message
+          var successMsg = 'Product saved successfully!';
+          if (resp.data && resp.data.sync_message) {
+            successMsg = resp.data.sync_message;
+          }
+          showSuccessMessage(successMsg);
+          
+          // Mark current step as completed
+          markStepCompleted(stepOrder[currentStep]);
+          
           if (resp.data && resp.data.product){
             productMap[resp.data.product.id] = resp.data.product;
           }
-          closeModalElement($('#pls-product-modal'));
-          window.location.reload();
+          
+          // Auto-close after 2 seconds (optional - user can cancel)
+          var autoCloseTimer = setTimeout(function(){
+            closeModalElement($('#pls-product-modal'));
+            window.location.reload();
+          }, 2000);
+          
+          // Allow user to cancel auto-close
+          $submitBtn.off('click.auto-close').on('click.auto-close', function(){
+            clearTimeout(autoCloseTimer);
+            $(this).off('click.auto-close');
+          });
+          
         }).fail(function(resp){
           renderServerErrors(resp);
         }).always(function(){
-          submitBtn.prop('disabled', false).text(originalText);
+          $submitBtn.prop('disabled', false);
+          $saveText.text(originalText);
+          $saveSpinner.hide();
+          $('#pls-step-next, #pls-step-prev, #pls-modal-cancel').prop('disabled', false);
         });
       });
 
@@ -2329,7 +2556,7 @@
       $('#pls-calc-tier-select').on('change', updatePriceCalculator);
       
       // Real-time price calculator updates when pack tier prices/units change
-      $(document).on('input', '#pls-pack-grid input[name*="[units]"], #pls-pack-grid input[name*="[price]"]', function(){
+      $(document).on('input change', '#pls-pack-grid input[name*="[units]"], #pls-pack-grid .pls-tier-price-input, #pls-pack-grid input[name*="[price]"]', function(){
         updateTierTotal($(this).closest('.pls-pack-row'));
         updatePriceCalculator();
       });
