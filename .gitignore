@@ -1,0 +1,25 @@
+# Database configuration (contains sensitive credentials)
+scripts/db-config.php
+
+# WordPress
+wp-config.php
+.htaccess
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+error_log
+
+# Temporary files
+*.tmp
+*.bak
