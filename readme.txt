@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 5.2.0
+Stable tag: 5.2.1
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,13 @@ and provides shortcodes for seamless Elementor Theme Builder integration.
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 5.2.1 =
+* **CRITICAL FIX:** Fixed JavaScript syntax error preventing product creation modal from opening
+* **FIXED:** Variation price test now correctly checks total price (price × units)
+* **FIXED:** SEO hooks test checks for actual registered hooks instead of non-existent ones
+* **IMPROVED:** Label fee test provides better error messages with actual values
+* **NEW:** Visual & Usability Improvements plan document for future enhancements
+
 = 5.2.0 =
 * **MAJOR UI/UX OVERHAUL:** Product Creation Modal - Apple-inspired design with fullscreen layout
 * **NEW:** Beta Features System - Toggle to enable/disable experimental features in Settings
