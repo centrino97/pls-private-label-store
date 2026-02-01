@@ -29,6 +29,8 @@ final class PLS_Admin_Ajax {
         add_action( 'wp_ajax_pls_delete_attribute', array( __CLASS__, 'delete_attribute' ) );
         add_action( 'wp_ajax_pls_delete_attribute_value', array( __CLASS__, 'delete_attribute_value' ) );
         add_action( 'wp_ajax_pls_update_attribute_value', array( __CLASS__, 'update_attribute_value' ) );
+        add_action( 'wp_ajax_pls_cleanup_ingredient_attributes', array( __CLASS__, 'cleanup_ingredient_attributes' ) );
+        add_action( 'wp_ajax_pls_resync_ingredients', array( __CLASS__, 'resync_ingredients' ) );
         add_action( 'wp_ajax_pls_update_pack_tier_defaults', array( __CLASS__, 'update_pack_tier_defaults' ) );
         add_action( 'wp_ajax_pls_update_label_pricing', array( __CLASS__, 'update_label_pricing' ) );
         add_action( 'wp_ajax_pls_get_product_options_data', array( __CLASS__, 'get_product_options_data' ) );
@@ -489,10 +491,22 @@ final class PLS_Admin_Ajax {
                     $values     = array();
 
                     foreach ( $row['values'] as $value ) {
+                        $value_id = isset( $value['value_id'] ) ? absint( $value['value_id'] ) : ( isset( $value['id'] ) ? absint( $value['id'] ) : 0 );
+                        // Get min_tier_level from value data or fetch from database
+                        $min_tier_level = isset( $value['min_tier_level'] ) ? absint( $value['min_tier_level'] ) : 1;
+                        if ( ! $min_tier_level && $value_id ) {
+                            $value_obj = PLS_Repo_Attributes::get_value( $value_id );
+                            $min_tier_level = ( $value_obj && isset( $value_obj->min_tier_level ) ) ? absint( $value_obj->min_tier_level ) : 1;
+                        }
+                        
                         $values[] = array(
-                            'value_id'    => isset( $value['value_id'] ) ? absint( $value['value_id'] ) : 0,
-                            'value_label' => isset( $value['value_label'] ) ? $value['value_label'] : '',
-                            'price'       => isset( $value['price'] ) ? floatval( $value['price'] ) : 0,
+                            'id'             => $value_id,
+                            'value_id'       => $value_id,
+                            'value_label'    => isset( $value['value_label'] ) ? $value['value_label'] : ( isset( $value['label'] ) ? $value['label'] : '' ),
+                            'label'          => isset( $value['label'] ) ? $value['label'] : ( isset( $value['value_label'] ) ? $value['value_label'] : '' ),
+                            'price'          => isset( $value['price'] ) ? floatval( $value['price'] ) : 0,
+                            'min_tier_level' => $min_tier_level,
+                            'tier_price_overrides' => isset( $value['tier_price_overrides'] ) ? $value['tier_price_overrides'] : null,
                         );
                     }
 
@@ -535,10 +549,20 @@ final class PLS_Admin_Ajax {
                 }
 
                 if ( $value_id || $value_label ) {
+                    // Get min_tier_level from attribute value
+                    $min_tier_level = 1;
+                    if ( $value_id ) {
+                        $value_obj = PLS_Repo_Attributes::get_value( $value_id );
+                        $min_tier_level = ( $value_obj && isset( $value_obj->min_tier_level ) ) ? absint( $value_obj->min_tier_level ) : 1;
+                    }
+                    
                     $grouped[ $key ]['values'][] = array(
-                        'value_id'    => $value_id,
-                        'value_label' => $value_label,
-                        'price'       => $price,
+                        'id'             => $value_id,
+                        'value_id'       => $value_id,
+                        'value_label'    => $value_label,
+                        'label'          => $value_label,
+                        'price'          => $price,
+                        'min_tier_level' => $min_tier_level,
                     );
                 }
             }
@@ -1807,6 +1831,46 @@ final class PLS_Admin_Ajax {
             wp_send_json_success( array( 'message' => __( 'Value deleted successfully.', 'pls-private-label-store' ) ) );
         } else {
             wp_send_json_error( array( 'message' => __( 'Failed to delete value.', 'pls-private-label-store' ) ), 400 );
+        }
+    }
+
+    /**
+     * AJAX: Clean up incorrectly synced ingredient attributes from WooCommerce.
+     */
+    public static function cleanup_ingredient_attributes() {
+        check_ajax_referer( 'pls_admin_nonce', 'nonce' );
+
+        if ( ! current_user_can( PLS_Capabilities::CAP_ATTRS ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        require_once PLS_PLS_DIR . 'includes/wc/class-pls-wc-sync-cleanup.php';
+        $result = PLS_WC_Sync_Cleanup::cleanup_ingredient_attributes();
+
+        if ( $result['success'] ) {
+            wp_send_json_success( $result );
+        } else {
+            wp_send_json_error( $result );
+        }
+    }
+
+    /**
+     * AJAX: Re-sync all ingredients with correct tier levels.
+     */
+    public static function resync_ingredients() {
+        check_ajax_referer( 'pls_admin_nonce', 'nonce' );
+
+        if ( ! current_user_can( PLS_Capabilities::CAP_ATTRS ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        require_once PLS_PLS_DIR . 'includes/wc/class-pls-wc-sync-cleanup.php';
+        $result = PLS_WC_Sync_Cleanup::resync_ingredients();
+
+        if ( $result['success'] ) {
+            wp_send_json_success( $result );
+        } else {
+            wp_send_json_error( $result );
         }
     }
 

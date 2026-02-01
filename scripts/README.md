@@ -27,6 +27,31 @@ This directory contains scripts for connecting to and verifying the WordPress da
 
 ## Scripts
 
+### `cleanup-and-resync.php`
+**Purpose:** Clean up incorrectly synced ingredient WooCommerce attributes and re-sync ingredients with correct tier levels.
+
+**Usage:**
+```bash
+# Via WP-CLI
+wp eval-file scripts/cleanup-and-resync.php
+
+# Or via browser (requires admin login)
+# Navigate to: /wp-content/plugins/pls-private-label-store/scripts/cleanup-and-resync.php
+```
+
+**What it does:**
+1. Deletes incorrectly synced ingredient WooCommerce attributes (ingredients should NOT be WooCommerce attributes)
+2. Re-syncs all ingredients to PLS attributes with correct tier levels:
+   - Base/INCI ingredients = Tier 1-2 (always included, no price impact)
+   - Key/active ingredients = Tier 3+ (unlockable, price affecting)
+3. Verifies ingredient sync status
+4. Checks for remaining incorrectly synced WooCommerce attributes
+
+**When to use:**
+- After updating to v5.3.0+ to clean up old incorrectly synced attributes
+- When ingredient sync tests are failing
+- When you see thousands of ingredient WooCommerce attributes that shouldn't exist
+
 ### `db-config.example.php`
 Template configuration file. Copy to `db-config.php` and fill in your credentials.
 

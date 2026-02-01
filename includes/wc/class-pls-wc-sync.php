@@ -1033,6 +1033,17 @@ final class PLS_WC_Sync {
         }
 
         foreach ( $attributes as $attr ) {
+            // CRITICAL: Skip ingredients - they should NOT be WooCommerce attributes
+            // Ingredients are taxonomy terms (pls_ingredient) and should remain as such
+            // Only product options (Package Type, Color, Cap, Label Application, Pack Tier) should sync
+            if ( isset( $attr->option_type ) && 'ingredient' === $attr->option_type ) {
+                continue;
+            }
+            
+            // Also skip by attr_key pattern (backward compatibility)
+            if ( isset( $attr->attr_key ) && strpos( $attr->attr_key, 'ingredient-' ) === 0 ) {
+                continue;
+            }
             $slug  = sanitize_title( $attr->attr_key );
             $match = null;
 

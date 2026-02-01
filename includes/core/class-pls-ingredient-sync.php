@@ -74,9 +74,25 @@ final class PLS_Ingredient_Sync {
             )
         );
 
+        // Determine tier level: Check term meta first, default to 1 (base/INCI ingredients)
+        // Base ingredients (INCI) = tier 1-2 (always included, no price impact)
+        // Key/active ingredients = tier 3+ (unlockable, price affecting)
+        $min_tier_level = get_term_meta( $term_id, '_pls_ingredient_min_tier_level', true );
+        if ( '' === $min_tier_level || false === $min_tier_level ) {
+            // Default: Check if ingredient is marked as "active" (key ingredient)
+            $is_active = get_term_meta( $term_id, 'pls_ingredient_is_active', true );
+            // Active ingredients = tier 3+, base ingredients = tier 1
+            $min_tier_level = ( $is_active ) ? 3 : 1;
+        } else {
+            $min_tier_level = absint( $min_tier_level );
+        }
+        
+        // Ensure valid tier level (1-5)
+        $min_tier_level = max( 1, min( 5, $min_tier_level ) );
+
         if ( $existing_value ) {
-            // Update existing value to ensure min_tier_level = 3
-            PLS_Repo_Attributes::update_value_tier_rules( $existing_value->id, 3, null );
+            // Update existing value with correct tier level
+            PLS_Repo_Attributes::update_value_tier_rules( $existing_value->id, $min_tier_level, null );
         } else {
             // Create new value
             $value_id = PLS_Repo_Attributes::insert_value(
@@ -88,8 +104,8 @@ final class PLS_Ingredient_Sync {
             );
 
             if ( $value_id ) {
-                // Set min_tier_level = 3 for ingredients
-                PLS_Repo_Attributes::update_value_tier_rules( $value_id, 3, null );
+                // Set correct tier level based on ingredient type
+                PLS_Repo_Attributes::update_value_tier_rules( $value_id, $min_tier_level, null );
 
                 // Link term_id
                 $term_id_meta = get_term_meta( $term_id, '_pls_attribute_value_id', true );

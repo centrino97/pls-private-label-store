@@ -500,9 +500,13 @@ final class PLS_Frontend_Display {
             <p class="pls-configurator-subtitle"><?php esc_html_e( 'Select your pack size and customize your order', 'pls-private-label-store' ); ?></p>
             
             <!-- Pack Tier Selection -->
-            <div class="pls-configurator-block">
-                <h3 class="pls-configurator-block__title"><?php esc_html_e( 'Select Your Pack Size', 'pls-private-label-store' ); ?></h3>
-                <div class="pls-tier-cards">
+            <div class="pls-configurator-block pls-configurator-accordion is-open">
+                <button type="button" class="pls-configurator-accordion__header" aria-expanded="true">
+                    <h3 class="pls-configurator-block__title"><?php esc_html_e( 'Select Your Pack Size', 'pls-private-label-store' ); ?></h3>
+                    <span class="pls-configurator-accordion__icon">▼</span>
+                </button>
+                <div class="pls-configurator-accordion__content">
+                    <div class="pls-tier-cards">
                     <?php foreach ( $pack_tiers as $tier_slug ) :
                         $tier_term = get_term_by( 'slug', $tier_slug, 'pa_pack-tier' );
                         if ( ! $tier_term ) {
@@ -592,10 +596,17 @@ final class PLS_Frontend_Display {
                                 </label>
                                 <div class="pls-product-option-values">
                                     <?php foreach ( $values as $value ) : 
-                                        $value_id = isset( $value['id'] ) ? absint( $value['id'] ) : 0;
-                                        $value_label = isset( $value['label'] ) ? $value['label'] : '';
+                                        $value_id = isset( $value['id'] ) ? absint( $value['id'] ) : ( isset( $value['value_id'] ) ? absint( $value['value_id'] ) : 0 );
+                                        $value_label = isset( $value['label'] ) ? $value['label'] : ( isset( $value['value_label'] ) ? $value['value_label'] : '' );
                                         $value_price = isset( $value['price'] ) ? floatval( $value['price'] ) : 0;
                                         $tier_overrides = isset( $value['tier_price_overrides'] ) && is_array( $value['tier_price_overrides'] ) ? $value['tier_price_overrides'] : null;
+                                        
+                                        // Get min_tier_level from value data or fetch from database
+                                        $min_tier_level = isset( $value['min_tier_level'] ) ? absint( $value['min_tier_level'] ) : 1;
+                                        if ( ! $min_tier_level && $value_id ) {
+                                            $value_obj = PLS_Repo_Attributes::get_value( $value_id );
+                                            $min_tier_level = ( $value_obj && isset( $value_obj->min_tier_level ) ) ? absint( $value_obj->min_tier_level ) : 1;
+                                        }
                                         
                                         // Check if this is a "standard" option (usually free)
                                         $is_standard = ( stripos( strtolower( $value_label ), 'standard' ) !== false || 
@@ -604,7 +615,8 @@ final class PLS_Frontend_Display {
                                                          stripos( strtolower( $value_label ), 'included' ) !== false );
                                         
                                         // Determine if option has a price
-                                        $has_price = ( ! $is_standard && ( $value_price > 0 || $tier_overrides ) );
+                                        // IMPORTANT: Only Tier 3+ options affect pricing. Base options (Tier 1-2) are included for free.
+                                        $has_price = ( $min_tier_level >= 3 && ! $is_standard && ( $value_price > 0 || $tier_overrides ) );
                                         ?>
                                         <label class="pls-option-value-card <?php echo $is_standard ? 'is-standard' : ''; ?> <?php echo $has_price ? 'has-price' : ''; ?>">
                                             <input type="radio" 
@@ -612,6 +624,7 @@ final class PLS_Frontend_Display {
                                                    value="<?php echo esc_attr( $value_id ); ?>"
                                                    data-value-id="<?php echo esc_attr( $value_id ); ?>"
                                                    data-price="<?php echo esc_attr( $value_price ); ?>"
+                                                   data-min-tier-level="<?php echo esc_attr( $min_tier_level ); ?>"
                                                    data-tier-prices="<?php echo esc_attr( $tier_overrides ? wp_json_encode( $tier_overrides ) : '' ); ?>"
                                                    <?php echo $is_standard ? 'checked' : ''; ?>
                                                    class="pls-option-radio" />
@@ -643,14 +656,19 @@ final class PLS_Frontend_Display {
                                 </div>
                             </div>
                         <?php endforeach; ?>
+                        </div>
                     </div>
                 </div>
             <?php endif; ?>
 
             <!-- Price Summary -->
-            <div class="pls-configurator-block pls-price-summary">
-                <h3 class="pls-configurator-block__title"><?php esc_html_e( 'Price Summary', 'pls-private-label-store' ); ?></h3>
-                <div class="pls-price-breakdown">
+            <div class="pls-configurator-block pls-price-summary pls-configurator-accordion is-open">
+                <button type="button" class="pls-configurator-accordion__header" aria-expanded="true">
+                    <h3 class="pls-configurator-block__title"><?php esc_html_e( 'Price Summary', 'pls-private-label-store' ); ?></h3>
+                    <span class="pls-configurator-accordion__icon">▼</span>
+                </button>
+                <div class="pls-configurator-accordion__content">
+                    <div class="pls-price-breakdown">
                     <div class="pls-price-row">
                         <span class="pls-price-label"><?php esc_html_e( 'Base Price (total)', 'pls-private-label-store' ); ?></span>
                         <span class="pls-price-value" id="pls-price-base"><?php echo wc_price( 0 ); ?></span>
@@ -699,6 +717,7 @@ final class PLS_Frontend_Display {
                     
                     <div class="pls-cart-messages" id="pls-cart-messages"></div>
                 </form>
+                </div>
             </div>
         </div>
         <?php

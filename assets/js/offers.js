@@ -30,6 +30,26 @@
     // no-op
   });
 
+  // Accordion functionality for configurator blocks
+  $(document).on('click', '.pls-configurator-accordion__header', function(e){
+    e.preventDefault();
+    var $header = $(this);
+    var $accordion = $header.closest('.pls-configurator-accordion');
+    var $content = $accordion.find('.pls-configurator-accordion__content');
+    var isExpanded = $header.attr('aria-expanded') === 'true';
+    
+    // Toggle state
+    $header.attr('aria-expanded', !isExpanded);
+    $accordion.toggleClass('is-open', !isExpanded);
+    
+    // Toggle content visibility
+    if (!isExpanded) {
+      $content.slideDown(300);
+    } else {
+      $content.slideUp(300);
+    }
+  });
+
   // Tier card selection handler
   function initTierCards() {
     // Hide default WooCommerce variation selector if tier cards are present
@@ -194,20 +214,31 @@
       const basePricePerUnit = units > 0 ? totalPriceForTier / units : 0;
       
       // Calculate options price PER UNIT (options are already per unit)
+      // IMPORTANT: Only Tier 3+ options affect pricing. Base options (Tier 1-2) are included for free.
       let optionsTotalPerUnit = 0;
+      const currentTierNum = parseInt(selectedTier.tierKey?.replace('tier_', '') || '1') || 1;
+      
       Object.values(selectedOptions).forEach(option => {
-        if (!option || !option.price) return;
+        if (!option) return;
         
-        // Check for tier-specific pricing (already per unit)
-        let optionPricePerUnit = parseFloat(option.price) || 0;
-        if (option.tierPrices && selectedTier.tierKey) {
-          const tierNum = parseInt(selectedTier.tierKey.replace('tier_', '')) || 1;
-          if (option.tierPrices[tierNum]) {
-            optionPricePerUnit = parseFloat(option.tierPrices[tierNum]);
+        // Check if option requires Tier 3+ (only these affect pricing)
+        // Options with min_tier_level <= 2 are base/included and should be free
+        const optionMinTier = option.minTierLevel || 1;
+        
+        // Only calculate price for Tier 3+ options when customer is at that tier
+        if (optionMinTier >= 3 && currentTierNum >= optionMinTier) {
+          // Check for tier-specific pricing (already per unit)
+          let optionPricePerUnit = parseFloat(option.price) || 0;
+          if (option.tierPrices && selectedTier.tierKey) {
+            const tierNum = parseInt(selectedTier.tierKey.replace('tier_', '')) || 1;
+            if (option.tierPrices[tierNum]) {
+              optionPricePerUnit = parseFloat(option.tierPrices[tierNum]);
+            }
           }
+          
+          optionsTotalPerUnit += optionPricePerUnit;
         }
-        
-        optionsTotalPerUnit += optionPricePerUnit;
+        // Base options (Tier 1-2) are included for free - no price added
       });
 
       // Total price per unit = base per unit + options per unit
@@ -302,6 +333,7 @@
       const attributeLabel = $group.data('attribute-label');
       const valueId = $(this).data('value-id');
       const price = parseFloat($(this).data('price')) || 0;
+      const minTierLevel = parseInt($(this).data('min-tier-level')) || 1;
       const tierPricesJson = $(this).data('tier-prices');
       const tierPrices = tierPricesJson ? JSON.parse(tierPricesJson) : null;
 
@@ -312,6 +344,7 @@
       selectedOptions[attributeLabel] = {
         valueId: valueId,
         price: price,
+        minTierLevel: minTierLevel,
         tierPrices: tierPrices
       };
 

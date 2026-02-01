@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 5.3.0
+Stable tag: 5.3.1
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,17 @@ and provides shortcodes for seamless Elementor Theme Builder integration.
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 5.3.1 =
+* **CRITICAL FIX:** Ingredients no longer sync to WooCommerce attributes - they remain as taxonomy terms only
+* **CRITICAL FIX:** Ingredient tier levels corrected - Base/INCI ingredients = Tier 1-2 (always included), Key ingredients = Tier 3+ (unlockable)
+* **NEW:** Frontend configurator is now collapsible/accordion tabs - cleaner, more organized UI
+* **NEW:** Only Tier 3+ options affect pricing - Base options (Tier 1-2) are included for free
+* **NEW:** Cleanup script to remove incorrectly synced WooCommerce attributes
+* **NEW:** AJAX handlers for ingredient cleanup and re-sync
+* **IMPROVED:** Price calculator respects tier levels - only calculates prices for Tier 3+ unlockable options
+* **IMPROVED:** Frontend configurator sections collapse/expand for better UX
+* **IMPROVED:** Ingredient sync respects term meta for tier level assignment
+
 = 5.3.0 =
 * **MAJOR UI IMPROVEMENT:** Product creation modal is now truly fullscreen (100vw/100vh)
 * **IMPROVED:** Removed unnecessary description text from modal header
