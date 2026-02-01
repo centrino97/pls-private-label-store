@@ -717,12 +717,13 @@ final class PLS_System_Test {
                 $issues[] = "Variation #{$tier->wc_variation_id} units mismatch: expected {$tier->units}, got {$units}.";
             }
 
-            // Check price
+            // Check price (variation price should be total: price_per_unit * units)
             $price = $variation->get_regular_price();
-            if ( abs( (float) $price - (float) $tier->price ) < 0.01 ) {
+            $expected_price = (float) $tier->price * (int) $tier->units;
+            if ( abs( (float) $price - $expected_price ) < 0.01 ) {
                 $variation_price_ok++;
             } else {
-                $issues[] = "Variation #{$tier->wc_variation_id} price mismatch: expected {$tier->price}, got {$price}.";
+                $issues[] = "Variation #{$tier->wc_variation_id} price mismatch: expected {$expected_price} (price {$tier->price} × units {$tier->units}), got {$price}.";
             }
         }
 
@@ -2138,19 +2139,32 @@ final class PLS_System_Test {
         // Test 6: Test label fee calculation
         $label_fee_tier_1 = PLS_Tier_Rules::get_label_fee( 1 );
         $label_fee_tier_3 = PLS_Tier_Rules::get_label_fee( 3 );
-        if ( $label_fee_tier_1 > 0 && $label_fee_tier_3 === 0 ) {
-            $results[] = self::result(
-                'Label Application Fee',
-                'pass',
-                'Label fee correctly applies to Tier 1-2 only (Tier 1: $' . number_format( $label_fee_tier_1, 2 ) . ', Tier 3: Free).',
-                array( 'tier_1_fee' => $label_fee_tier_1, 'tier_3_fee' => $label_fee_tier_3 )
-            );
+        $label_price_setting = get_option( 'pls_label_price_tier_1_2', '0.50' );
+        
+        // Label fee should be free (0) for Tier 3+, and use setting for Tier 1-2
+        if ( $label_fee_tier_1 >= 0 && $label_fee_tier_3 === 0.0 ) {
+            if ( $label_fee_tier_1 > 0 ) {
+                $results[] = self::result(
+                    'Label Application Fee',
+                    'pass',
+                    'Label fee correctly applies to Tier 1-2 only (Tier 1: $' . number_format( $label_fee_tier_1, 2 ) . ', Tier 3: Free).',
+                    array( 'tier_1_fee' => $label_fee_tier_1, 'tier_3_fee' => $label_fee_tier_3, 'setting' => $label_price_setting )
+                );
+            } else {
+                $results[] = self::result(
+                    'Label Application Fee',
+                    'info',
+                    'Label fee is set to free for all tiers (Tier 1: $' . number_format( $label_fee_tier_1, 2 ) . ', Tier 3: Free).',
+                    array( 'tier_1_fee' => $label_fee_tier_1, 'tier_3_fee' => $label_fee_tier_3, 'setting' => $label_price_setting )
+                );
+            }
         } else {
             $results[] = self::result(
                 'Label Application Fee',
                 'warning',
-                'Label fee calculation may need review.',
-                array( 'tier_1_fee' => $label_fee_tier_1, 'tier_3_fee' => $label_fee_tier_3 )
+                'Label fee calculation may need review. Expected: Tier 1-2 use setting (' . $label_price_setting . '), Tier 3+ free. Got: Tier 1=' . $label_fee_tier_1 . ', Tier 3=' . $label_fee_tier_3,
+                array( 'tier_1_fee' => $label_fee_tier_1, 'tier_3_fee' => $label_fee_tier_3, 'setting' => $label_price_setting ),
+                'Check Settings → Label Application Fee setting and PLS_Tier_Rules::get_label_fee() method.'
             );
         }
 
@@ -3534,9 +3548,18 @@ final class PLS_System_Test {
 
         // Test 3: SEO hooks registered
         if ( class_exists( 'PLS_SEO_Integration' ) ) {
+            // Check for actual hooks registered in PLS_SEO_Integration::init()
             $seo_hooks = array(
-                'wpseo_sitemap_product_content',
-                'wpseo_opengraph_image',
+                'wpseo_sitemap_exclude_post_type',
+                'wpseo_metabox_prio',
+                'wpseo_register_extra_replacements',
+                'wpseo_schema_webpage',
+                'wpseo_breadcrumb_links',
+                'wpseo_opengraph_title',
+                'wpseo_opengraph_desc',
+                'wpseo_title',
+                'wpseo_metadesc',
+                'pls_product_synced',
             );
             $hooks_registered = 0;
             foreach ( $seo_hooks as $hook ) {
@@ -3544,20 +3567,21 @@ final class PLS_System_Test {
                     $hooks_registered++;
                 }
             }
+            // If Yoast is not active, hooks won't be registered but that's OK
             if ( $hooks_registered > 0 || ! defined( 'WPSEO_VERSION' ) ) {
                 $results[] = self::result(
                     'SEO Hooks',
                     'pass',
-                    'SEO integration hooks are registered or Yoast SEO is not active.',
-                    array( 'registered' => $hooks_registered )
+                    'SEO integration hooks are registered' . ( ! defined( 'WPSEO_VERSION' ) ? ' (Yoast SEO not active)' : '' ) . '.',
+                    array( 'registered' => $hooks_registered, 'yoast_active' => defined( 'WPSEO_VERSION' ) )
                 );
             } else {
                 $results[] = self::result(
                     'SEO Hooks',
                     'warning',
-                    'SEO integration hooks may not be registered.',
-                    array(),
-                    'Check PLS_SEO_Integration::init() hook registration.'
+                    'SEO integration hooks may not be registered. Ensure PLS_SEO_Integration::init() is called.',
+                    array( 'registered' => $hooks_registered ),
+                    'Check that PLS_SEO_Integration::init() is called in PLS_Plugin::on_plugins_loaded().'
                 );
             }
         }

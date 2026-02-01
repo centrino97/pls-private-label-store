@@ -439,9 +439,9 @@
         
         // Update tab description
         var descriptions = {
-          'all': '<?php esc_js_e( 'All ingredients are shown. Base ingredients are included in all products. Tier 3+ customers can unlock additional ingredients.', 'pls-private-label-store' ); ?>',
-          'base': '<?php esc_js_e( 'Base ingredients (Tier 1-2) are included in all products. These are standard INCI ingredients available to all customers.', 'pls-private-label-store' ); ?>',
-          'unlockable': '<?php esc_js_e( 'Unlockable ingredients (Tier 3+) are only available to customers who have reached Tier 3 or higher. These can be marked as key ingredients.', 'pls-private-label-store' ); ?>'
+          'all': 'All ingredients are shown. Base ingredients are included in all products. Tier 3+ customers can unlock additional ingredients.',
+          'base': 'Base ingredients (Tier 1-2) are included in all products. These are standard INCI ingredients available to all customers.',
+          'unlockable': 'Unlockable ingredients (Tier 3+) are only available to customers who have reached Tier 3 or higher. These can be marked as key ingredients.'
         };
         $('#pls-tab-description p').text(descriptions[tab] || descriptions['all']);
       });
