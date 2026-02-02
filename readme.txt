@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 5.3.3
+Stable tag: 5.3.4
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,13 @@ and provides shortcodes for seamless Elementor Theme Builder integration.
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 5.3.4 =
+* **CRITICAL FIX:** Comprehensive WooCommerce ingredient attribute cleanup - Sample data deletion now removes ALL ingredient attributes from WooCommerce
+* **CRITICAL FIX:** Cleanup function now checks ALL WooCommerce attributes directly (not just PLS-matched ones) - catches orphaned attributes
+* **IMPROVED:** Sample data cleanup automatically removes incorrectly synced ingredient attributes during deletion
+* **IMPROVED:** Cleanup function deletes any WooCommerce attribute starting with "ingredient-" regardless of origin
+* **POLISHED:** Perfect attribute management - Only necessary attributes remain after cleanup
+
 = 5.3.3 =
 * **CRITICAL FIX:** Ingredient selection system perfected - Base ingredients (Tier 1/INCI) are NEVER selectable by customers
 * **NEW:** Active Ingredients section in frontend configurator - Only Tier 3+ key ingredients are selectable

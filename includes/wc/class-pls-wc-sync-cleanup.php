@@ -33,62 +33,54 @@ final class PLS_WC_Sync_Cleanup {
         $deleted_attributes = array();
         $errors = array();
 
-        // Get all PLS attributes that are ingredients
-        $pls_ingredient_attrs = $wpdb->get_results(
-            "SELECT id, attr_key, label FROM {$wpdb->prefix}pls_attribute WHERE option_type = 'ingredient' OR attr_key LIKE 'ingredient-%'"
-        );
-
-        foreach ( $pls_ingredient_attrs as $pls_attr ) {
-            // Find corresponding WooCommerce attribute
-            $slug = sanitize_title( $pls_attr->attr_key );
-            $taxonomies = wc_get_attribute_taxonomies();
-            
-            foreach ( $taxonomies as $tax ) {
-                if ( $slug === $tax->attribute_name ) {
-                    // Get taxonomy name
-                    $taxonomy = wc_attribute_taxonomy_name( $tax->attribute_name );
-                    
-                    // Delete all terms in this taxonomy first
-                    $terms = get_terms( array(
-                        'taxonomy' => $taxonomy,
-                        'hide_empty' => false,
-                    ) );
-                    
-                    if ( ! is_wp_error( $terms ) && ! empty( $terms ) ) {
-                        foreach ( $terms as $term ) {
-                            wp_delete_term( $term->term_id, $taxonomy );
-                        }
+        // Get ALL WooCommerce attributes and check each one directly
+        // This ensures we catch ALL ingredient attributes, even orphaned ones not in PLS
+        $taxonomies = wc_get_attribute_taxonomies();
+        
+        foreach ( $taxonomies as $tax ) {
+            // Check if this attribute name starts with 'ingredient-'
+            // This catches all incorrectly created ingredient attributes
+            if ( strpos( $tax->attribute_name, 'ingredient-' ) === 0 ) {
+                // Get taxonomy name
+                $taxonomy = wc_attribute_taxonomy_name( $tax->attribute_name );
+                
+                // Delete all terms in this taxonomy first
+                $terms = get_terms( array(
+                    'taxonomy' => $taxonomy,
+                    'hide_empty' => false,
+                ) );
+                
+                if ( ! is_wp_error( $terms ) && ! empty( $terms ) ) {
+                    foreach ( $terms as $term ) {
+                        wp_delete_term( $term->term_id, $taxonomy );
                     }
-                    
-                    // Delete WooCommerce attribute from database
-                    // WooCommerce stores attributes in wp_woocommerce_attribute_taxonomies table
-                    global $wpdb;
-                    $deleted = $wpdb->delete(
-                        $wpdb->prefix . 'woocommerce_attribute_taxonomies',
-                        array( 'attribute_id' => $tax->attribute_id ),
-                        array( '%d' )
+                }
+                
+                // Delete WooCommerce attribute from database
+                // WooCommerce stores attributes in wp_woocommerce_attribute_taxonomies table
+                $deleted = $wpdb->delete(
+                    $wpdb->prefix . 'woocommerce_attribute_taxonomies',
+                    array( 'attribute_id' => $tax->attribute_id ),
+                    array( '%d' )
+                );
+                
+                if ( $deleted !== false ) {
+                    $deleted_count++;
+                    $deleted_attributes[] = array(
+                        'wc_id' => $tax->attribute_id,
+                        'name' => $tax->attribute_name,
+                        'label' => $tax->attribute_label,
                     );
                     
-                    if ( $deleted !== false ) {
-                        $deleted_count++;
-                        $deleted_attributes[] = array(
-                            'pls_id' => $pls_attr->id,
-                            'wc_id' => $tax->attribute_id,
-                            'name' => $tax->attribute_name,
-                            'label' => $pls_attr->label,
-                        );
-                        
-                        // Clear WooCommerce attribute taxonomies transient
-                        delete_transient( 'wc_attribute_taxonomies' );
-                        
-                        // Unregister the taxonomy
-                        if ( taxonomy_exists( $taxonomy ) ) {
-                            unregister_taxonomy( $taxonomy );
-                        }
-                    } else {
-                        $errors[] = "Failed to delete WooCommerce attribute: {$tax->attribute_name}";
+                    // Clear WooCommerce attribute taxonomies transient
+                    delete_transient( 'wc_attribute_taxonomies' );
+                    
+                    // Unregister the taxonomy
+                    if ( taxonomy_exists( $taxonomy ) ) {
+                        unregister_taxonomy( $taxonomy );
                     }
-                    break;
+                } else {
+                    $errors[] = "Failed to delete WooCommerce attribute: {$tax->attribute_name}";
                 }
             }
         }

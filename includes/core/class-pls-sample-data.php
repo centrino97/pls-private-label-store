@@ -613,6 +613,16 @@ final class PLS_Sample_Data {
             $wpdb->query( "TRUNCATE TABLE {$reports_table}" );
         }
 
+        // Step 6.5: Clean up WooCommerce ingredient attributes
+        error_log( '[PLS Sample Data] Cleanup: Cleaning up WooCommerce ingredient attributes...' );
+        require_once PLS_PLS_DIR . 'includes/wc/class-pls-wc-sync-cleanup.php';
+        $cleanup_result = PLS_WC_Sync_Cleanup::cleanup_ingredient_attributes();
+        if ( $cleanup_result['success'] ) {
+            error_log( sprintf( '[PLS Sample Data] Cleanup: Removed %d WooCommerce ingredient attributes.', $cleanup_result['deleted_count'] ) );
+        } else {
+            error_log( '[PLS Sample Data] Cleanup: Warning - Failed to clean up WooCommerce ingredient attributes: ' . $cleanup_result['message'] );
+        }
+
         // Step 7: Clear all caches
         error_log( '[PLS Sample Data] Cleanup: Clearing caches...' );
         wp_cache_flush();
