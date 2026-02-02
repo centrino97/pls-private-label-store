@@ -792,36 +792,7 @@ wp_localize_script(
                   <?php endforeach; ?>
                 </div>
                 
-                <!-- Live Price Calculator -->
-                <div class="pls-price-calculator" id="pls-live-calculator" style="margin-top: 24px; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
-                  <h4 style="margin-top: 0; font-size: 16px;"><?php esc_html_e( 'Estimated Price Calculator', 'pls-private-label-store' ); ?></h4>
-                  <div class="pls-calc-tier-selector" style="margin-bottom: 12px;">
-                    <label style="display: flex; align-items: center; gap: 8px;">
-                      <span><?php esc_html_e( 'Calculate for:', 'pls-private-label-store' ); ?></span>
-                      <select id="pls-calc-tier-select" style="padding: 4px 8px;">
-                        <option value="1"><?php esc_html_e( 'Tier 1 (50 units)', 'pls-private-label-store' ); ?></option>
-                        <option value="2"><?php esc_html_e( 'Tier 2 (100 units)', 'pls-private-label-store' ); ?></option>
-                        <option value="3"><?php esc_html_e( 'Tier 3 (250 units)', 'pls-private-label-store' ); ?></option>
-                        <option value="4"><?php esc_html_e( 'Tier 4 (500 units)', 'pls-private-label-store' ); ?></option>
-                        <option value="5"><?php esc_html_e( 'Tier 5 (1000 units)', 'pls-private-label-store' ); ?></option>
-                      </select>
-                    </label>
-                  </div>
-                  <div class="pls-calc-breakdown">
-                    <div class="pls-calc-row" style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
-                      <span id="pls-calc-base-label"><?php esc_html_e( 'Base Price', 'pls-private-label-store' ); ?></span>
-                      <strong id="pls-calc-base-price">$0.00</strong>
-                    </div>
-                    <div id="pls-calc-addons" style="margin-top: 8px;">
-                      <!-- Addons will be populated by JavaScript -->
-                    </div>
-                    <div class="pls-calc-total" style="display: flex; justify-content: space-between; padding: 12px 0; margin-top: 12px; border-top: 2px solid #2271b1; font-size: 18px; font-weight: 600;">
-                      <span><?php esc_html_e( 'Total Price', 'pls-private-label-store' ); ?></span>
-                      <strong id="pls-calc-total-price" style="color: #2271b1;">$0.00</strong>
-                    </div>
-                  </div>
-                  <p class="pls-subtle" style="margin-top: 12px; font-size: 12px;"><?php esc_html_e( 'Prices shown are estimates. Select different pack tiers and options to see pricing variations.', 'pls-private-label-store' ); ?></p>
-                </div>
+                <!-- v5.5.2: Estimated Price Calculator removed for simplicity -->
               </div>
             </div>
 
@@ -1056,45 +1027,31 @@ wp_localize_script(
                 </div>
               </div>
 
-              <!-- Label Application Section (moved into Product Options) -->
+              <!-- Label Application Section - v5.5.2 Simplified -->
               <div class="pls-modal__section" style="margin-top: 32px; padding-top: 32px; border-top: 2px solid var(--pls-gray-200);">
                 <div class="pls-section-heading">
                   <p class="pls-label"><?php esc_html_e( 'LABEL CUSTOMIZATION', 'pls-private-label-store' ); ?></p>
-                  <h3><?php esc_html_e( 'Label Application & Pricing', 'pls-private-label-store' ); ?></h3>
-                  <p class="pls-subtle"><?php esc_html_e( 'Decide how labels are applied, priced, and when artwork is collected.', 'pls-private-label-store' ); ?></p>
+                  <h3><?php esc_html_e( 'Label Application', 'pls-private-label-store' ); ?></h3>
                 </div>
-                <div class="pls-label-flex">
-                  <label class="pls-toggle-card pls-toggle-card--switch">
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                  <label class="pls-toggle-card pls-toggle-card--switch" style="padding: 12px 16px;">
                     <input type="checkbox" name="label_enabled" id="pls-label-enabled" value="1" checked />
                     <div>
                       <strong><?php esc_html_e( 'Offer label application for this product', 'pls-private-label-store' ); ?></strong>
-                      <p class="pls-subtle"><?php esc_html_e( 'Turn this off when labels are not available so the option stays hidden.', 'pls-private-label-store' ); ?></p>
+                      <p class="pls-subtle" style="margin: 4px 0 0;"><?php esc_html_e( 'Pricing is set globally in Product Options → Label Application', 'pls-private-label-store' ); ?></p>
                     </div>
                   </label>
-                  <div class="pls-label-price">
-                    <label><?php esc_html_e( 'Price per unit for application', 'pls-private-label-store' ); ?>
-                      <input type="number" step="0.01" class="pls-price-input" name="label_price_per_unit" id="pls-label-price" placeholder="0.00" />
-                    </label>
-                  </div>
-                  <label class="pls-toggle-card"><input type="checkbox" name="label_requires_file" id="pls-label-file" />
+                  <label class="pls-toggle-card" style="padding: 12px 16px;">
+                    <input type="checkbox" name="label_requires_file" id="pls-label-file" />
                     <div>
-                      <strong><?php esc_html_e( 'Require label upload now', 'pls-private-label-store' ); ?></strong>
-                      <p class="pls-subtle"><?php esc_html_e( 'If customers want their own design applied, collect the file right away.', 'pls-private-label-store' ); ?></p>
+                      <strong><?php esc_html_e( 'Require label upload at checkout', 'pls-private-label-store' ); ?></strong>
+                      <p class="pls-subtle" style="margin: 4px 0 0;"><?php esc_html_e( 'Customer must upload their label design when ordering', 'pls-private-label-store' ); ?></p>
                     </div>
                   </label>
-                </div>
-                <div class="pls-design-callout" style="margin-top: 16px;">
-                  <div>
-                    <p class="pls-label"><?php esc_html_e( 'Label design', 'pls-private-label-store' ); ?></p>
-                    <h4><?php esc_html_e( 'Offer label design support', 'pls-private-label-store' ); ?></h4>
-                    <p class="pls-subtle"><?php esc_html_e( 'We will reach out to customers after they select this to craft their artwork.', 'pls-private-label-store' ); ?></p>
-                  </div>
-                  <div class="pls-guide-link">
-                    <p class="pls-subtle"><?php esc_html_e( 'Label guide', 'pls-private-label-store' ); ?>: <a href="<?php echo esc_url( $label_guide_constant ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $label_guide_constant ); ?></a></p>
-                  </div>
                 </div>
                 <input type="hidden" name="label_helper_text" value="" />
                 <input type="hidden" name="label_guide_url" id="pls-label-guide" value="<?php echo esc_attr( $label_guide_constant ); ?>" />
+                <input type="hidden" name="label_price_per_unit" id="pls-label-price" value="0" />
               </div>
             </div>
           </div>

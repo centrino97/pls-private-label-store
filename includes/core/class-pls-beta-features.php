@@ -31,6 +31,7 @@ final class PLS_Beta_Features {
      * List of beta feature identifiers with their metadata.
      * 
      * @since 5.5.1 - Added individual feature configuration
+     * @since 5.5.2 - Added admin_enabled and customer_enabled visibility flags
      * @var array
      */
     private static $beta_features = array(
@@ -38,48 +39,57 @@ final class PLS_Beta_Features {
             'label' => 'WooCommerce Settings Warnings',
             'description' => 'Show warnings for WooCommerce configuration issues',
             'category' => 'system',
+            'admin_only' => true, // Only affects admin, not customers
         ),
         'stock_management_warnings' => array(
             'label' => 'Stock Management Warnings',
             'description' => 'Show warnings for stock management configuration',
             'category' => 'system',
+            'admin_only' => true,
         ),
         'tier_unlocking' => array(
             'label' => 'Tier Unlocking',
             'description' => 'Allow customers to unlock higher tiers based on purchase history',
             'category' => 'features',
+            'admin_only' => false, // Affects both admin and customers
         ),
         'inline_configurator' => array(
             'label' => 'Inline Configurator',
             'description' => 'Show product configurator inline instead of modal',
             'category' => 'features',
+            'admin_only' => false,
         ),
         'cro_features' => array(
             'label' => 'CRO Features',
             'description' => 'Conversion rate optimization features',
             'category' => 'features',
+            'admin_only' => false,
         ),
         'sample_data_completeness' => array(
             'label' => 'Sample Data Completeness',
             'description' => 'Extended sample data generation for testing',
             'category' => 'system',
+            'admin_only' => true,
         ),
         'landing_pages' => array(
             'label' => 'Landing Pages',
             'description' => 'Create custom landing pages for products and categories',
             'category' => 'features',
+            'admin_only' => false,
         ),
         'custom_printed_bottles' => array(
             'label' => 'Custom Printed Bottles',
             'description' => 'Allow customers to order custom printed bottles (Tier 4+)',
             'category' => 'product_options',
             'default' => false,
+            'admin_only' => false, // Shows to both admin and customers when enabled
         ),
         'external_box_packaging' => array(
             'label' => 'External Box Packaging',
             'description' => 'Allow customers to add external box packaging (Tier 4+)',
             'category' => 'product_options',
             'default' => false,
+            'admin_only' => false,
         ),
     );
 

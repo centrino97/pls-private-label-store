@@ -314,7 +314,7 @@ final class PLS_Admin_Ajax {
         $attribute_id = isset( $_POST['attribute_id'] ) ? absint( $_POST['attribute_id'] ) : 0;
         $label        = isset( $_POST['label'] ) ? sanitize_text_field( wp_unslash( $_POST['label'] ) ) : '';
         $price_raw    = isset( $_POST['price'] ) ? wp_unslash( $_POST['price'] ) : '';
-        $price        = '' !== $price_raw ? round( floatval( $price_raw ), 2 ) : '';
+        $price        = '' !== $price_raw ? round( floatval( $price_raw ), 2 ) : 0;
         $min_tier     = isset( $_POST['min_tier_level'] ) ? absint( $_POST['min_tier_level'] ) : 1;
 
         if ( ! $attribute_id || '' === $label ) {
@@ -322,13 +322,12 @@ final class PLS_Admin_Ajax {
         }
 
         // Check if this is an ingredient attribute - default to Tier 3+
-        $attr = PLS_Repo_Attributes::get_primary_attribute();
         $is_ingredient = false;
         if ( $attribute_id ) {
             global $wpdb;
             $table = PLS_Repositories::table( 'attribute' );
             $attr_obj = $wpdb->get_row(
-                $wpdb->prepare( "SELECT option_type FROM {$table} WHERE id = %d", $attribute_id )
+                $wpdb->prepare( "SELECT option_type, attr_key FROM {$table} WHERE id = %d", $attribute_id )
             );
             if ( $attr_obj && $attr_obj->option_type === 'ingredient' ) {
                 $is_ingredient = true;
@@ -336,30 +335,87 @@ final class PLS_Admin_Ajax {
             }
         }
 
+        // v5.5.2: Insert with min_tier_level directly
         $value_id = PLS_Repo_Attributes::insert_value(
             array(
-                'attribute_id' => $attribute_id,
-                'label'        => $label,
+                'attribute_id'   => $attribute_id,
+                'label'          => $label,
+                'min_tier_level' => $min_tier,
             )
         );
 
-        // Set tier rules
-        if ( $value_id ) {
-            PLS_Repo_Attributes::update_value_tier_rules( $value_id, $min_tier, null );
+        if ( ! $value_id ) {
+            wp_send_json_error( array( 'message' => __( 'Failed to create value.', 'pls-private-label-store' ) ), 500 );
         }
 
-        $value_row = PLS_Repo_Attributes::get_value( $value_id );
-        if ( '' !== $price && $value_row && $value_row->term_id ) {
-            update_term_meta( $value_row->term_id, '_pls_default_price_impact', $price );
+        // Set tier rules with price overrides for tier-based pricing
+        $tier_prices = null;
+        if ( $price > 0 ) {
+            // Set price for all tiers by default
+            $tier_prices = array(
+                1 => $price,
+                2 => $price,
+                3 => $price,
+                4 => $price,
+                5 => $price,
+            );
+        }
+        PLS_Repo_Attributes::update_value_tier_rules( $value_id, $min_tier, $tier_prices );
+
+        // v5.5.2: Sync with WooCommerce immediately to get term_id for price storage
+        if ( $attr_obj && ! empty( $attr_obj->attr_key ) ) {
+            $wc_taxonomy = 'pa_' . $attr_obj->attr_key;
+            
+            // Register attribute if needed
+            if ( ! taxonomy_exists( $wc_taxonomy ) ) {
+                $wc_attr_id = wc_create_attribute( array(
+                    'name'         => $attr_obj->label ?? $attr_obj->attr_key,
+                    'slug'         => $attr_obj->attr_key,
+                    'type'         => 'select',
+                    'order_by'     => 'menu_order',
+                    'has_archives' => false,
+                ) );
+                
+                if ( ! is_wp_error( $wc_attr_id ) ) {
+                    register_taxonomy( $wc_taxonomy, 'product', array(
+                        'hierarchical' => false,
+                        'show_ui'      => false,
+                        'query_var'    => true,
+                        'rewrite'      => false,
+                    ) );
+                }
+            }
+            
+            // Create term in WooCommerce
+            $term_slug = sanitize_title( $label );
+            $existing_term = get_term_by( 'slug', $term_slug, $wc_taxonomy );
+            
+            if ( ! $existing_term ) {
+                $term_result = wp_insert_term( $label, $wc_taxonomy, array( 'slug' => $term_slug ) );
+                if ( ! is_wp_error( $term_result ) ) {
+                    $term_id = $term_result['term_id'];
+                    PLS_Repo_Attributes::set_term_id_for_value( $value_id, $term_id );
+                    
+                    // Now save price to term meta
+                    if ( $price > 0 ) {
+                        update_term_meta( $term_id, '_pls_default_price_impact', $price );
+                    }
+                }
+            } else {
+                PLS_Repo_Attributes::set_term_id_for_value( $value_id, $existing_term->term_id );
+                if ( $price > 0 ) {
+                    update_term_meta( $existing_term->term_id, '_pls_default_price_impact', $price );
+                }
+            }
         }
 
         wp_send_json_success(
             array(
                 'value' => array(
-                    'id'            => $value_id,
-                    'label'         => $label,
-                    'attribute_id'  => $attribute_id,
-                    'price'         => '' !== $price ? $price : '',
+                    'id'             => $value_id,
+                    'label'          => $label,
+                    'attribute_id'   => $attribute_id,
+                    'price'          => $price,
                     'min_tier_level' => $min_tier,
                 ),
             )
@@ -2083,25 +2139,57 @@ final class PLS_Admin_Ajax {
         global $wpdb;
         $table = PLS_Repositories::table( 'attribute_value' );
         
-        // Update label
+        // Update label and min_tier_level
         $wpdb->update(
             $table,
-            array( 'label' => $label ),
+            array( 
+                'label' => $label,
+                'min_tier_level' => $min_tier,
+            ),
             array( 'id' => $value_id ),
-            array( '%s' ),
+            array( '%s', '%d' ),
             array( '%d' )
         );
 
-        // Update tier rules
-        PLS_Repo_Attributes::update_value_tier_rules( $value_id, $min_tier, null );
+        // v5.5.2: Update tier rules with price for all tiers
+        $tier_prices = null;
+        if ( $price > 0 ) {
+            $tier_prices = array(
+                1 => $price,
+                2 => $price,
+                3 => $price,
+                4 => $price,
+                5 => $price,
+            );
+        }
+        PLS_Repo_Attributes::update_value_tier_rules( $value_id, $min_tier, $tier_prices );
 
-        // Update price
+        // Update price in term meta
         $value = PLS_Repo_Attributes::get_value( $value_id );
         if ( $value && $value->term_id ) {
             if ( $price > 0 ) {
                 update_term_meta( $value->term_id, '_pls_default_price_impact', $price );
             } else {
                 delete_term_meta( $value->term_id, '_pls_default_price_impact' );
+            }
+        } elseif ( $value && ! $value->term_id ) {
+            // v5.5.2: Try to sync with WooCommerce if term_id is missing
+            $attr_table = PLS_Repositories::table( 'attribute' );
+            $attr_obj = $wpdb->get_row(
+                $wpdb->prepare( "SELECT attr_key, label as attr_label FROM {$attr_table} WHERE id = %d", $value->attribute_id )
+            );
+            
+            if ( $attr_obj && ! empty( $attr_obj->attr_key ) ) {
+                $wc_taxonomy = 'pa_' . $attr_obj->attr_key;
+                $term_slug = sanitize_title( $label );
+                $existing_term = get_term_by( 'slug', $term_slug, $wc_taxonomy );
+                
+                if ( $existing_term ) {
+                    PLS_Repo_Attributes::set_term_id_for_value( $value_id, $existing_term->term_id );
+                    if ( $price > 0 ) {
+                        update_term_meta( $existing_term->term_id, '_pls_default_price_impact', $price );
+                    }
+                }
             }
         }
 

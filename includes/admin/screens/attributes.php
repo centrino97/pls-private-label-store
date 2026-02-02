@@ -52,12 +52,7 @@ require_once PLS_PLS_DIR . 'includes/core/class-pls-tier-rules.php';
                 <?php echo esc_html( $option->label ); ?>
             </a>
         <?php endforeach; ?>
-        <a href="<?php echo esc_url( add_query_arg( 'tab', 'ingredients', admin_url( 'admin.php?page=pls-attributes' ) ) ); ?>" 
-           class="nav-tab <?php echo $active_tab === 'ingredients' ? 'nav-tab-active' : ''; ?>"
-           style="border-bottom: 2px solid transparent; margin-bottom: -2px; transition: none;">
-            <span class="pls-tier-badge" style="background: #6366f1; color: #fff; padding: 2px 6px; border-radius: 2px; font-size: 9px; margin-right: 6px;">T3+</span>
-            <?php esc_html_e( 'Ingredients', 'pls-private-label-store' ); ?>
-        </a>
+        <!-- v5.5.2: Ingredients moved to separate menu -->
     </nav>
 
     <!-- Pack Tier Modal -->
@@ -166,7 +161,7 @@ require_once PLS_PLS_DIR . 'includes/core/class-pls-tier-rules.php';
         </div>
 
     <?php
-    // v5.5.1: Only show Label Application Pricing when Label Application tab is active
+    // v5.5.2: Simplified Label Application Pricing - only show on Label Application tab
     $label_app_option_id = null;
     foreach ( $product_options as $opt ) {
         if ( stripos( $opt->label, 'label application' ) !== false ) {
@@ -177,108 +172,59 @@ require_once PLS_PLS_DIR . 'includes/core/class-pls-tier-rules.php';
     $is_label_app_tab = $label_app_option_id && $active_tab === 'option-' . $label_app_option_id;
     
     if ( $is_label_app_tab ) :
+    $label_fee_tier_1_2 = get_option( 'pls_label_fee_tier_1_2', '0.30' );
+    $label_application_fee_tier_1_2 = get_option( 'pls_label_application_fee_tier_1_2', '0.25' );
     ?>
-    <!-- Label Application Pricing Section - v5.5.1 Improved Flow -->
+    <!-- Label Application Pricing - v5.5.2 Simplified Table -->
     <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-top: 24px;">
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
-            <div>
-                <h2 style="margin: 0; font-size: 18px; font-weight: 600;"><?php esc_html_e( 'Label Pricing Configuration', 'pls-private-label-store' ); ?></h2>
-                <p class="description" style="margin: 4px 0 0;"><?php esc_html_e( 'Configure pricing for labels and professional application service. Tier 3-5 get FREE labels and application.', 'pls-private-label-store' ); ?></p>
-            </div>
-        </div>
+        <h2 style="margin: 0 0 16px; font-size: 16px; font-weight: 600;"><?php esc_html_e( 'Label Pricing (Tier 1-2 Only)', 'pls-private-label-store' ); ?></h2>
         
-        <?php
-        $label_fee_tier_1_2 = get_option( 'pls_label_fee_tier_1_2', '0.30' );
-        $label_application_fee_tier_1_2 = get_option( 'pls_label_application_fee_tier_1_2', '0.25' );
-        ?>
-        
-        <form id="pls-label-pricing-form" style="max-width: 700px;">
-            <!-- Customer Flow Preview -->
-            <div style="background: var(--pls-gray-50); border-radius: 8px; padding: 16px; margin-bottom: 20px; border: 1px solid var(--pls-gray-200);">
-                <h4 style="margin: 0 0 12px; font-size: 14px; color: var(--pls-gray-700);">
-                    <span class="dashicons dashicons-visibility" style="font-size: 16px; margin-right: 6px;"></span>
-                    <?php esc_html_e( 'Customer Flow Preview', 'pls-private-label-store' ); ?>
-                </h4>
-                <div style="font-size: 13px; color: var(--pls-gray-600); line-height: 1.8;">
-                    <p style="margin: 0 0 8px;"><strong>Q1:</strong> <?php esc_html_e( '"Do you require labels?"', 'pls-private-label-store' ); ?></p>
-                    <ul style="margin: 0 0 12px 20px; padding: 0;">
-                        <li><strong><?php esc_html_e( 'Yes', 'pls-private-label-store' ); ?></strong> → <?php esc_html_e( 'Label fee applies (Tier 1-2 only)', 'pls-private-label-store' ); ?></li>
-                        <li><strong><?php esc_html_e( 'No', 'pls-private-label-store' ); ?></strong> → <?php esc_html_e( 'No labels, no fee', 'pls-private-label-store' ); ?></li>
-                    </ul>
-                    <p style="margin: 0 0 8px;"><strong>Q2 (if Yes):</strong> <?php esc_html_e( '"Do you want Professional Label Application?"', 'pls-private-label-store' ); ?></p>
-                    <ul style="margin: 0 0 0 20px; padding: 0;">
-                        <li><strong><?php esc_html_e( 'Yes', 'pls-private-label-store' ); ?></strong> → <?php esc_html_e( 'Application fee applies (Tier 1-2 only)', 'pls-private-label-store' ); ?></li>
-                        <li><strong><?php esc_html_e( 'No (DIY)', 'pls-private-label-store' ); ?></strong> → <?php esc_html_e( 'Labels shipped separately, no application fee', 'pls-private-label-store' ); ?></li>
-                    </ul>
-                </div>
+        <form id="pls-label-pricing-form">
+            <table class="wp-list-table widefat fixed striped" style="max-width: 500px;">
+                <thead>
+                    <tr>
+                        <th><?php esc_html_e( 'Fee Type', 'pls-private-label-store' ); ?></th>
+                        <th style="width: 150px;"><?php esc_html_e( 'Price per Unit', 'pls-private-label-store' ); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <strong><?php esc_html_e( 'Label Fee', 'pls-private-label-store' ); ?></strong>
+                            <p class="description" style="margin: 2px 0 0;"><?php esc_html_e( 'Cost for providing custom labels', 'pls-private-label-store' ); ?></p>
+                        </td>
+                        <td>
+                            <div class="pls-input-with-prefix" style="max-width: 120px;">
+                                <span class="pls-input-prefix">A$</span>
+                                <input type="number" step="0.01" id="label_fee_tier_1_2" name="label_fee_tier_1_2" 
+                                       value="<?php echo esc_attr( $label_fee_tier_1_2 ); ?>" class="pls-input" min="0" />
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <strong><?php esc_html_e( 'Professional Application Fee', 'pls-private-label-store' ); ?></strong>
+                            <p class="description" style="margin: 2px 0 0;"><?php esc_html_e( 'Additional cost for applying labels', 'pls-private-label-store' ); ?></p>
+                        </td>
+                        <td>
+                            <div class="pls-input-with-prefix" style="max-width: 120px;">
+                                <span class="pls-input-prefix">A$</span>
+                                <input type="number" step="0.01" id="label_application_fee_tier_1_2" name="label_application_fee_tier_1_2" 
+                                       value="<?php echo esc_attr( $label_application_fee_tier_1_2 ); ?>" class="pls-input" min="0" />
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <div style="margin-top: 16px; padding: 10px 14px; background: var(--pls-success-light); border-radius: 6px; display: inline-block;">
+                <strong style="color: var(--pls-success);"><?php esc_html_e( 'Tier 3-5: FREE', 'pls-private-label-store' ); ?></strong>
+                <span style="margin-left: 8px; color: var(--pls-gray-500); font-size: 12px;"><?php esc_html_e( '(labels + application)', 'pls-private-label-store' ); ?></span>
             </div>
             
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
-                <!-- Label Fee -->
-                <div style="padding: 16px; background: #f8fafc; border-radius: 8px; border: 1px solid var(--pls-gray-200);">
-                    <label for="label_fee_tier_1_2" style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px;">
-                        <?php esc_html_e( 'Label Fee (Tier 1-2)', 'pls-private-label-store' ); ?>
-                    </label>
-                    <p class="description" style="margin: 0 0 12px; font-size: 12px;"><?php esc_html_e( 'Cost for providing custom labels', 'pls-private-label-store' ); ?></p>
-                    <div class="pls-input-with-prefix">
-                        <span class="pls-input-prefix">A$</span>
-                        <input type="number" step="0.01" id="label_fee_tier_1_2" name="label_fee_tier_1_2" 
-                               value="<?php echo esc_attr( $label_fee_tier_1_2 ); ?>" 
-                               class="pls-input" style="flex: 1;" min="0" placeholder="0.30" />
-                    </div>
-                    <span class="pls-field-hint"><?php esc_html_e( 'per unit', 'pls-private-label-store' ); ?></span>
-                </div>
-                
-                <!-- Professional Application Fee -->
-                <div style="padding: 16px; background: #f8fafc; border-radius: 8px; border: 1px solid var(--pls-gray-200);">
-                    <label for="label_application_fee_tier_1_2" style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px;">
-                        <?php esc_html_e( 'Professional Application Fee (Tier 1-2)', 'pls-private-label-store' ); ?>
-                    </label>
-                    <p class="description" style="margin: 0 0 12px; font-size: 12px;"><?php esc_html_e( 'Cost for applying labels professionally', 'pls-private-label-store' ); ?></p>
-                    <div class="pls-input-with-prefix">
-                        <span class="pls-input-prefix">A$</span>
-                        <input type="number" step="0.01" id="label_application_fee_tier_1_2" name="label_application_fee_tier_1_2" 
-                               value="<?php echo esc_attr( $label_application_fee_tier_1_2 ); ?>" 
-                               class="pls-input" style="flex: 1;" min="0" placeholder="0.25" />
-                    </div>
-                    <span class="pls-field-hint"><?php esc_html_e( 'per unit (additional)', 'pls-private-label-store' ); ?></span>
-                </div>
-            </div>
-            
-            <!-- Tier 3-5 FREE notice -->
-            <div style="padding: 12px 16px; background: var(--pls-success-light); border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px;">
-                <span class="dashicons dashicons-yes-alt" style="color: var(--pls-success); font-size: 24px;"></span>
-                <div>
-                    <strong style="color: var(--pls-success); display: block;"><?php esc_html_e( 'Tier 3, 4 & 5: FREE Labels + FREE Professional Application', 'pls-private-label-store' ); ?></strong>
-                    <span style="color: var(--pls-gray-500); font-size: 12px;">
-                        <?php esc_html_e( 'Higher volume tiers automatically receive complimentary labels and professional application service.', 'pls-private-label-store' ); ?>
-                    </span>
-                </div>
-            </div>
-            
-            <!-- Example Calculation -->
-            <div style="background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px;">
-                <strong style="font-size: 13px; color: #92400e;"><?php esc_html_e( 'Example: Tier 1 (50 units) with Professional Application', 'pls-private-label-store' ); ?></strong>
-                <p style="margin: 8px 0 0; font-size: 12px; color: #78350f;">
-                    <?php 
-                    $example_label = floatval( $label_fee_tier_1_2 ) * 50;
-                    $example_app = floatval( $label_application_fee_tier_1_2 ) * 50;
-                    $example_total = $example_label + $example_app;
-                    printf(
-                        esc_html__( 'Labels: A$%s × 50 = A$%s | Application: A$%s × 50 = A$%s | Total: A$%s', 'pls-private-label-store' ),
-                        number_format( $label_fee_tier_1_2, 2 ),
-                        number_format( $example_label, 2 ),
-                        number_format( $label_application_fee_tier_1_2, 2 ),
-                        number_format( $example_app, 2 ),
-                        number_format( $example_total, 2 )
-                    );
-                    ?>
-                </p>
-            </div>
-            
-            <div style="text-align: right;">
-                <button type="submit" class="button button-primary"><?php esc_html_e( 'Save Label Pricing', 'pls-private-label-store' ); ?></button>
-            </div>
+            <p style="margin-top: 16px;">
+                <button type="submit" class="button button-primary"><?php esc_html_e( 'Save Pricing', 'pls-private-label-store' ); ?></button>
+            </p>
         </form>
     </div>
     <?php endif; ?>
@@ -474,53 +420,9 @@ require_once PLS_PLS_DIR . 'includes/core/class-pls-tier-rules.php';
                 </div>
             <?php endif; ?>
 
-        <!-- Ingredients Tab -->
+        <!-- v5.5.2: Ingredients moved to separate menu -->
         <?php elseif ( $active_tab === 'ingredients' ) : ?>
-            <div class="tab-content pls-tab-content">
-                <div style="background: #fff; border: 1px solid #ccd0d4; border-radius: 4px; padding: 15px;">
-                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-                        <h2 style="margin: 0; font-size: 18px;"><?php esc_html_e( 'Ingredients', 'pls-private-label-store' ); ?></h2>
-                        <span class="pls-tier-badge" style="background: #6366f1; color: #fff; padding: 4px 10px; border-radius: 3px; font-size: 11px; font-weight: 600;"><?php esc_html_e( 'Tier 3+', 'pls-private-label-store' ); ?></span>
-                        <span class="pls-badge" style="background: #f0f0f1; color: #50575e; padding: 4px 10px; border-radius: 3px; font-size: 11px; font-weight: 600;"><?php echo count( $ingredients ); ?> <?php esc_html_e( 'ingredients', 'pls-private-label-store' ); ?></span>
-                    </div>
-
-                    <?php if ( empty( $ingredients ) ) : ?>
-                        <p><?php esc_html_e( 'No ingredients yet.', 'pls-private-label-store' ); ?></p>
-                    <?php else : ?>
-                        <table class="wp-list-table widefat fixed striped">
-                            <thead>
-                                <tr>
-                                    <th style="width: 50px;"><?php esc_html_e( 'Icon', 'pls-private-label-store' ); ?></th>
-                                    <th style="width: 25%;"><?php esc_html_e( 'Name', 'pls-private-label-store' ); ?></th>
-                                    <th><?php esc_html_e( 'Description', 'pls-private-label-store' ); ?></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ( $ingredients as $ingredient ) : ?>
-                                    <?php
-                                    $icon    = PLS_Taxonomies::icon_for_term( $ingredient->term_id );
-                                    $short   = get_term_meta( $ingredient->term_id, 'pls_ingredient_short_desc', true );
-                                    ?>
-                                    <tr>
-                                        <td>
-                                            <div style="width: 32px; height: 32px; border-radius: 4px; background: #f0f0f1; display: flex; align-items: center; justify-content: center; overflow: hidden;">
-                                                <?php if ( $icon ) : ?>
-                                                    <img src="<?php echo esc_url( $icon ); ?>" alt="" style="width: 100%; height: 100%; object-fit: cover;" />
-                                                <?php else : ?>
-                                                    <span style="color: #999;">📦</span>
-                                                <?php endif; ?>
-                                            </div>
-                                        </td>
-                                        <td><strong><?php echo esc_html( $ingredient->name ); ?></strong></td>
-                                        <td><?php echo esc_html( $short ); ?></td>
-                                    </tr>
-                                <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    <?php endif; ?>
-                </div>
-            </div>
+            <?php wp_safe_redirect( admin_url( 'admin.php?page=pls-ingredients' ) ); exit; ?>
         <?php endif; ?>
     </div>
 
@@ -816,18 +718,17 @@ jQuery(document).ready(function($) {
         });
     });
     
-    // Label Pricing form submit
+    // Label Pricing form submit - v5.5.2 fixed
     $('#pls-label-pricing-form').on('submit', function(e) {
         e.preventDefault();
-        var labelPrice = parseFloat($('#label_price_tier_1_2').val()) || 0;
-        if (labelPrice < 0) {
-            labelPrice = 0;
-        }
+        var labelFee = parseFloat($('#label_fee_tier_1_2').val()) || 0;
+        var applicationFee = parseFloat($('#label_application_fee_tier_1_2').val()) || 0;
         
         $.post(ajaxurl, {
             action: 'pls_update_label_pricing',
             nonce: nonce,
-            label_price_tier_1_2: labelPrice
+            label_fee_tier_1_2: labelFee,
+            label_application_fee_tier_1_2: applicationFee
         }, function(resp) {
             if (resp.success) {
                 showNotice(resp.data.message || 'Label pricing saved successfully');
