@@ -325,8 +325,8 @@ final class PLS_Admin_Menu {
 
         add_submenu_page(
             'pls-dashboard',
-            __( 'PLS – Ingredients', 'pls-private-label-store' ),
-            __( 'Ingredients', 'pls-private-label-store' ),
+            __( 'PLS – Ingredients Base', 'pls-private-label-store' ),
+            __( 'Ingredients Base', 'pls-private-label-store' ),
             PLS_Capabilities::CAP_ATTRS,
             'pls-ingredients',
             array( __CLASS__, 'render_ingredients' )

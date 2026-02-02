@@ -2164,12 +2164,27 @@ final class PLS_Admin_Ajax {
             wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
         }
 
-        $label_price = isset( $_POST['label_price_tier_1_2'] ) ? round( floatval( $_POST['label_price_tier_1_2'] ), 2 ) : 0.50;
-        if ( $label_price < 0 ) {
-            $label_price = 0;
+        // v5.5.1: Handle both label fee and professional application fee
+        $label_fee = isset( $_POST['label_fee_tier_1_2'] ) ? round( floatval( $_POST['label_fee_tier_1_2'] ), 2 ) : 0.30;
+        $application_fee = isset( $_POST['label_application_fee_tier_1_2'] ) ? round( floatval( $_POST['label_application_fee_tier_1_2'] ), 2 ) : 0.25;
+        
+        // Backwards compatibility: also handle old field name
+        if ( isset( $_POST['label_price_tier_1_2'] ) && ! isset( $_POST['label_fee_tier_1_2'] ) ) {
+            $label_fee = round( floatval( $_POST['label_price_tier_1_2'] ), 2 );
+        }
+        
+        if ( $label_fee < 0 ) {
+            $label_fee = 0;
+        }
+        if ( $application_fee < 0 ) {
+            $application_fee = 0;
         }
 
-        update_option( 'pls_label_price_tier_1_2', $label_price );
+        update_option( 'pls_label_fee_tier_1_2', $label_fee );
+        update_option( 'pls_label_application_fee_tier_1_2', $application_fee );
+        
+        // Keep backwards compatibility option
+        update_option( 'pls_label_price_tier_1_2', $label_fee + $application_fee );
 
         wp_send_json_success( array( 'message' => __( 'Label pricing updated successfully.', 'pls-private-label-store' ) ) );
     }

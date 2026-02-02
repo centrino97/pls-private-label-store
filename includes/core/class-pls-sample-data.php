@@ -926,11 +926,15 @@ final class PLS_Sample_Data {
             }
         }
 
-        // Label Application
+        // Label Application (v5.5.1 - Updated flow)
+        // Flow: Do you require labels? -> Yes (with price T1-2) / No
+        //       If Yes: Professional Application? -> Yes (additional price T1-2) / DIY (ship separately)
         $existing_label_app = $wpdb->get_row( "SELECT id FROM {$attr_table} WHERE attr_key = 'label-application' LIMIT 1" );
         
         if ( $existing_label_app ) {
             $label_app_id = $existing_label_app->id;
+            // Delete existing values to recreate with new structure
+            $wpdb->delete( $values_table, array( 'attribute_id' => $label_app_id ), array( '%d' ) );
         } else {
             $label_app_id = PLS_Repo_Attributes::insert_attr( array(
                 'label' => 'Label Application',
@@ -940,16 +944,37 @@ final class PLS_Sample_Data {
             ) );
         }
 
-        $label_price_tier_1_2 = get_option( 'pls_label_price_tier_1_2', 0.50 );
+        // Get separate label fees (v5.5.1)
+        $label_fee_tier_1_2 = floatval( get_option( 'pls_label_fee_tier_1_2', 0.30 ) );
+        $application_fee_tier_1_2 = floatval( get_option( 'pls_label_application_fee_tier_1_2', 0.25 ) );
+        $total_pro_fee = $label_fee_tier_1_2 + $application_fee_tier_1_2;
         
         $label_app_values = array(
-            'DIY Label Application' => array( 'price' => 0, 'tier_prices' => array(), 'min_tier' => 1 ),
-            'Professional Label Application' => array( 
-                'price' => $label_price_tier_1_2, 
+            // Option 1: No labels required
+            'No Labels Required' => array( 
+                'price' => 0, 
+                'tier_prices' => array(), 
+                'min_tier' => 1 
+            ),
+            // Option 2: Yes + Professional Application (label fee + application fee)
+            'Yes - Professional Application' => array( 
+                'price' => $total_pro_fee, 
                 'tier_prices' => array( 
-                    1 => $label_price_tier_1_2, 
-                    2 => $label_price_tier_1_2,
-                    3 => 0,
+                    1 => $total_pro_fee, 
+                    2 => $total_pro_fee,
+                    3 => 0, // FREE for Tier 3+
+                    4 => 0,
+                    5 => 0,
+                ),
+                'min_tier' => 1 
+            ),
+            // Option 3: Yes + DIY (label fee only, shipped separately)
+            'Yes - DIY (Ship Labels Separately)' => array( 
+                'price' => $label_fee_tier_1_2, 
+                'tier_prices' => array( 
+                    1 => $label_fee_tier_1_2, 
+                    2 => $label_fee_tier_1_2,
+                    3 => 0, // FREE for Tier 3+
                     4 => 0,
                     5 => 0,
                 ),
@@ -2934,16 +2959,37 @@ final class PLS_Sample_Data {
                                         }
                                     }
                                     
-                                    // For Label Application - add if enabled
+                                    // For Label Application - v5.5.1 updated flow
                                     if ( $attr_label === 'Label Application' ) {
-                                        // 60% chance to add label application
-                                        if ( rand( 1, 10 ) <= 6 ) {
-                                            $label_options = array_filter( $values, function( $v ) {
-                                                return stripos( $v['value_label'], 'Professional' ) !== false;
+                                        // 70% chance customer requires labels
+                                        if ( rand( 1, 10 ) <= 7 ) {
+                                            // 60% of those choose Professional Application
+                                            if ( rand( 1, 10 ) <= 6 ) {
+                                                $label_options = array_filter( $values, function( $v ) {
+                                                    return stripos( $v['value_label'], 'Professional' ) !== false;
+                                                } );
+                                                if ( ! empty( $label_options ) ) {
+                                                    $random_label = array_values( $label_options )[ array_rand( $label_options ) ];
+                                                    $item->update_meta_data( '_pls_label_application', $random_label['value_label'] );
+                                                }
+                                            } else {
+                                                // 40% choose DIY
+                                                $diy_options = array_filter( $values, function( $v ) {
+                                                    return stripos( $v['value_label'], 'DIY' ) !== false || stripos( $v['value_label'], 'Ship' ) !== false;
+                                                } );
+                                                if ( ! empty( $diy_options ) ) {
+                                                    $random_diy = array_values( $diy_options )[ array_rand( $diy_options ) ];
+                                                    $item->update_meta_data( '_pls_label_application', $random_diy['value_label'] );
+                                                }
+                                            }
+                                        } else {
+                                            // 30% don't need labels
+                                            $no_label_options = array_filter( $values, function( $v ) {
+                                                return stripos( $v['value_label'], 'No Labels' ) !== false || stripos( $v['value_label'], 'No Label' ) !== false;
                                             } );
-                                            if ( ! empty( $label_options ) ) {
-                                                $random_label = $label_options[ array_rand( $label_options ) ];
-                                                $item->update_meta_data( '_pls_label_application', $random_label['value_label'] );
+                                            if ( ! empty( $no_label_options ) ) {
+                                                $random_no = array_values( $no_label_options )[ array_rand( $no_label_options ) ];
+                                                $item->update_meta_data( '_pls_label_application', $random_no['value_label'] );
                                             }
                                         }
                                     }

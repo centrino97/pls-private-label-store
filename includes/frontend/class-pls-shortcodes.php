@@ -24,6 +24,9 @@ final class PLS_Shortcodes {
         add_shortcode( 'pls_single_category', array( __CLASS__, 'single_category_shortcode' ) );
         add_shortcode( 'pls_shop_page', array( __CLASS__, 'shop_page_shortcode' ) );
         
+        // Category archive shortcode with full data and product loop (v5.5.0)
+        add_shortcode( 'pls_category_archive', array( __CLASS__, 'category_archive_shortcode' ) );
+        
         // Inline configurator shortcode (v4.9.99 feature)
         add_shortcode( 'pls_configurator', array( __CLASS__, 'configurator_shortcode' ) );
         add_shortcode( 'pls_configurator_inline', array( __CLASS__, 'configurator_shortcode' ) );
@@ -752,5 +755,382 @@ final class PLS_Shortcodes {
         // Return empty string - the hooks handle the display
         // But add a wrapper div for potential future enhancements
         return '<div class="pls-single-category" data-show-tier-badges="' . esc_attr( $atts['show_tier_badges'] ) . '" data-show-starting-price="' . esc_attr( $atts['show_starting_price'] ) . '"></div>';
+    }
+
+    /**
+     * Category archive shortcode with full data display and product loop.
+     * 
+     * Usage: [pls_category_archive category_id="123" columns="3" limit="12" show_faq="yes"]
+     * 
+     * Displays a specific category with all data including:
+     * - Category title, description, SEO meta
+     * - FAQ schema (JSON-LD)
+     * - Product loop with tier badges and starting prices
+     *
+     * @param array $atts Shortcode attributes.
+     * @return string
+     */
+    public static function category_archive_shortcode( $atts ) {
+        $atts = shortcode_atts(
+            array(
+                'category_id'        => 0,
+                'columns'            => 3,
+                'limit'              => 12,
+                'orderby'            => 'menu_order',
+                'order'              => 'ASC',
+                'show_description'   => 'yes',
+                'show_faq'           => 'yes',
+                'show_tier_badges'   => 'yes',
+                'show_starting_price' => 'yes',
+            ),
+            $atts,
+            'pls_category_archive'
+        );
+
+        $category_id = absint( $atts['category_id'] );
+        
+        // Auto-detect category from current page if not provided
+        if ( ! $category_id && is_product_category() ) {
+            $queried_object = get_queried_object();
+            if ( $queried_object && isset( $queried_object->term_id ) ) {
+                $category_id = $queried_object->term_id;
+            }
+        }
+
+        if ( ! $category_id ) {
+            return '<div class="pls-note">' . esc_html__( 'Category ID required. Usage: [pls_category_archive category_id="123"] or use on category pages.', 'pls-private-label-store' ) . '</div>';
+        }
+
+        $category = get_term( $category_id, 'product_cat' );
+        if ( ! $category || is_wp_error( $category ) ) {
+            return '<div class="pls-note">' . esc_html__( 'Category not found.', 'pls-private-label-store' ) . '</div>';
+        }
+
+        // Get category meta
+        $meta_title = get_term_meta( $category_id, '_pls_meta_title', true );
+        $meta_desc  = get_term_meta( $category_id, '_pls_meta_desc', true );
+        $faq_json   = get_term_meta( $category_id, '_pls_faq_json', true );
+        $custom_order = get_term_meta( $category_id, '_pls_custom_order', true );
+
+        // Enqueue styles
+        wp_enqueue_style( 'pls-frontend-display' );
+
+        ob_start();
+        ?>
+        <div class="pls-category-archive" data-category-id="<?php echo esc_attr( $category_id ); ?>">
+            
+            <!-- Category Header -->
+            <div class="pls-category-archive__header">
+                <h1 class="pls-category-archive__title"><?php echo esc_html( $category->name ); ?></h1>
+                
+                <?php if ( 'yes' === $atts['show_description'] && ! empty( $category->description ) ) : ?>
+                    <div class="pls-category-archive__description">
+                        <?php echo wp_kses_post( wpautop( $category->description ) ); ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+
+            <!-- FAQ Schema (JSON-LD) -->
+            <?php if ( 'yes' === $atts['show_faq'] && ! empty( $faq_json ) ) : ?>
+                <?php
+                $faq_data = json_decode( $faq_json, true );
+                if ( is_array( $faq_data ) && ! empty( $faq_data ) ) :
+                ?>
+                    <script type="application/ld+json">
+                    {
+                        "@context": "https://schema.org",
+                        "@type": "FAQPage",
+                        "mainEntity": [
+                            <?php
+                            $faq_items = array();
+                            foreach ( $faq_data as $faq ) {
+                                if ( ! empty( $faq['question'] ) && ! empty( $faq['answer'] ) ) {
+                                    $faq_items[] = '{
+                                        "@type": "Question",
+                                        "name": ' . wp_json_encode( $faq['question'] ) . ',
+                                        "acceptedAnswer": {
+                                            "@type": "Answer",
+                                            "text": ' . wp_json_encode( $faq['answer'] ) . '
+                                        }
+                                    }';
+                                }
+                            }
+                            echo implode( ",\n", $faq_items );
+                            ?>
+                        ]
+                    }
+                    </script>
+                    
+                    <!-- Visual FAQ Section -->
+                    <div class="pls-category-archive__faq">
+                        <h2><?php esc_html_e( 'Frequently Asked Questions', 'pls-private-label-store' ); ?></h2>
+                        <div class="pls-faq-list">
+                            <?php foreach ( $faq_data as $faq ) : ?>
+                                <?php if ( ! empty( $faq['question'] ) && ! empty( $faq['answer'] ) ) : ?>
+                                    <div class="pls-faq-item">
+                                        <h3 class="pls-faq-question"><?php echo esc_html( $faq['question'] ); ?></h3>
+                                        <div class="pls-faq-answer"><?php echo wp_kses_post( $faq['answer'] ); ?></div>
+                                    </div>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
+            <?php endif; ?>
+
+            <!-- Product Loop -->
+            <div class="pls-category-archive__products">
+                <?php
+                $args = array(
+                    'post_type'      => 'product',
+                    'posts_per_page' => absint( $atts['limit'] ),
+                    'orderby'        => sanitize_text_field( $atts['orderby'] ),
+                    'order'          => sanitize_text_field( $atts['order'] ),
+                    'tax_query'      => array(
+                        array(
+                            'taxonomy' => 'product_cat',
+                            'field'    => 'term_id',
+                            'terms'    => $category_id,
+                        ),
+                    ),
+                    'meta_query'     => array(
+                        array(
+                            'key'     => '_pls_base_product_id',
+                            'compare' => 'EXISTS',
+                        ),
+                    ),
+                );
+
+                $products = new WP_Query( $args );
+
+                if ( $products->have_posts() ) :
+                ?>
+                    <ul class="products columns-<?php echo esc_attr( $atts['columns'] ); ?>">
+                        <?php
+                        while ( $products->have_posts() ) :
+                            $products->the_post();
+                            global $product;
+                            
+                            if ( ! $product ) {
+                                continue;
+                            }
+                            
+                            wc_get_template_part( 'content', 'product' );
+                        endwhile;
+                        ?>
+                    </ul>
+                <?php
+                    wp_reset_postdata();
+                else :
+                ?>
+                    <p class="pls-no-products"><?php esc_html_e( 'No products found in this category.', 'pls-private-label-store' ); ?></p>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <style>
+        .pls-category-archive {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .pls-category-archive__header {
+            margin-bottom: 2rem;
+        }
+        .pls-category-archive__title {
+            font-size: 2rem;
+            font-weight: 600;
+            margin: 0 0 1rem;
+        }
+        .pls-category-archive__description {
+            color: #666;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+        .pls-category-archive__faq {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            background: #f9fafb;
+            border-radius: 8px;
+        }
+        .pls-category-archive__faq h2 {
+            font-size: 1.5rem;
+            margin: 0 0 1rem;
+        }
+        .pls-faq-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .pls-faq-item {
+            background: #fff;
+            padding: 1rem 1.5rem;
+            border-radius: 6px;
+            border: 1px solid #e5e7eb;
+        }
+        .pls-faq-question {
+            font-size: 1rem;
+            font-weight: 600;
+            margin: 0 0 0.5rem;
+            color: #111;
+        }
+        .pls-faq-answer {
+            color: #666;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+        .pls-category-archive__products {
+            margin-top: 2rem;
+        }
+        .pls-no-products {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+        </style>
+        <?php
+        return ob_get_clean();
+    }
+
+    /**
+     * Shop page shortcode for displaying all PLS products.
+     * 
+     * Usage: [pls_shop_page columns="3" limit="12" orderby="date" order="DESC"]
+     *
+     * @param array $atts Shortcode attributes.
+     * @return string
+     */
+    public static function shop_page_shortcode( $atts ) {
+        $atts = shortcode_atts(
+            array(
+                'columns'            => 3,
+                'limit'              => 12,
+                'orderby'            => 'date',
+                'order'              => 'DESC',
+                'show_categories'    => 'yes',
+                'show_tier_badges'   => 'yes',
+            ),
+            $atts,
+            'pls_shop_page'
+        );
+
+        // Enqueue styles
+        wp_enqueue_style( 'pls-frontend-display' );
+
+        ob_start();
+        ?>
+        <div class="pls-shop-page">
+            
+            <?php if ( 'yes' === $atts['show_categories'] ) : ?>
+                <!-- Category Navigation -->
+                <div class="pls-shop-categories">
+                    <?php
+                    $categories = get_terms( array(
+                        'taxonomy'   => 'product_cat',
+                        'hide_empty' => true,
+                        'parent'     => 0, // Only parent categories
+                        'meta_key'   => '_pls_custom_order',
+                        'orderby'    => 'meta_value_num',
+                        'order'      => 'ASC',
+                    ) );
+                    
+                    if ( ! is_wp_error( $categories ) && ! empty( $categories ) ) :
+                    ?>
+                        <ul class="pls-category-nav">
+                            <li><a href="<?php echo esc_url( wc_get_page_permalink( 'shop' ) ); ?>" class="pls-category-nav__item pls-category-nav__item--all"><?php esc_html_e( 'All Products', 'pls-private-label-store' ); ?></a></li>
+                            <?php foreach ( $categories as $cat ) : ?>
+                                <li>
+                                    <a href="<?php echo esc_url( get_term_link( $cat ) ); ?>" class="pls-category-nav__item">
+                                        <?php echo esc_html( $cat->name ); ?>
+                                        <span class="pls-category-count"><?php echo esc_html( $cat->count ); ?></span>
+                                    </a>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
+
+            <!-- Product Grid -->
+            <div class="pls-shop-products">
+                <?php
+                $args = array(
+                    'post_type'      => 'product',
+                    'posts_per_page' => absint( $atts['limit'] ),
+                    'orderby'        => sanitize_text_field( $atts['orderby'] ),
+                    'order'          => sanitize_text_field( $atts['order'] ),
+                    'meta_query'     => array(
+                        array(
+                            'key'     => '_pls_base_product_id',
+                            'compare' => 'EXISTS',
+                        ),
+                    ),
+                );
+
+                $products = new WP_Query( $args );
+
+                if ( $products->have_posts() ) :
+                ?>
+                    <ul class="products columns-<?php echo esc_attr( $atts['columns'] ); ?>">
+                        <?php
+                        while ( $products->have_posts() ) :
+                            $products->the_post();
+                            wc_get_template_part( 'content', 'product' );
+                        endwhile;
+                        ?>
+                    </ul>
+                <?php
+                    wp_reset_postdata();
+                else :
+                ?>
+                    <p class="pls-no-products"><?php esc_html_e( 'No products found.', 'pls-private-label-store' ); ?></p>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <style>
+        .pls-shop-page {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .pls-shop-categories {
+            margin-bottom: 2rem;
+        }
+        .pls-category-nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .pls-category-nav__item {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: #f3f4f6;
+            border-radius: 999px;
+            text-decoration: none;
+            color: #374151;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+        }
+        .pls-category-nav__item:hover {
+            background: #007AFF;
+            color: #fff;
+        }
+        .pls-category-nav__item--all {
+            background: #007AFF;
+            color: #fff;
+        }
+        .pls-category-count {
+            background: rgba(0,0,0,0.1);
+            padding: 0.125rem 0.5rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+        }
+        </style>
+        <?php
+        return ob_get_clean();
     }
 }

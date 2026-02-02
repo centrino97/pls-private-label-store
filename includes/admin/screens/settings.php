@@ -55,9 +55,19 @@ if ( isset( $_POST['pls_save_settings'] ) && check_admin_referer( 'pls_save_sett
     }
     update_option( 'pls_custom_order_thank_you_url', $thank_you_url );
 
-    // Save beta features setting
+    // Save beta features setting (master toggle)
     $beta_enabled = isset( $_POST['pls_beta_features_enabled'] ) && '1' === $_POST['pls_beta_features_enabled'];
     update_option( 'pls_beta_features_enabled', $beta_enabled ? 1 : 0 );
+    
+    // Save individual beta feature settings (v5.5.1)
+    require_once PLS_PLS_DIR . 'includes/core/class-pls-beta-features.php';
+    $all_beta_features = PLS_Beta_Features::get_beta_features();
+    $feature_settings = array();
+    foreach ( $all_beta_features as $feature_id ) {
+        $field_name = 'pls_beta_feature_' . $feature_id;
+        $feature_settings[ $feature_id ] = isset( $_POST[ $field_name ] ) && '1' === $_POST[ $field_name ];
+    }
+    PLS_Beta_Features::save_feature_settings( $feature_settings );
 
     $message = 'settings-saved';
 
@@ -329,12 +339,22 @@ if ( isset( $_GET['message'] ) && 'sample-data-generated' === $_GET['message'] )
                     <?php esc_html_e( 'Beta Features', 'pls-private-label-store' ); ?>
                 </button>
                 <div class="pls-accordion__content">
-                    <p class="description" style="margin-top: 0;"><?php esc_html_e( 'Beta features are experimental and may change. Enable to access advanced features and test categories.', 'pls-private-label-store' ); ?></p>
+                    <p class="description" style="margin-top: 0;"><?php esc_html_e( 'Beta features are experimental and may change. Enable the master toggle to access advanced features, then enable individual features below.', 'pls-private-label-store' ); ?></p>
+                    
+                    <?php
+                    $beta_features_by_category = PLS_Beta_Features::get_beta_features_by_category();
+                    $category_labels = array(
+                        'system' => __( 'System Features', 'pls-private-label-store' ),
+                        'features' => __( 'Advanced Features', 'pls-private-label-store' ),
+                        'product_options' => __( 'Product Option Features', 'pls-private-label-store' ),
+                        'other' => __( 'Other Features', 'pls-private-label-store' ),
+                    );
+                    ?>
                     
                     <table class="form-table" style="margin-top: 16px;">
                         <tr>
                             <th scope="row">
-                                <label for="pls_beta_features_enabled"><?php esc_html_e( 'Enable Beta Features', 'pls-private-label-store' ); ?></label>
+                                <label for="pls_beta_features_enabled"><?php esc_html_e( 'Master Toggle', 'pls-private-label-store' ); ?></label>
                             </th>
                             <td>
                                 <label class="pls-toggle-switch">
@@ -342,11 +362,71 @@ if ( isset( $_GET['message'] ) && 'sample-data-generated' === $_GET['message'] )
                                     <span class="pls-toggle-switch__slider"></span>
                                 </label>
                                 <p class="description" style="margin-top: 8px;">
-                                    <?php esc_html_e( 'When enabled, you\'ll have access to experimental features including tier-based unlocking, inline configurator, CRO features, and additional system test categories.', 'pls-private-label-store' ); ?>
+                                    <?php esc_html_e( 'Enable to unlock system and advanced beta features. Product option features can be enabled independently below.', 'pls-private-label-store' ); ?>
                                 </p>
                             </td>
                         </tr>
                     </table>
+
+                    <!-- Product Option Beta Features (can be enabled independently) -->
+                    <?php if ( isset( $beta_features_by_category['product_options'] ) && ! empty( $beta_features_by_category['product_options'] ) ) : ?>
+                    <div style="margin-top: 24px; padding: 16px; background: var(--pls-gray-50); border-radius: 8px; border: 1px solid var(--pls-gray-200);">
+                        <h4 style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: var(--pls-gray-900);">
+                            <span class="dashicons dashicons-products" style="font-size: 16px; margin-right: 6px; color: var(--pls-accent);"></span>
+                            <?php echo esc_html( $category_labels['product_options'] ); ?>
+                        </h4>
+                        <p class="description" style="margin: 0 0 16px; font-size: 12px;"><?php esc_html_e( 'These features can be enabled independently without the master toggle. Roll out new product options one at a time.', 'pls-private-label-store' ); ?></p>
+                        
+                        <div style="display: flex; flex-direction: column; gap: 12px;">
+                            <?php foreach ( $beta_features_by_category['product_options'] as $feature_id => $meta ) : 
+                                $is_enabled = PLS_Beta_Features::is_feature_individually_enabled( $feature_id );
+                            ?>
+                            <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: #fff; border-radius: 6px; border: 1px solid var(--pls-gray-200);">
+                                <div>
+                                    <strong style="font-size: 13px; color: var(--pls-gray-900);"><?php echo esc_html( $meta['label'] ); ?></strong>
+                                    <span class="pls-badge pls-badge--warning" style="margin-left: 8px; font-size: 10px;">BETA</span>
+                                    <p style="margin: 4px 0 0; font-size: 12px; color: var(--pls-gray-500);"><?php echo esc_html( $meta['description'] ); ?></p>
+                                </div>
+                                <label class="pls-toggle-switch">
+                                    <input type="checkbox" name="pls_beta_feature_<?php echo esc_attr( $feature_id ); ?>" value="1" <?php checked( $is_enabled ); ?> />
+                                    <span class="pls-toggle-switch__slider"></span>
+                                </label>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+
+                    <!-- Other Beta Features (require master toggle) -->
+                    <div id="pls-other-beta-features" style="margin-top: 24px; padding: 16px; background: var(--pls-gray-50); border-radius: 8px; border: 1px solid var(--pls-gray-200); <?php echo ! $beta_features_enabled ? 'opacity: 0.5; pointer-events: none;' : ''; ?>">
+                        <h4 style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: var(--pls-gray-900);">
+                            <span class="dashicons dashicons-admin-generic" style="font-size: 16px; margin-right: 6px; color: var(--pls-accent);"></span>
+                            <?php esc_html_e( 'System & Advanced Features', 'pls-private-label-store' ); ?>
+                        </h4>
+                        <p class="description" style="margin: 0 0 16px; font-size: 12px;"><?php esc_html_e( 'These features require the master toggle to be enabled.', 'pls-private-label-store' ); ?></p>
+                        
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+                            <?php 
+                            foreach ( $beta_features_by_category as $category => $features ) :
+                                if ( $category === 'product_options' ) continue;
+                                foreach ( $features as $feature_id => $meta ) : 
+                                    $is_enabled = PLS_Beta_Features::is_feature_individually_enabled( $feature_id );
+                            ?>
+                            <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: #fff; border-radius: 6px; border: 1px solid var(--pls-gray-200);">
+                                <div>
+                                    <strong style="font-size: 12px; color: var(--pls-gray-900);"><?php echo esc_html( $meta['label'] ); ?></strong>
+                                </div>
+                                <label class="pls-toggle-switch pls-toggle-switch--small">
+                                    <input type="checkbox" name="pls_beta_feature_<?php echo esc_attr( $feature_id ); ?>" value="1" <?php checked( $is_enabled ); ?> />
+                                    <span class="pls-toggle-switch__slider"></span>
+                                </label>
+                            </div>
+                            <?php 
+                                endforeach;
+                            endforeach; 
+                            ?>
+                        </div>
+                    </div>
                 </div>
             </div>
 

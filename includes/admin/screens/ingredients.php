@@ -105,13 +105,55 @@ $ingredients = get_terms(
 if ( is_wp_error( $ingredients ) ) {
     $ingredients = array();
 }
+
+// Separate base and active ingredients
+$base_ingredients = array();
+$active_ingredients = array();
+foreach ( $ingredients as $ing ) {
+    $is_active = (int) get_term_meta( $ing->term_id, 'pls_ingredient_is_active', true );
+    if ( $is_active ) {
+        $active_ingredients[] = $ing;
+    } else {
+        $base_ingredients[] = $ing;
+    }
+}
+
+$active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'all';
 ?>
 <div class="wrap pls-wrap">
-  <h1><?php esc_html_e( 'PLS – Ingredients Base', 'pls-private-label-store' ); ?></h1>
-  <p class="description">
-      <?php esc_html_e( 'Maintain a clean library of ingredients (with optional icons) to reuse across products.', 'pls-private-label-store' ); ?>
-      <span class="pls-help-icon" title="<?php esc_attr_e( 'Base/INCI ingredients are the foundation. Active ingredients (Tier 3+) become selectable options for customers. Key ingredients appear prominently on product pages.', 'pls-private-label-store' ); ?>" style="cursor: help; margin-left: 4px;">ⓘ</span>
-  </p>
+  <div class="pls-page-head">
+      <div>
+          <p class="pls-label"><?php esc_html_e( 'Ingredient Management', 'pls-private-label-store' ); ?></p>
+          <h1 style="margin: 4px 0;"><?php esc_html_e( 'Ingredients Base', 'pls-private-label-store' ); ?></h1>
+          <p class="description">
+              <?php esc_html_e( 'Maintain your ingredient library. Base ingredients are always included in products. Active ingredients are selectable by customers at Tier 3+.', 'pls-private-label-store' ); ?>
+              <span class="pls-help-icon" title="<?php esc_attr_e( 'Base/INCI ingredients form the foundation of every product. Active/Key ingredients (Tier 3+) become optional add-ons that customers can select during configuration.', 'pls-private-label-store' ); ?>" style="cursor: help; margin-left: 4px;">ⓘ</span>
+          </p>
+      </div>
+      <div style="display: flex; gap: 12px; align-items: center;">
+          <span class="pls-badge"><?php echo count( $base_ingredients ); ?> <?php esc_html_e( 'Base', 'pls-private-label-store' ); ?></span>
+          <span class="pls-badge pls-badge--success"><?php echo count( $active_ingredients ); ?> <?php esc_html_e( 'Active', 'pls-private-label-store' ); ?></span>
+      </div>
+  </div>
+
+  <!-- Tabs Navigation -->
+  <nav class="nav-tab-wrapper" style="margin-bottom: 20px;">
+      <a href="<?php echo esc_url( add_query_arg( 'tab', 'all', admin_url( 'admin.php?page=pls-ingredients' ) ) ); ?>" 
+         class="nav-tab <?php echo $active_tab === 'all' ? 'nav-tab-active' : ''; ?>">
+          <?php esc_html_e( 'All Ingredients', 'pls-private-label-store' ); ?>
+          <span class="pls-tab-count"><?php echo count( $ingredients ); ?></span>
+      </a>
+      <a href="<?php echo esc_url( add_query_arg( 'tab', 'base', admin_url( 'admin.php?page=pls-ingredients' ) ) ); ?>" 
+         class="nav-tab <?php echo $active_tab === 'base' ? 'nav-tab-active' : ''; ?>">
+          <?php esc_html_e( 'Base / INCI', 'pls-private-label-store' ); ?>
+          <span class="pls-tab-count"><?php echo count( $base_ingredients ); ?></span>
+      </a>
+      <a href="<?php echo esc_url( add_query_arg( 'tab', 'active', admin_url( 'admin.php?page=pls-ingredients' ) ) ); ?>" 
+         class="nav-tab <?php echo $active_tab === 'active' ? 'nav-tab-active' : ''; ?>">
+          <?php esc_html_e( 'Active / Key (T3+)', 'pls-private-label-store' ); ?>
+          <span class="pls-tab-count"><?php echo count( $active_ingredients ); ?></span>
+      </a>
+  </nav>
 
   <?php if ( $notice ) : ?>
       <div class="notice notice-success is-dismissible"><p><?php echo esc_html( $notice ); ?></p></div>
@@ -184,10 +226,46 @@ if ( is_wp_error( $ingredients ) ) {
     </div>
   </div>
 
+  <!-- Tab Description -->
+  <?php if ( $active_tab === 'base' ) : ?>
+      <div class="pls-tab-description" style="margin-bottom: 20px; padding: 12px 16px; background: var(--pls-gray-50); border-left: 3px solid var(--pls-accent); border-radius: 4px;">
+          <strong><?php esc_html_e( 'Base / INCI Ingredients', 'pls-private-label-store' ); ?></strong>
+          <p style="margin: 4px 0 0; color: var(--pls-gray-600);"><?php esc_html_e( 'These ingredients are always included in products by default. They form the foundation of your formulations and are not selectable by customers.', 'pls-private-label-store' ); ?></p>
+      </div>
+  <?php elseif ( $active_tab === 'active' ) : ?>
+      <div class="pls-tab-description" style="margin-bottom: 20px; padding: 12px 16px; background: var(--pls-success-light); border-left: 3px solid var(--pls-success); border-radius: 4px;">
+          <strong><?php esc_html_e( 'Active / Key Ingredients (Tier 3+)', 'pls-private-label-store' ); ?></strong>
+          <p style="margin: 4px 0 0; color: var(--pls-gray-600);"><?php esc_html_e( 'These premium ingredients are optional add-ons that customers can select during product configuration. Only available to Tier 3+ customers. You can set price impacts per product.', 'pls-private-label-store' ); ?></p>
+      </div>
+  <?php endif; ?>
+
   <h2><?php esc_html_e( 'Existing ingredients', 'pls-private-label-store' ); ?></h2>
   <div class="pls-card-grid">
-    <?php if ( empty( $ingredients ) ) : ?>
-        <p class="description"><?php esc_html_e( 'Nothing yet. Start adding your ingredient library above.', 'pls-private-label-store' ); ?></p>
+    <?php 
+    // Filter ingredients based on active tab
+    $display_ingredients = $ingredients;
+    if ( $active_tab === 'base' ) {
+        $display_ingredients = $base_ingredients;
+    } elseif ( $active_tab === 'active' ) {
+        $display_ingredients = $active_ingredients;
+    }
+    ?>
+    <?php if ( empty( $display_ingredients ) ) : ?>
+        <div class="pls-card" style="text-align: center; padding: 48px 24px; grid-column: 1 / -1;">
+            <div style="font-size: 48px; color: var(--pls-gray-300); margin-bottom: 16px;">🧪</div>
+            <h3 style="margin: 0 0 8px; font-size: 18px; font-weight: 600; color: var(--pls-gray-900);">
+                <?php 
+                if ( $active_tab === 'base' ) {
+                    esc_html_e( 'No base ingredients yet', 'pls-private-label-store' );
+                } elseif ( $active_tab === 'active' ) {
+                    esc_html_e( 'No active ingredients yet', 'pls-private-label-store' );
+                } else {
+                    esc_html_e( 'No ingredients yet', 'pls-private-label-store' );
+                }
+                ?>
+            </h3>
+            <p style="margin: 0; color: var(--pls-gray-500);"><?php esc_html_e( 'Start adding your ingredient library using the form above.', 'pls-private-label-store' ); ?></p>
+        </div>
     <?php else : ?>
         <form method="post" class="pls-card pls-card--panel" style="grid-column:1/-1;">
           <?php wp_nonce_field( 'pls_ingredient_edit' ); ?>
@@ -205,7 +283,7 @@ if ( is_wp_error( $ingredients ) ) {
               </tr>
             </thead>
             <tbody>
-              <?php foreach ( $ingredients as $ingredient ) : ?>
+              <?php foreach ( $display_ingredients as $ingredient ) : ?>
                   <?php
                   $icon      = PLS_Taxonomies::icon_for_term( $ingredient->term_id );
                   $icon_id   = absint( get_term_meta( $ingredient->term_id, 'pls_ingredient_icon_id', true ) );
