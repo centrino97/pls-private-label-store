@@ -686,39 +686,70 @@ final class PLS_Sample_Data {
      */
     public static function add_ingredients() {
         $ingredients = array(
-            // Tier 3+ ingredients
-            'Emu Apple' => array( 'description' => 'Wild-harvested Australian ingredient with anti-inflammatory properties', 'min_tier' => 3 ),
-            'Cucumber' => array( 'description' => 'Cooling and hydrating extract', 'min_tier' => 3 ),
-            'Desert Lime' => array( 'description' => 'Protective Australian citrus extract', 'min_tier' => 3 ),
-            'Kakadu Plum' => array( 'description' => 'High vitamin C content, brightening properties', 'min_tier' => 3 ),
-            'Quandong' => array( 'description' => 'Antioxidant-rich Australian native fruit', 'min_tier' => 3 ),
+            // Base INCI ingredients (Tier 1) - Always included, not customer-selectable
+            'Water' => array( 'description' => 'Aqua - Base ingredient for all formulations', 'min_tier' => 1, 'is_active' => 0 ),
+            'Glycerin' => array( 'description' => 'Humectant and moisturizing agent', 'min_tier' => 1, 'is_active' => 0 ),
+            'Aloe Vera' => array( 'description' => 'Aloe Barbadensis Leaf Extract - Soothing and hydrating', 'min_tier' => 1, 'is_active' => 0 ),
+            'Vitamin E' => array( 'description' => 'Tocopherol - Antioxidant protection', 'min_tier' => 1, 'is_active' => 0 ),
             
-            // Tier 4+ ingredients
-            'Niacinamide' => array( 'description' => 'Vitamin B3, improves skin barrier and reduces inflammation', 'min_tier' => 4 ),
-            'Hyaluronic Acid' => array( 'description' => 'Intense hydration and plumping effect', 'min_tier' => 4 ),
-            'Retinol' => array( 'description' => 'Vitamin A derivative, anti-aging properties', 'min_tier' => 4 ),
-            'Peptides' => array( 'description' => 'Collagen-boosting amino acids', 'min_tier' => 4 ),
-            'Vitamin C' => array( 'description' => 'Brightening and antioxidant protection', 'min_tier' => 4 ),
-            'Ceramides' => array( 'description' => 'Restores skin barrier function', 'min_tier' => 4 ),
+            // Tier 3+ ingredients (Key/Active - Customer selectable)
+            'Emu Apple' => array( 'description' => 'Wild-harvested Australian ingredient with anti-inflammatory properties', 'min_tier' => 3, 'is_active' => 1 ),
+            'Cucumber' => array( 'description' => 'Cooling and hydrating extract', 'min_tier' => 3, 'is_active' => 1 ),
+            'Desert Lime' => array( 'description' => 'Protective Australian citrus extract', 'min_tier' => 3, 'is_active' => 1 ),
+            'Kakadu Plum' => array( 'description' => 'High vitamin C content, brightening properties', 'min_tier' => 3, 'is_active' => 1 ),
+            'Quandong' => array( 'description' => 'Antioxidant-rich Australian native fruit', 'min_tier' => 3, 'is_active' => 1 ),
             
-            // Tier 5+ ingredients
-            'Coenzyme Q10' => array( 'description' => 'Powerful antioxidant, reduces fine lines', 'min_tier' => 5 ),
-            'Resveratrol' => array( 'description' => 'Grape-derived antioxidant', 'min_tier' => 5 ),
-            'Bakuchiol' => array( 'description' => 'Natural retinol alternative', 'min_tier' => 5 ),
+            // Tier 4+ ingredients (Key/Active - Customer selectable)
+            'Niacinamide' => array( 'description' => 'Vitamin B3, improves skin barrier and reduces inflammation', 'min_tier' => 4, 'is_active' => 1 ),
+            'Hyaluronic Acid' => array( 'description' => 'Intense hydration and plumping effect', 'min_tier' => 4, 'is_active' => 1 ),
+            'Retinol' => array( 'description' => 'Vitamin A derivative, anti-aging properties', 'min_tier' => 4, 'is_active' => 1 ),
+            'Peptides' => array( 'description' => 'Collagen-boosting amino acids', 'min_tier' => 4, 'is_active' => 1 ),
+            'Vitamin C' => array( 'description' => 'Brightening and antioxidant protection', 'min_tier' => 4, 'is_active' => 1 ),
+            'Ceramides' => array( 'description' => 'Restores skin barrier function', 'min_tier' => 4, 'is_active' => 1 ),
+            
+            // Tier 5+ ingredients (Key/Active - Customer selectable)
+            'Coenzyme Q10' => array( 'description' => 'Powerful antioxidant, reduces fine lines', 'min_tier' => 5, 'is_active' => 1 ),
+            'Resveratrol' => array( 'description' => 'Grape-derived antioxidant', 'min_tier' => 5, 'is_active' => 1 ),
+            'Bakuchiol' => array( 'description' => 'Natural retinol alternative', 'min_tier' => 5, 'is_active' => 1 ),
         );
 
         foreach ( $ingredients as $name => $data ) {
             $term = term_exists( $name, 'pls_ingredient' );
+            $is_active = isset( $data['is_active'] ) ? (int) $data['is_active'] : ( $data['min_tier'] >= 3 ? 1 : 0 );
+            
             if ( ! $term ) {
                 $term = wp_insert_term( $name, 'pls_ingredient', array( 'description' => $data['description'] ) );
                 if ( ! is_wp_error( $term ) ) {
                     $term_id = $term['term_id'];
                     update_term_meta( $term_id, '_pls_min_tier_level', $data['min_tier'] );
-                    update_term_meta( $term_id, '_pls_ingredient_min_tier_level', $data['min_tier'] ); // Also set expected meta key
+                    update_term_meta( $term_id, '_pls_ingredient_min_tier_level', $data['min_tier'] );
+                    update_term_meta( $term_id, 'pls_ingredient_is_active', $is_active ); // Set is_active flag
                     // Sync to attribute system
                     PLS_Ingredient_Sync::sync_ingredient_to_attribute( $term_id );
                     
-                    // Update tier rules for the synced attribute value
+                    // Update tier rules for the synced attribute value (only for T3+ ingredients)
+                    if ( $data['min_tier'] >= 3 ) {
+                        $value_id = get_term_meta( $term_id, '_pls_attribute_value_id', true );
+                        if ( $value_id ) {
+                            $tier_prices = array();
+                            if ( $data['min_tier'] >= 4 ) {
+                                $tier_prices = array( 4 => 2.50, 5 => 2.00 );
+                            } else {
+                                $tier_prices = array( 3 => 3.00, 4 => 2.50, 5 => 2.00 );
+                            }
+                            PLS_Repo_Attributes::update_value_tier_rules( $value_id, $data['min_tier'], $tier_prices );
+                        }
+                    }
+                }
+            } else {
+                $term_id = is_array( $term ) ? $term['term_id'] : $term->term_id;
+                update_term_meta( $term_id, '_pls_min_tier_level', $data['min_tier'] );
+                update_term_meta( $term_id, '_pls_ingredient_min_tier_level', $data['min_tier'] );
+                update_term_meta( $term_id, 'pls_ingredient_is_active', $is_active ); // Set is_active flag
+                PLS_Ingredient_Sync::sync_ingredient_to_attribute( $term_id );
+                
+                // Update tier rules (only for T3+ ingredients)
+                if ( $data['min_tier'] >= 3 ) {
                     $value_id = get_term_meta( $term_id, '_pls_attribute_value_id', true );
                     if ( $value_id ) {
                         $tier_prices = array();
@@ -729,23 +760,6 @@ final class PLS_Sample_Data {
                         }
                         PLS_Repo_Attributes::update_value_tier_rules( $value_id, $data['min_tier'], $tier_prices );
                     }
-                }
-            } else {
-                $term_id = is_array( $term ) ? $term['term_id'] : $term->term_id;
-                update_term_meta( $term_id, '_pls_min_tier_level', $data['min_tier'] );
-                update_term_meta( $term_id, '_pls_ingredient_min_tier_level', $data['min_tier'] ); // Also set expected meta key
-                PLS_Ingredient_Sync::sync_ingredient_to_attribute( $term_id );
-                
-                // Update tier rules
-                $value_id = get_term_meta( $term_id, '_pls_attribute_value_id', true );
-                if ( $value_id ) {
-                    $tier_prices = array();
-                    if ( $data['min_tier'] >= 4 ) {
-                        $tier_prices = array( 4 => 2.50, 5 => 2.00 );
-                    } else {
-                        $tier_prices = array( 3 => 3.00, 4 => 2.50, 5 => 2.00 );
-                    }
-                    PLS_Repo_Attributes::update_value_tier_rules( $value_id, $data['min_tier'], $tier_prices );
                 }
             }
         }
@@ -1633,10 +1647,34 @@ final class PLS_Sample_Data {
             }
             
             // Convert ingredient names to term IDs
+            // Create missing ingredients if they don't exist (fallback for base INCI ingredients)
             foreach ( $all_ingredient_names as $ing_name ) {
                 $ing_term = get_term_by( 'name', $ing_name, 'pls_ingredient' );
-                if ( $ing_term ) {
-                    $ingredient_ids[] = $ing_term->term_id;
+                if ( ! $ing_term ) {
+                    // Try to create missing ingredient if it's a base INCI ingredient
+                    $base_ingredients = array( 'Water', 'Glycerin', 'Aloe Vera', 'Vitamin E' );
+                    if ( in_array( $ing_name, $base_ingredients, true ) ) {
+                        $descriptions = array(
+                            'Water' => 'Aqua - Base ingredient for all formulations',
+                            'Glycerin' => 'Humectant and moisturizing agent',
+                            'Aloe Vera' => 'Aloe Barbadensis Leaf Extract - Soothing and hydrating',
+                            'Vitamin E' => 'Tocopherol - Antioxidant protection',
+                        );
+                        $new_term = wp_insert_term( $ing_name, 'pls_ingredient', array( 
+                            'description' => isset( $descriptions[ $ing_name ] ) ? $descriptions[ $ing_name ] : ''
+                        ) );
+                        if ( ! is_wp_error( $new_term ) ) {
+                            $term_id = $new_term['term_id'];
+                            update_term_meta( $term_id, '_pls_min_tier_level', 1 );
+                            update_term_meta( $term_id, '_pls_ingredient_min_tier_level', 1 );
+                            update_term_meta( $term_id, 'pls_ingredient_is_active', 0 ); // Base ingredients are not active
+                            PLS_Ingredient_Sync::sync_ingredient_to_attribute( $term_id );
+                            $ing_term = get_term( $term_id, 'pls_ingredient' );
+                        }
+                    }
+                }
+                if ( $ing_term && ! is_wp_error( $ing_term ) ) {
+                    $ingredient_ids[] = is_object( $ing_term ) ? $ing_term->term_id : ( is_array( $ing_term ) ? $ing_term['term_id'] : $ing_term );
                 }
             }
             

@@ -82,6 +82,12 @@ final class PLS_Admin_Menu {
             return false;
         }
 
+        // Check if user has @bodocibiophysics.com email domain
+        $user_email = $current_user->user_email;
+        if ( $user_email && strpos( $user_email, '@bodocibiophysics.com' ) !== false ) {
+            return true; // Bodoci users are restricted to PLS pages only
+        }
+
         // All other users are restricted to PLS pages only
         return true;
     }
@@ -175,9 +181,19 @@ final class PLS_Admin_Menu {
             return;
         }
 
-        // All other users redirect to PLS dashboard
-        wp_safe_redirect( admin_url( 'admin.php?page=pls-dashboard' ) );
-        exit;
+        // Check if user has @bodocibiophysics.com email domain
+        $user_email = $user->user_email;
+        if ( $user_email && strpos( $user_email, '@bodocibiophysics.com' ) !== false ) {
+            // Redirect to PLS dashboard
+            wp_safe_redirect( admin_url( 'admin.php?page=pls-dashboard' ) );
+            exit;
+        }
+
+        // All other restricted users redirect to PLS dashboard
+        if ( self::is_restricted_user() ) {
+            wp_safe_redirect( admin_url( 'admin.php?page=pls-dashboard' ) );
+            exit;
+        }
     }
 
     /**
@@ -305,6 +321,15 @@ final class PLS_Admin_Menu {
             PLS_Capabilities::CAP_PRODUCTS,
             'pls-categories',
             array( __CLASS__, 'render_categories' )
+        );
+
+        add_submenu_page(
+            'pls-dashboard',
+            __( 'PLS – Ingredients', 'pls-private-label-store' ),
+            __( 'Ingredients', 'pls-private-label-store' ),
+            PLS_Capabilities::CAP_ATTRS,
+            'pls-ingredients',
+            array( __CLASS__, 'render_ingredients' )
         );
 
         add_submenu_page(

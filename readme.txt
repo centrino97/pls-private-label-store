@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 5.3.4
+Stable tag: 5.4.0
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,22 @@ and provides shortcodes for seamless Elementor Theme Builder integration.
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 5.4.0 =
+* **CRITICAL FIX:** Sample data now creates base INCI ingredients (Water, Glycerin, Aloe Vera, Vitamin E) as Tier 1 ingredients
+* **CRITICAL FIX:** Ingredient assignment in sample data now works correctly - products have ingredients_list populated
+* **CRITICAL FIX:** Ingredient sync logic improved - properly sets tier levels based on is_active flag (base=1, active/key=3+)
+* **NEW:** Dedicated Ingredients admin page - Full ingredient management accessible from main PLS menu
+* **NEW:** Auto-save drafts for product creation modal - Saves every 30 seconds and on field blur, prevents data loss
+* **NEW:** Quick-add functionality for options/values - Create new options and values directly from product creation modal
+* **NEW:** Bulk export ingredients as CSV - Export all ingredients for backup or migration
+* **IMPROVED:** Base ingredients (Tier 1) are properly marked as inactive (is_active=0) and always included
+* **IMPROVED:** Active/key ingredients (Tier 3+) are properly marked as active (is_active=1) and customer-selectable
+* **IMPROVED:** Ingredient sync ensures is_active flag is set correctly based on tier level
+* **IMPROVED:** Product creation modal auto-loads drafts when opened
+* **IMPROVED:** Quick-add modals for options and values with auto-refresh after creation
+* **POLISHED:** Better UX for ingredient management with dedicated page and bulk operations
+* **POLISHED:** Draft save indicator shows when auto-save completes
+
 = 5.3.4 =
 * **CRITICAL FIX:** Comprehensive WooCommerce ingredient attribute cleanup - Sample data deletion now removes ALL ingredient attributes from WooCommerce
 * **CRITICAL FIX:** Cleanup function now checks ALL WooCommerce attributes directly (not just PLS-matched ones) - catches orphaned attributes

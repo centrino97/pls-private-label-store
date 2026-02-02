@@ -155,17 +155,33 @@ if ( is_wp_error( $ingredients ) ) {
   </div>
 
   <div class="pls-card pls-card--panel">
-    <h2><?php esc_html_e( 'Bulk create missing', 'pls-private-label-store' ); ?></h2>
-    <form method="post">
-      <?php wp_nonce_field( 'pls_ingredient_bulk' ); ?>
-      <input type="hidden" name="pls_ingredient_bulk" value="1" />
-      <div class="pls-field-row">
-        <label><?php esc_html_e( 'Comma separated list', 'pls-private-label-store' ); ?></label>
-        <input type="text" name="bulk_ingredients" class="regular-text" placeholder="Vitamin C, Niacinamide, Retinol" />
-        <p class="description"><?php esc_html_e( 'Creates as base ingredients. Edit them after to mark as active.', 'pls-private-label-store' ); ?></p>
+    <h2><?php esc_html_e( 'Bulk Operations', 'pls-private-label-store' ); ?></h2>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+      <div>
+        <h3><?php esc_html_e( 'Bulk Create', 'pls-private-label-store' ); ?></h3>
+        <form method="post">
+          <?php wp_nonce_field( 'pls_ingredient_bulk' ); ?>
+          <input type="hidden" name="pls_ingredient_bulk" value="1" />
+          <div class="pls-field-row">
+            <label><?php esc_html_e( 'Comma separated list', 'pls-private-label-store' ); ?></label>
+            <textarea name="bulk_ingredients" class="large-text" rows="4" placeholder="Vitamin C, Niacinamide, Retinol, Peptides"></textarea>
+            <p class="description"><?php esc_html_e( 'Creates as base ingredients (Tier 1). Edit them after to mark as active/key ingredients.', 'pls-private-label-store' ); ?></p>
+          </div>
+          <p class="submit"><button class="button button-primary"><?php esc_html_e( 'Create missing entries', 'pls-private-label-store' ); ?></button></p>
+        </form>
       </div>
-      <p class="submit"><button class="button">Create missing entries</button></p>
-    </form>
+      
+      <div>
+        <h3><?php esc_html_e( 'Export', 'pls-private-label-store' ); ?></h3>
+        <p class="description"><?php esc_html_e( 'Export all ingredients as CSV for backup or import to another site.', 'pls-private-label-store' ); ?></p>
+        <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+          <?php wp_nonce_field( 'pls_ingredient_export' ); ?>
+          <input type="hidden" name="action" value="pls_export_ingredients" />
+          <p class="submit"><button type="submit" class="button"><?php esc_html_e( 'Export Ingredients', 'pls-private-label-store' ); ?></button></p>
+        </form>
+      </div>
+    </div>
   </div>
 
   <h2><?php esc_html_e( 'Existing ingredients', 'pls-private-label-store' ); ?></h2>

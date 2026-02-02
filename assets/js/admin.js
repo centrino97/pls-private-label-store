@@ -1195,6 +1195,145 @@
       updateModalState();
     }
 
+    // Auto-save draft functionality
+    var autoSaveTimer = null;
+    var lastSavedDraft = null;
+    var draftSaveInProgress = false;
+
+    function collectFormData(){
+      var form = $('#pls-product-form');
+      if (!form.length) return null;
+      
+      var formData = {};
+      form.find('input, textarea, select').each(function(){
+        var $field = $(this);
+        var name = $field.attr('name');
+        if (!name) return;
+        
+        if ($field.attr('type') === 'checkbox' || $field.attr('type') === 'radio'){
+          if ($field.is(':checked')){
+            if (name.endsWith('[]')){
+              if (!formData[name]) formData[name] = [];
+              formData[name].push($field.val());
+            } else {
+              formData[name] = $field.val();
+            }
+          }
+        } else {
+          formData[name] = $field.val();
+        }
+      });
+      
+      // Include current step
+      formData['_current_step'] = currentStep;
+      
+      return formData;
+    }
+
+    function saveDraft(silent){
+      if (draftSaveInProgress) return;
+      if (!$('#pls-product-modal').hasClass('is-active')) return;
+      
+      var formData = collectFormData();
+      if (!formData) return;
+      
+      // Don't save if nothing changed
+      var formDataStr = JSON.stringify(formData);
+      if (formDataStr === lastSavedDraft) return;
+      
+      draftSaveInProgress = true;
+      var productId = $('#pls-product-id').val() || 0;
+      
+      $.post(ajaxurl, {
+        action: 'pls_save_product_draft',
+        nonce: (window.PLS_Admin ? PLS_Admin.nonce : ''),
+        product_id: productId,
+        draft_data: formData
+      }, function(resp){
+        if (resp && resp.success){
+          lastSavedDraft = formDataStr;
+          if (!silent){
+            showDraftSavedIndicator();
+          }
+        }
+      }).always(function(){
+        draftSaveInProgress = false;
+      });
+    }
+
+    function showDraftSavedIndicator(){
+      var $indicator = $('#pls-draft-saved-indicator');
+      if (!$indicator.length){
+        $indicator = $('<div id="pls-draft-saved-indicator" style="position: fixed; top: 20px; right: 20px; background: #10b981; color: white; padding: 8px 16px; border-radius: 4px; z-index: 10000; font-size: 13px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">Draft saved</div>');
+        $('body').append($indicator);
+      }
+      $indicator.fadeIn(200).delay(2000).fadeOut(200);
+    }
+
+    function loadDraft(productId){
+      productId = productId || 0;
+      $.post(ajaxurl, {
+        action: 'pls_get_product_draft',
+        nonce: (window.PLS_Admin ? PLS_Admin.nonce : ''),
+        product_id: productId
+      }, function(resp){
+        if (resp && resp.success && resp.data && resp.data.draft_data){
+          var draft = resp.data.draft_data;
+          // Restore form fields from draft
+          Object.keys(draft).forEach(function(key){
+            if (key === '_current_step'){
+              // Restore step if needed
+              return;
+            }
+            var $field = $('#pls-product-form [name="' + key + '"]');
+            if ($field.length){
+              if ($field.attr('type') === 'checkbox' || $field.attr('type') === 'radio'){
+                if (Array.isArray(draft[key])){
+                  draft[key].forEach(function(val){
+                    $field.filter('[value="' + val + '"]').prop('checked', true);
+                  });
+                } else {
+                  $field.filter('[value="' + draft[key] + '"]').prop('checked', true);
+                }
+              } else {
+                $field.val(draft[key]);
+              }
+            }
+          });
+          
+          // Show restore draft notification
+          if (confirm('A draft was found. Restore it?')){
+            // Draft already restored above
+            lastSavedDraft = JSON.stringify(collectFormData());
+          }
+        }
+      });
+    }
+
+    function startAutoSave(){
+      if (autoSaveTimer) clearInterval(autoSaveTimer);
+      
+      // Auto-save every 30 seconds
+      autoSaveTimer = setInterval(function(){
+        saveDraft(true); // Silent save
+      }, 30000);
+      
+      // Auto-save on field blur
+      $('#pls-product-form').off('blur.autoSave').on('blur.autoSave', 'input, textarea, select', function(){
+        setTimeout(function(){
+          saveDraft(false); // Show indicator
+        }, 500);
+      });
+    }
+
+    function stopAutoSave(){
+      if (autoSaveTimer){
+        clearInterval(autoSaveTimer);
+        autoSaveTimer = null;
+      }
+      $('#pls-product-form').off('blur.autoSave');
+    }
+
     function openProductModal(data, initialMode){
       resetModal();
       // Reset preview state when opening modal
@@ -1206,15 +1345,28 @@
       // Reset mode buttons
       $('.pls-mode-btn').removeClass('is-active');
       
+      // Stop any existing auto-save
+      stopAutoSave();
+      lastSavedDraft = null;
+      
       if (data){
         populateModal(data);
+        // Try to load draft for existing product
+        loadDraft(data.id);
       } else {
         $('#pls-modal-title').text('Create product');
+        // Try to load draft for new product
+        loadDraft(0);
       }
       
       closeAllModals();
       $('#pls-product-modal').addClass('is-active');
       updateModalState();
+      
+      // Start auto-save
+      setTimeout(function(){
+        startAutoSave();
+      }, 1000);
       
       // Set initial mode if specified
       if (initialMode){
@@ -1233,6 +1385,7 @@
     function closeModalElement(modal){
       var target = modal.closest('.pls-modal');
       target.removeClass('is-active');
+      stopAutoSave(); // Stop auto-save when modal closes
       updateModalState();
     }
 
@@ -1814,7 +1967,119 @@
       setLabelState($(this).is(':checked'));
     });
 
-      // Removed: "Select product option" button removed - users manage options via Product Options page
+      // Quick Add Option handler
+      var quickAddOptionAttrRow = null;
+      $(document).on('click', '.pls-quick-add-option', function(e){
+        e.preventDefault();
+        quickAddOptionAttrRow = $(this).closest('.pls-attribute-row');
+        $('#pls-quick-add-option-modal').addClass('is-active');
+        $('#pls-quick-option-name').focus();
+      });
+
+      $('#pls-quick-add-option-form').on('submit', function(e){
+        e.preventDefault();
+        var label = $('#pls-quick-option-name').val().trim();
+        if (!label) return;
+
+        var btn = $(this).find('button[type=submit]');
+        var original = btn.text();
+        btn.prop('disabled', true).text('Creating...');
+
+        $.post(ajaxurl, {
+          action: 'pls_create_attribute',
+          nonce: (window.PLS_Admin ? PLS_Admin.nonce : ''),
+          label: label,
+          is_variation: $('#pls-quick-option-variation').is(':checked') ? 1 : 0
+        }, function(resp){
+          if (resp && resp.success && resp.data && resp.data.attribute){
+            addAttributeToMap(resp.data.attribute);
+            // Refresh attribute select in the row
+            if (quickAddOptionAttrRow){
+              populateValueOptions(quickAddOptionAttrRow);
+              quickAddOptionAttrRow.find('.pls-attr-select').val(resp.data.attribute.id).trigger('change');
+            }
+            $('#pls-quick-add-option-modal').removeClass('is-active');
+            $('#pls-quick-add-option-form')[0].reset();
+            showSuccessMessage('Option created successfully!');
+          } else {
+            alert((resp && resp.data && resp.data.message) ? resp.data.message : 'Could not create option.');
+          }
+        }).fail(function(){
+          alert('Could not create option.');
+        }).always(function(){
+          btn.prop('disabled', false).text(original);
+          quickAddOptionAttrRow = null;
+        });
+      });
+
+      // Quick Add Value handler
+      var quickAddValueAttrRow = null;
+      $(document).on('click', '.pls-quick-add-value', function(e){
+        e.preventDefault();
+        quickAddValueAttrRow = $(this).closest('.pls-attribute-row');
+        var attrId = quickAddValueAttrRow.find('.pls-attr-select').val();
+        if (!attrId){
+          alert('Please select an option first.');
+          return;
+        }
+        $('#pls-quick-value-attr-id').val(attrId);
+        $('#pls-quick-add-value-modal').addClass('is-active');
+        $('#pls-quick-value-name').focus();
+      });
+
+      $('#pls-quick-add-value-form').on('submit', function(e){
+        e.preventDefault();
+        var label = $('#pls-quick-value-name').val().trim();
+        var attrId = $('#pls-quick-value-attr-id').val();
+        if (!label || !attrId) return;
+
+        var btn = $(this).find('button[type=submit]');
+        var original = btn.text();
+        btn.prop('disabled', true).text('Creating...');
+
+        $.post(ajaxurl, {
+          action: 'pls_create_attribute_value',
+          nonce: (window.PLS_Admin ? PLS_Admin.nonce : ''),
+          attribute_id: attrId,
+          label: label,
+          price: $('#pls-quick-value-price').val() || '0.00'
+        }, function(resp){
+          if (resp && resp.success && resp.data && resp.data.value){
+            addValueToMap(attrId, resp.data.value);
+            // Refresh value select in the row
+            if (quickAddValueAttrRow){
+              populateValueOptions(quickAddValueAttrRow);
+              // Auto-select the newly created value
+              var valueSelect = quickAddValueAttrRow.find('.pls-attr-value-multi');
+              var currentValues = valueSelect.val() || [];
+              currentValues.push(resp.data.value.id.toString());
+              valueSelect.val(currentValues).trigger('change');
+              renderValueDetails(quickAddValueAttrRow);
+            }
+            $('#pls-quick-add-value-modal').removeClass('is-active');
+            $('#pls-quick-add-value-form')[0].reset();
+            showSuccessMessage('Value created and selected!');
+          } else {
+            alert((resp && resp.data && resp.data.message) ? resp.data.message : 'Could not create value.');
+          }
+        }).fail(function(){
+          alert('Could not create value.');
+        }).always(function(){
+          btn.prop('disabled', false).text(original);
+          quickAddValueAttrRow = null;
+        });
+      });
+
+      // Close quick-add modals
+      $('#pls-quick-add-option-modal .pls-modal__close, #pls-quick-add-option-modal .pls-modal-cancel').on('click', function(){
+        $('#pls-quick-add-option-modal').removeClass('is-active');
+        $('#pls-quick-add-option-form')[0].reset();
+      });
+
+      $('#pls-quick-add-value-modal .pls-modal__close, #pls-quick-add-value-modal .pls-modal-cancel').on('click', function(){
+        $('#pls-quick-add-value-modal').removeClass('is-active');
+        $('#pls-quick-add-value-form')[0].reset();
+      });
       // Attribute rows can still be added programmatically when editing existing products
       $(document).on('click', '#pls-add-attribute-row', function(e){
         e.preventDefault();
@@ -2222,6 +2487,14 @@
             return;
           }
           
+          // Clear draft after successful save
+          var productId = $('#pls-product-id').val() || (resp.data && resp.data.product ? resp.data.product.id : 0);
+          if (productId){
+            var userDraftKey = 'pls_product_draft_' + (productId || 'new');
+            // Draft will be cleared on next page load, but we can clear it now via AJAX if needed
+            lastSavedDraft = null;
+          }
+          
           // Show success message
           var successMsg = 'Product saved successfully!';
           if (resp.data && resp.data.sync_message) {
@@ -2234,6 +2507,10 @@
           
           if (resp.data && resp.data.product){
             productMap[resp.data.product.id] = resp.data.product;
+            // Update product ID if it was a new product
+            if (!$('#pls-product-id').val() && resp.data.product.id){
+              $('#pls-product-id').val(resp.data.product.id);
+            }
           }
           
           // Auto-close after 2 seconds (optional - user can cancel)

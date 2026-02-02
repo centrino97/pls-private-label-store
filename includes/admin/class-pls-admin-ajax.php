@@ -1922,6 +1922,109 @@ final class PLS_Admin_Ajax {
     }
 
     /**
+     * Export ingredients as CSV.
+     */
+    public static function export_ingredients() {
+        check_admin_referer( 'pls_ingredient_export' );
+
+        if ( ! current_user_can( PLS_Capabilities::CAP_ATTRS ) ) {
+            wp_die( __( 'Insufficient permissions.', 'pls-private-label-store' ) );
+        }
+
+        $ingredients = get_terms( array(
+            'taxonomy'   => 'pls_ingredient',
+            'hide_empty' => false,
+        ) );
+
+        if ( is_wp_error( $ingredients ) ) {
+            $ingredients = array();
+        }
+
+        header( 'Content-Type: text/csv; charset=utf-8' );
+        header( 'Content-Disposition: attachment; filename=pls-ingredients-' . date( 'Y-m-d' ) . '.csv' );
+        header( 'Pragma: no-cache' );
+        header( 'Expires: 0' );
+
+        $output = fopen( 'php://output', 'w' );
+        
+        // BOM for UTF-8
+        fprintf( $output, chr( 0xEF ) . chr( 0xBB ) . chr( 0xBF ) );
+
+        // Headers
+        fputcsv( $output, array( 'Name', 'Slug', 'Description', 'Short Description', 'Is Active', 'Min Tier Level', 'Icon URL' ) );
+
+        foreach ( $ingredients as $ingredient ) {
+            $short_desc = get_term_meta( $ingredient->term_id, 'pls_ingredient_short_desc', true );
+            $is_active = get_term_meta( $ingredient->term_id, 'pls_ingredient_is_active', true );
+            $min_tier = get_term_meta( $ingredient->term_id, '_pls_ingredient_min_tier_level', true );
+            $icon_url = PLS_Taxonomies::icon_for_term( $ingredient->term_id );
+
+            fputcsv( $output, array(
+                $ingredient->name,
+                $ingredient->slug,
+                $ingredient->description,
+                $short_desc ?: '',
+                $is_active ? '1' : '0',
+                $min_tier ?: '1',
+                $icon_url,
+            ) );
+        }
+
+        fclose( $output );
+        exit;
+    }
+
+    /**
+     * AJAX: Save product draft to database.
+     */
+    public static function save_product_draft() {
+        check_ajax_referer( 'pls_admin_nonce', 'nonce' );
+
+        if ( ! current_user_can( PLS_Capabilities::CAP_PRODUCTS ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $product_id = isset( $_POST['product_id'] ) ? absint( $_POST['product_id'] ) : 0;
+        $draft_data = isset( $_POST['draft_data'] ) ? wp_unslash( $_POST['draft_data'] ) : array();
+
+        if ( empty( $draft_data ) ) {
+            wp_send_json_error( array( 'message' => __( 'No draft data provided.', 'pls-private-label-store' ) ), 400 );
+        }
+
+        // Store draft in user meta (per-user drafts)
+        $user_id = get_current_user_id();
+        $draft_key = 'pls_product_draft_' . ( $product_id ? $product_id : 'new' );
+        update_user_meta( $user_id, $draft_key, $draft_data );
+
+        wp_send_json_success( array(
+            'message' => __( 'Draft saved.', 'pls-private-label-store' ),
+            'timestamp' => current_time( 'mysql' ),
+        ) );
+    }
+
+    /**
+     * AJAX: Get product draft from database.
+     */
+    public static function get_product_draft() {
+        check_ajax_referer( 'pls_admin_nonce', 'nonce' );
+
+        if ( ! current_user_can( PLS_Capabilities::CAP_PRODUCTS ) ) {
+            wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'pls-private-label-store' ) ), 403 );
+        }
+
+        $product_id = isset( $_POST['product_id'] ) ? absint( $_POST['product_id'] ) : 0;
+        $user_id = get_current_user_id();
+        $draft_key = 'pls_product_draft_' . ( $product_id ? $product_id : 'new' );
+        $draft_data = get_user_meta( $user_id, $draft_key, true );
+
+        if ( empty( $draft_data ) ) {
+            wp_send_json_success( array( 'draft_data' => null ) );
+        }
+
+        wp_send_json_success( array( 'draft_data' => $draft_data ) );
+    }
+
+    /**
      * Internal method to delete attribute value.
      */
     private static function delete_attribute_value_internal( $value_id ) {

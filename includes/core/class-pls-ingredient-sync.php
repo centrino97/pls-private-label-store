@@ -75,16 +75,27 @@ final class PLS_Ingredient_Sync {
         );
 
         // Determine tier level: Check term meta first
-        // Base ingredients (INCI) = tier 1 (always included, no price impact, no tier restriction)
-        // Key/active ingredients = tier 3+ (unlockable, price affecting)
+        // Base ingredients (INCI) = tier 1 (always included, not customer-selectable, is_active = 0)
+        // Key/active ingredients = tier 3+ (unlockable, customer-selectable, is_active = 1)
         $min_tier_level = get_term_meta( $term_id, '_pls_ingredient_min_tier_level', true );
+        $is_active = get_term_meta( $term_id, 'pls_ingredient_is_active', true );
+        
         if ( '' === $min_tier_level || false === $min_tier_level ) {
-            // Default: Check if ingredient is marked as "active" (key ingredient)
-            $is_active = get_term_meta( $term_id, 'pls_ingredient_is_active', true );
-            // Active/key ingredients = tier 3+, base/INCI ingredients = tier 1 (always available)
+            // If min_tier_level not set, determine from is_active flag
+            // Base ingredients (is_active = 0) = tier 1
+            // Active/key ingredients (is_active = 1) = tier 3+
             $min_tier_level = ( $is_active ) ? 3 : 1;
         } else {
             $min_tier_level = absint( $min_tier_level );
+        }
+        
+        // Ensure is_active flag is set correctly based on tier level if not already set
+        if ( '' === $is_active || false === $is_active ) {
+            // If is_active not set, infer from tier level
+            // Tier 1 = base ingredient (is_active = 0)
+            // Tier 3+ = active/key ingredient (is_active = 1)
+            $is_active = ( $min_tier_level >= 3 ) ? 1 : 0;
+            update_term_meta( $term_id, 'pls_ingredient_is_active', $is_active );
         }
         
         // Ensure valid tier level (1-5)

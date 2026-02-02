@@ -1002,37 +1002,51 @@ wp_localize_script(
                   <div class="pls-attribute-row">
                     <div class="pls-attribute-row__grid">
                       <div class="pls-attribute-card">
-                        <p class="pls-micro"><?php esc_html_e( 'Product Option', 'pls-private-label-store' ); ?></p>
-                        <select class="pls-attr-select" name="">
-                          <option value=""><?php esc_html_e( 'Select option', 'pls-private-label-store' ); ?></option>
-                          <?php 
-                          // Filter out Pack Tier (primary), Package Type, Package Color, Package Cap, Label Application, and ingredient attributes
-                          $primary_attr_id = $primary_attr ? $primary_attr->id : 0;
-                          $excluded_keys = array( 'pack-tier', 'package-type', 'package-color', 'package-colour', 'package-cap', 'label-application' );
-                          foreach ( $attr_payload as $attr ) : 
-                            // Skip primary attribute (Pack Tier) and ingredient attributes
-                            if ( isset( $attr['is_primary'] ) && $attr['is_primary'] ) continue;
-                            if ( isset( $attr['option_type'] ) && $attr['option_type'] === 'ingredient' ) continue;
-                            if ( isset( $attr['id'] ) && (int) $attr['id'] === $primary_attr_id ) continue;
-                            if ( isset( $attr['attr_key'] ) && in_array( $attr['attr_key'], $excluded_keys, true ) ) continue;
-                            // Also skip Label Application by label name (in case attr_key differs)
-                            if ( isset( $attr['label'] ) && stripos( $attr['label'], 'label application' ) !== false ) continue;
-                          ?>
-                              <option value="<?php echo esc_attr( $attr['id'] ); ?>"><?php echo esc_html( $attr['label'] ); ?></option>
-                          <?php endforeach; ?>
-                        </select>
-                        <span class="pls-field-hint"><?php esc_html_e( 'Pick an additional product option.', 'pls-private-label-store' ); ?></span>
+                        <div style="display: flex; align-items: flex-start; gap: 8px;">
+                          <div style="flex: 1;">
+                            <p class="pls-micro"><?php esc_html_e( 'Product Option', 'pls-private-label-store' ); ?></p>
+                            <select class="pls-attr-select" name="">
+                              <option value=""><?php esc_html_e( 'Select option', 'pls-private-label-store' ); ?></option>
+                              <?php 
+                              // Filter out Pack Tier (primary), Package Type, Package Color, Package Cap, Label Application, and ingredient attributes
+                              $primary_attr_id = $primary_attr ? $primary_attr->id : 0;
+                              $excluded_keys = array( 'pack-tier', 'package-type', 'package-color', 'package-colour', 'package-cap', 'label-application' );
+                              foreach ( $attr_payload as $attr ) : 
+                                // Skip primary attribute (Pack Tier) and ingredient attributes
+                                if ( isset( $attr['is_primary'] ) && $attr['is_primary'] ) continue;
+                                if ( isset( $attr['option_type'] ) && $attr['option_type'] === 'ingredient' ) continue;
+                                if ( isset( $attr['id'] ) && (int) $attr['id'] === $primary_attr_id ) continue;
+                                if ( isset( $attr['attr_key'] ) && in_array( $attr['attr_key'], $excluded_keys, true ) ) continue;
+                                // Also skip Label Application by label name (in case attr_key differs)
+                                if ( isset( $attr['label'] ) && stripos( $attr['label'], 'label application' ) !== false ) continue;
+                              ?>
+                                  <option value="<?php echo esc_attr( $attr['id'] ); ?>"><?php echo esc_html( $attr['label'] ); ?></option>
+                              <?php endforeach; ?>
+                            </select>
+                            <span class="pls-field-hint"><?php esc_html_e( 'Pick an additional product option.', 'pls-private-label-store' ); ?></span>
+                          </div>
+                          <button type="button" class="button button-small pls-quick-add-option" style="margin-top: 20px; white-space: nowrap;" title="<?php esc_attr_e( 'Quick add new option', 'pls-private-label-store' ); ?>">
+                            <?php esc_html_e( '+ Option', 'pls-private-label-store' ); ?>
+                          </button>
+                        </div>
                       </div>
                       <div class="pls-attribute-card">
                         <div class="pls-attr-value-stack">
-                          <p class="pls-micro"><?php esc_html_e( 'Values & price impact', 'pls-private-label-store' ); ?></p>
-                          <label class="pls-field-stack">
-                            <span class="screen-reader-text"><?php esc_html_e( 'Select values', 'pls-private-label-store' ); ?></span>
-                            <select class="pls-attr-value-multi" multiple data-placeholder="<?php esc_attr_e( 'Select values', 'pls-private-label-store' ); ?>"></select>
-                          </label>
+                          <div style="display: flex; align-items: flex-start; gap: 8px;">
+                            <div style="flex: 1;">
+                              <p class="pls-micro"><?php esc_html_e( 'Values & price impact', 'pls-private-label-store' ); ?></p>
+                              <label class="pls-field-stack">
+                                <span class="screen-reader-text"><?php esc_html_e( 'Select values', 'pls-private-label-store' ); ?></span>
+                                <select class="pls-attr-value-multi" multiple data-placeholder="<?php esc_attr_e( 'Select values', 'pls-private-label-store' ); ?>"></select>
+                              </label>
+                            </div>
+                            <button type="button" class="button button-small pls-quick-add-value" style="margin-top: 20px; white-space: nowrap;" title="<?php esc_attr_e( 'Quick add new value', 'pls-private-label-store' ); ?>">
+                              <?php esc_html_e( '+ Value', 'pls-private-label-store' ); ?>
+                            </button>
+                          </div>
                           <div class="pls-attribute-value-details"></div>
                           <p class="pls-field-hint" style="margin-top: 8px; font-size: 11px; color: #666;">
-                            <?php esc_html_e( 'Select from existing values. To add new values, use the Product Options menu.', 'pls-private-label-store' ); ?>
+                            <?php esc_html_e( 'Select from existing values or use Quick Add to create new ones.', 'pls-private-label-store' ); ?>
                           </p>
                         </div>
                       </div>
@@ -1248,6 +1262,64 @@ wp_localize_script(
             <button type="button" class="button button-primary" id="pls-manage-save-values"><?php esc_html_e( 'Save defaults', 'pls-private-label-store' ); ?></button>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Add Option Modal -->
+  <div id="pls-quick-add-option-modal" class="pls-modal" style="display: none;">
+    <div class="pls-modal__backdrop"></div>
+    <div class="pls-modal__dialog" style="max-width: 500px;">
+      <div class="pls-modal__header">
+        <h2><?php esc_html_e( 'Quick Add Option', 'pls-private-label-store' ); ?></h2>
+        <button type="button" class="pls-modal__close" aria-label="<?php esc_attr_e( 'Close', 'pls-private-label-store' ); ?>">×</button>
+      </div>
+      <div class="pls-modal__body">
+        <form id="pls-quick-add-option-form">
+          <div class="pls-field-row">
+            <label><?php esc_html_e( 'Option Name', 'pls-private-label-store' ); ?> *</label>
+            <input type="text" id="pls-quick-option-name" class="regular-text" required placeholder="<?php esc_attr_e( 'e.g., Custom Bottle Design', 'pls-private-label-store' ); ?>" />
+          </div>
+          <div class="pls-field-row">
+            <label>
+              <input type="checkbox" id="pls-quick-option-variation" />
+              <?php esc_html_e( 'Use for variations', 'pls-private-label-store' ); ?>
+            </label>
+          </div>
+          <div class="pls-modal__footer">
+            <button type="button" class="button pls-modal-cancel"><?php esc_html_e( 'Cancel', 'pls-private-label-store' ); ?></button>
+            <button type="submit" class="button button-primary"><?php esc_html_e( 'Create Option', 'pls-private-label-store' ); ?></button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Add Value Modal -->
+  <div id="pls-quick-add-value-modal" class="pls-modal" style="display: none;">
+    <div class="pls-modal__backdrop"></div>
+    <div class="pls-modal__dialog" style="max-width: 500px;">
+      <div class="pls-modal__header">
+        <h2><?php esc_html_e( 'Quick Add Value', 'pls-private-label-store' ); ?></h2>
+        <button type="button" class="pls-modal__close" aria-label="<?php esc_attr_e( 'Close', 'pls-private-label-store' ); ?>">×</button>
+      </div>
+      <div class="pls-modal__body">
+        <form id="pls-quick-add-value-form">
+          <input type="hidden" id="pls-quick-value-attr-id" />
+          <div class="pls-field-row">
+            <label><?php esc_html_e( 'Value Name', 'pls-private-label-store' ); ?> *</label>
+            <input type="text" id="pls-quick-value-name" class="regular-text" required placeholder="<?php esc_attr_e( 'e.g., Premium Gold', 'pls-private-label-store' ); ?>" />
+          </div>
+          <div class="pls-field-row">
+            <label><?php esc_html_e( 'Price Impact', 'pls-private-label-store' ); ?></label>
+            <input type="number" step="0.01" id="pls-quick-value-price" class="regular-text" value="0.00" placeholder="0.00" />
+            <p class="description"><?php esc_html_e( 'Additional cost when this value is selected.', 'pls-private-label-store' ); ?></p>
+          </div>
+          <div class="pls-modal__footer">
+            <button type="button" class="button pls-modal-cancel"><?php esc_html_e( 'Cancel', 'pls-private-label-store' ); ?></button>
+            <button type="submit" class="button button-primary"><?php esc_html_e( 'Create Value', 'pls-private-label-store' ); ?></button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
