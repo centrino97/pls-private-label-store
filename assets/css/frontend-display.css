@@ -1209,6 +1209,115 @@ body.pls-modal-open {
     background: #fff;
 }
 
+/* Active Ingredients Selection (Tier 3+ only) */
+.pls-active-ingredients-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.pls-active-ingredient-card {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    background: #fff;
+    border: 2px solid var(--pls-gray-200);
+    border-radius: var(--pls-radius-lg);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pls-active-ingredient-card:hover {
+    border-color: var(--pls-primary);
+    box-shadow: 0 4px 12px rgba(34, 113, 177, 0.15);
+    transform: translateY(-2px);
+}
+
+.pls-active-ingredient-card.is-selected {
+    border-color: var(--pls-primary);
+    background: var(--pls-accent-light);
+}
+
+.pls-active-ingredient-card input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.pls-active-ingredient-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex: 1;
+}
+
+.pls-active-ingredient-icon {
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    border-radius: var(--pls-radius);
+    overflow: hidden;
+    background: var(--pls-gray-100);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pls-active-ingredient-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.pls-active-ingredient-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.pls-active-ingredient-name {
+    font-weight: 600;
+    color: var(--pls-gray-900);
+    font-size: 1rem;
+}
+
+.pls-active-ingredient-desc {
+    font-size: 0.875rem;
+    color: var(--pls-gray-600);
+}
+
+.pls-active-ingredient-price {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-weight: 600;
+    color: var(--pls-primary);
+    font-size: 0.9375rem;
+}
+
+.pls-active-ingredient-price--included {
+    color: var(--pls-success);
+}
+
+.pls-price-prefix {
+    font-size: 0.875rem;
+}
+
+.pls-price-note {
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--pls-gray-600);
+    margin-left: 0.25rem;
+}
+
+.pls-included-icon {
+    margin-right: 0.25rem;
+}
+
 .pls-option-value-card:has(input[type="radio"]:checked) {
     border-color: var(--pls-primary);
     background: linear-gradient(135deg, rgba(34, 113, 177, 0.08), rgba(34, 113, 177, 0.03));

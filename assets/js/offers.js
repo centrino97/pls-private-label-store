@@ -197,8 +197,12 @@
   function initPriceCalculator() {
     let selectedTier = null;
     let selectedOptions = {};
+    let selectedIngredients = {}; // Track selected active ingredients (Tier 3+ only)
     // Quantity is always 1 (one pack selected)
     const quantity = 1;
+    
+    // Track selected active ingredients (Tier 3+ only)
+    let selectedIngredients = {};
 
     function calculatePrice() {
       if (!selectedTier) {
@@ -240,9 +244,20 @@
         }
         // Base options (Tier 1-2) are included for free - no price added
       });
+      
+      // Calculate active ingredients price PER UNIT (only Tier 3+ ingredients)
+      // Base ingredients are always included and never selectable
+      let ingredientsTotalPerUnit = 0;
+      if (currentTierNum >= 3) {
+        Object.values(selectedIngredients).forEach(ingredient => {
+          if (ingredient && ingredient.priceImpact) {
+            ingredientsTotalPerUnit += parseFloat(ingredient.priceImpact) || 0;
+          }
+        });
+      }
 
-      // Total price per unit = base per unit + options per unit
-      const totalPerUnit = basePricePerUnit + optionsTotalPerUnit;
+      // Total price per unit = base per unit + options per unit + ingredients per unit
+      const totalPerUnit = basePricePerUnit + optionsTotalPerUnit + ingredientsTotalPerUnit;
       
       // Total for this pack = (price per unit) * (units per pack) * (quantity = 1)
       const totalForOrder = totalPerUnit * units * quantity;
@@ -250,18 +265,18 @@
       // Base total for pack = base per unit * units * quantity
       const baseTotalForOrder = basePricePerUnit * units * quantity;
       
-      // Options total for pack = options per unit * units * quantity
-      const optionsTotalForOrder = optionsTotalPerUnit * units * quantity;
+      // Options + Ingredients total for pack = (options + ingredients per unit) * units * quantity
+      const optionsIngredientsTotalForOrder = (optionsTotalPerUnit + ingredientsTotalPerUnit) * units * quantity;
 
-      updatePriceDisplay(baseTotalForOrder, optionsTotalForOrder, totalForOrder, totalPerUnit);
+      updatePriceDisplay(baseTotalForOrder, optionsIngredientsTotalForOrder, totalForOrder, totalPerUnit);
       updateUnitsDisplay(units);
     }
 
-    function updatePriceDisplay(base, options, total, perUnit) {
+    function updatePriceDisplay(base, optionsIngredients, total, perUnit) {
       $('#pls-price-base').html(formatPrice(base));
-      if (options > 0) {
+      if (optionsIngredients > 0) {
         $('#pls-price-options-row').show();
-        $('#pls-price-options').html(formatPrice(options));
+        $('#pls-price-options').html(formatPrice(optionsIngredients));
       } else {
         $('#pls-price-options-row').hide();
       }
@@ -323,6 +338,27 @@
         $addToCartBtn.find('.pls-add-to-cart-text').text('Add to Cart');
       }
 
+      calculatePrice();
+    });
+
+    // Active ingredient selection handler (Tier 3+ only)
+    $(document).on('change', '.pls-active-ingredient-checkbox', function() {
+      const $checkbox = $(this);
+      const ingredientId = $checkbox.data('ingredient-id');
+      const priceImpact = parseFloat($checkbox.data('price-impact')) || 0;
+      const isChecked = $checkbox.is(':checked');
+      
+      if (isChecked) {
+        selectedIngredients[ingredientId] = {
+          id: ingredientId,
+          priceImpact: priceImpact
+        };
+        $checkbox.closest('.pls-active-ingredient-card').addClass('is-selected');
+      } else {
+        delete selectedIngredients[ingredientId];
+        $checkbox.closest('.pls-active-ingredient-card').removeClass('is-selected');
+      }
+      
       calculatePrice();
     });
 

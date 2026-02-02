@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 5.3.2
+Stable tag: 5.3.3
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,16 @@ and provides shortcodes for seamless Elementor Theme Builder integration.
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 5.3.3 =
+* **CRITICAL FIX:** Ingredient selection system perfected - Base ingredients (Tier 1/INCI) are NEVER selectable by customers
+* **NEW:** Active Ingredients section in frontend configurator - Only Tier 3+ key ingredients are selectable
+* **NEW:** Customers can now select active ingredients as optional add-ons with price impacts
+* **IMPROVED:** Base ingredients are always included automatically - shown in INCI list but not selectable
+* **IMPROVED:** Ingredient price impacts properly calculated in frontend price calculator
+* **IMPROVED:** Clear distinction between base ingredients (admin-selected, always included) and active ingredients (customer-selectable)
+* **POLISHED:** Beautiful ingredient selection cards with icons, descriptions, and price displays
+* **POLISHED:** Price summary now includes "Options & Ingredients" for clarity
+
 = 5.3.2 =
 * **NEW:** Ingredient price impact fields - Admins can now set price impacts for key ingredients (Tier 3+) in product creation modal
 * **NEW:** Price impact column added to ingredient table - defaults to $0.00, editable per product

@@ -661,6 +661,107 @@ final class PLS_Frontend_Display {
                 </div>
             <?php endif; ?>
 
+            <!-- Active Ingredients Selection (Tier 3+ only) -->
+            <?php
+            // Get key ingredients (Tier 3+ only - these are selectable by customers)
+            // Base ingredients (Tier 1) are NEVER selectable - they're always included
+            $key_ingredient_ids = array();
+            if ( ! empty( $profile->key_ingredients_json ) ) {
+                $key_data = json_decode( $profile->key_ingredients_json, true );
+                if ( is_array( $key_data ) ) {
+                    foreach ( $key_data as $ki ) {
+                        $term_id = isset( $ki['term_id'] ) ? absint( $ki['term_id'] ) : ( isset( $ki['id'] ) ? absint( $ki['id'] ) : 0 );
+                        if ( $term_id ) {
+                            // Verify this is actually a Tier 3+ ingredient (double-check)
+                            $is_active = get_term_meta( $term_id, 'pls_ingredient_is_active', true );
+                            $min_tier_level = get_term_meta( $term_id, '_pls_ingredient_min_tier_level', true );
+                            if ( '' === $min_tier_level || false === $min_tier_level ) {
+                                $min_tier_level = $is_active ? 3 : 1;
+                            } else {
+                                $min_tier_level = absint( $min_tier_level );
+                            }
+                            
+                            // Only include Tier 3+ ingredients (base ingredients are never selectable)
+                            if ( $min_tier_level >= 3 ) {
+                                $key_ingredient_ids[] = $term_id;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Only show if there are key ingredients (Tier 3+)
+            // Base ingredients (Tier 1) are always included and never shown as selectable
+            if ( ! empty( $key_ingredient_ids ) ) :
+                // Get ingredient price impacts for this product
+                $ingredient_price_impacts = array();
+                foreach ( $key_ingredient_ids as $term_id ) {
+                    $price_impact = get_term_meta( $term_id, '_pls_product_ingredient_price_impact_' . $base_product_id, true );
+                    if ( '' !== $price_impact && false !== $price_impact ) {
+                        $ingredient_price_impacts[ $term_id ] = floatval( $price_impact );
+                    }
+                }
+                ?>
+                <div class="pls-configurator-block pls-configurator-accordion">
+                    <button type="button" class="pls-configurator-accordion__header" aria-expanded="false">
+                        <h3 class="pls-configurator-block__title"><?php esc_html_e( 'Active Ingredients (Optional)', 'pls-private-label-store' ); ?></h3>
+                        <span class="pls-configurator-accordion__icon">▼</span>
+                    </button>
+                    <div class="pls-configurator-accordion__content" style="display: none;">
+                        <p class="pls-subtle" style="margin-bottom: 1rem; font-size: 0.875rem; color: var(--pls-gray-600);">
+                            <?php esc_html_e( 'Select additional active ingredients to include in your order. Base ingredients are already included.', 'pls-private-label-store' ); ?>
+                        </p>
+                        <div class="pls-active-ingredients-list">
+                            <?php foreach ( $key_ingredient_ids as $term_id ) :
+                                $term = get_term( $term_id, 'pls_ingredient' );
+                                if ( ! $term || is_wp_error( $term ) ) {
+                                    continue;
+                                }
+                                
+                                $price_impact = isset( $ingredient_price_impacts[ $term_id ] ) ? $ingredient_price_impacts[ $term_id ] : 0;
+                                $has_price = $price_impact > 0;
+                                $icon = PLS_Taxonomies::icon_for_term( $term_id );
+                                $short_desc = get_term_meta( $term_id, 'pls_ingredient_short_desc', true );
+                                ?>
+                                <label class="pls-active-ingredient-card <?php echo $has_price ? 'has-price' : ''; ?>">
+                                    <input type="checkbox" 
+                                           name="pls_active_ingredients[]" 
+                                           value="<?php echo esc_attr( $term_id ); ?>"
+                                           data-ingredient-id="<?php echo esc_attr( $term_id ); ?>"
+                                           data-price-impact="<?php echo esc_attr( $price_impact ); ?>"
+                                           class="pls-active-ingredient-checkbox" />
+                                    <span class="pls-active-ingredient-content">
+                                        <?php if ( $icon ) : ?>
+                                            <span class="pls-active-ingredient-icon">
+                                                <img src="<?php echo esc_url( $icon ); ?>" alt="<?php echo esc_attr( $term->name ); ?>" />
+                                            </span>
+                                        <?php endif; ?>
+                                        <span class="pls-active-ingredient-info">
+                                            <span class="pls-active-ingredient-name"><?php echo esc_html( $term->name ); ?></span>
+                                            <?php if ( $short_desc ) : ?>
+                                                <span class="pls-active-ingredient-desc"><?php echo esc_html( $short_desc ); ?></span>
+                                            <?php endif; ?>
+                                        </span>
+                                        <?php if ( $has_price ) : ?>
+                                            <span class="pls-active-ingredient-price">
+                                                <span class="pls-price-prefix">+</span>
+                                                <?php echo wc_price( $price_impact ); ?>
+                                                <span class="pls-price-note"><?php esc_html_e( 'per unit', 'pls-private-label-store' ); ?></span>
+                                            </span>
+                                        <?php else : ?>
+                                            <span class="pls-active-ingredient-price pls-active-ingredient-price--included">
+                                                <span class="pls-included-icon">✓</span>
+                                                <?php esc_html_e( 'Included', 'pls-private-label-store' ); ?>
+                                            </span>
+                                        <?php endif; ?>
+                                    </span>
+                                </label>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </div>
+            <?php endif; ?>
+
             <!-- Price Summary -->
             <div class="pls-configurator-block pls-price-summary pls-configurator-accordion is-open">
                 <button type="button" class="pls-configurator-accordion__header" aria-expanded="true">
@@ -674,7 +775,7 @@ final class PLS_Frontend_Display {
                         <span class="pls-price-value" id="pls-price-base"><?php echo wc_price( 0 ); ?></span>
                     </div>
                     <div class="pls-price-row" id="pls-price-options-row" style="display: none;">
-                        <span class="pls-price-label"><?php esc_html_e( 'Options (total)', 'pls-private-label-store' ); ?></span>
+                        <span class="pls-price-label"><?php esc_html_e( 'Options & Ingredients (total)', 'pls-private-label-store' ); ?></span>
                         <span class="pls-price-value" id="pls-price-options"><?php echo wc_price( 0 ); ?></span>
                     </div>
                     <div class="pls-price-row pls-price-row--total">
