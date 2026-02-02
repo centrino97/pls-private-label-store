@@ -680,7 +680,7 @@ wp_localize_script(
                 <!-- Tab Description -->
                 <div class="pls-tab-description" id="pls-tab-description">
                   <p class="pls-subtle" style="margin: 0 0 12px 0; font-size: 13px; color: #64748b;">
-                    <span id="pls-tab-description-text"><?php esc_html_e( 'All ingredients are shown. Base ingredients are included in all products. Tier 3+ customers can unlock additional ingredients.', 'pls-private-label-store' ); ?></span>
+                    <span id="pls-tab-description-text"><?php esc_html_e( 'All ingredients are shown. Base ingredients (INCI) are included in all products. Tier 3+ customers can unlock additional key ingredients.', 'pls-private-label-store' ); ?></span>
                   </p>
                   <div id="pls-tab-counts" style="display: flex; gap: 16px; font-size: 12px; color: #64748b; margin-top: 4px;">
                     <span id="pls-tab-count-all">All: <strong>0</strong></span>
@@ -702,6 +702,9 @@ wp_localize_script(
                         <th class="pls-col-key" style="width: 80px;" title="<?php esc_attr_e( 'Mark as Key Ingredient (max 5)', 'pls-private-label-store' ); ?>">
                           <?php esc_html_e( 'Key', 'pls-private-label-store' ); ?>
                           <span class="pls-tier-badge" style="background: #6366f1; color: #fff; padding: 1px 4px; border-radius: 2px; font-size: 8px; margin-left: 4px;">T3+</span>
+                        </th>
+                        <th class="pls-col-price" style="width: 120px;" title="<?php esc_attr_e( 'Price Impact (Tier 3+ only)', 'pls-private-label-store' ); ?>">
+                          <?php esc_html_e( 'Price Impact', 'pls-private-label-store' ); ?>
                         </th>
                       </tr>
                     </thead>

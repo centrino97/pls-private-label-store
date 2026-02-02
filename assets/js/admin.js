@@ -218,7 +218,7 @@
         var iconSrc = term.icon || defaultIngredientIcon;
         tierLevel = tierLevel || parseInt(term.min_tier_level || term.tierLevel || 1, 10);
         var isT3Plus = tierLevel >= 3;
-        var isBase = tierLevel <= 2;
+        var isBase = tierLevel === 1; // Base ingredients (INCI) are tier 1 only
         
         var row = $('<tr></tr>')
           .attr('data-ingredient-id', term.id)
@@ -271,6 +271,23 @@
         }
         row.append(keyTd);
         
+        // Price Impact field (only for T3+ ingredients, default to 0)
+        var priceTd = $('<td class="pls-col-price"></td>');
+        if (isT3Plus && isSelected) {
+          var priceValue = term.price_impact || '0.00';
+          if (typeof priceValue === 'number') {
+            priceValue = priceValue.toFixed(2);
+          }
+          var priceInput = $('<input type="number" class="pls-ingredient-price-input" step="0.01" min="0" placeholder="0.00" />')
+            .attr('name', 'ingredient_price_impact[' + term.id + ']')
+            .attr('data-ingredient-id', term.id)
+            .val(priceValue);
+          priceTd.append(priceInput);
+        } else if (isSelected && !isT3Plus) {
+          priceTd.append($('<span class="pls-tier-indicator" style="font-size: 11px; color: #94a3b8;">—</span>'));
+        }
+        row.append(priceTd);
+        
         return row;
       }
 
@@ -305,10 +322,10 @@
           
           // Apply tab filter
           if (currentTab === 'base') {
-            // Base ingredients: tier 1-2
-            if (tierLevel > 2) return;
+            // Base ingredients (INCI): tier 1 only (always available, no tier restriction)
+            if (tierLevel !== 1) return;
           } else if (currentTab === 'unlockable') {
-            // Unlockable ingredients: tier 3+
+            // Unlockable ingredients: tier 3+ (key/active ingredients)
             if (tierLevel < 3) return;
           }
           // 'all' tab shows everything
@@ -514,9 +531,11 @@
         Object.values(ingredientMap).forEach(function(term){
           var tierLevel = parseInt(term.min_tier_level || term.tierLevel || 1, 10);
           allCount++;
-          if (tierLevel <= 2) {
+          if (tierLevel === 1) {
+            // Base ingredients (INCI): tier 1 only (always available)
             baseCount++;
-          } else {
+          } else if (tierLevel >= 3) {
+            // Unlockable ingredients: tier 3+ (key/active ingredients)
             unlockableCount++;
           }
         });
@@ -537,9 +556,9 @@
         
         // Update tab description
         var descriptions = {
-          'all': 'All ingredients are shown. Base ingredients are included in all products. Tier 3+ customers can unlock additional ingredients.',
-          'base': 'Base ingredients (Tier 1-2) are included in all products. These are standard INCI ingredients available to all customers.',
-          'unlockable': 'Unlockable ingredients (Tier 3+) are only available to customers who have reached Tier 3 or higher. These can be marked as key ingredients.'
+          'all': 'All ingredients are shown. Base ingredients (INCI) are included in all products. Tier 3+ customers can unlock additional key ingredients.',
+          'base': 'Base ingredients (INCI) are included in all products. These are standard INCI ingredients available to all customers with no tier restrictions.',
+          'unlockable': 'Unlockable ingredients (Tier 3+) are only available to customers who have reached Tier 3 or higher. These can be marked as key ingredients and have price impact.'
         };
         $('#pls-tab-description-text').text(descriptions[tab] || descriptions['all']);
         
@@ -1065,6 +1084,19 @@
         var selectedIngredients = $('#pls-ingredient-chips input:checked').map(function(){ return parseInt($(this).val(), 10); }).get();
         renderSelectedIngredients(selectedIngredients);
         updateKeyIngredients(keySelections);
+        
+        // Set ingredient price impacts after ingredients are rendered
+        if (data.ingredient_price_impacts && typeof data.ingredient_price_impacts === 'object') {
+          setTimeout(function(){
+            Object.keys(data.ingredient_price_impacts).forEach(function(termId){
+              var priceImpact = data.ingredient_price_impacts[termId];
+              var $priceInput = $('.pls-ingredient-price-input[data-ingredient-id="' + termId + '"]');
+              if ($priceInput.length) {
+                $priceInput.val(parseFloat(priceImpact).toFixed(2));
+              }
+            });
+          }, 100); // Small delay to ensure table is rendered
+        }
 
         renderFeaturedPreview(data.featured_image_id, data.featured_image_thumb || '');
         if (Array.isArray(data.gallery_media) && data.gallery_media.length){

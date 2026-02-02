@@ -3778,6 +3778,27 @@ a[title]:hover::before {
   border-left: 3px solid #6366f1;
 }
 
+/* Price Impact Column */
+.pls-col-price {
+  text-align: center;
+}
+
+.pls-ingredient-price-input {
+  width: 100%;
+  max-width: 100px;
+  padding: 4px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 12px;
+  text-align: right;
+}
+
+.pls-ingredient-price-input:focus {
+  outline: none;
+  border-color: var(--pls-accent);
+  box-shadow: 0 0 0 2px var(--pls-accent-light);
+}
+
 /* Tier Badges */
 .pls-tier-badge {
   display: inline-flex;

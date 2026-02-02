@@ -251,6 +251,32 @@ After the handoff session:
 
 ---
 
-**Last Updated**: January 27, 2026
-**Version**: 4.9.6
+**Last Updated**: February 1, 2026
+**Version**: 5.3.1
 **Status**: Ready for Handoff
+
+## Recent Updates (v5.3.1)
+
+### Ingredient Management Improvements
+- **Base Ingredients (INCI)**: Now correctly identified as Tier 1 (always available, no price impact)
+- **Key Ingredients**: Tier 3+ ingredients can be marked as key ingredients and have price impacts
+- **Price Impact Fields**: Admins can now set price impacts for key ingredients (Tier 3+) in the product creation modal
+  - Defaults to $0.00
+  - Editable per product
+  - Only available for Tier 3+ unlockable ingredients
+
+### Frontend Configurator
+- **Collapsible Accordion UI**: Product configurator now uses collapsible sections for better UX
+- **Tier-Based Pricing**: Only Tier 3+ options contribute to price calculations
+- **Improved Display**: Better organization of pack tiers, product options, and ingredients
+
+### Data Integrity
+- **Ingredient Sync Fix**: Prevented ingredients from incorrectly syncing as WooCommerce attributes
+- **Cleanup Script**: Added `scripts/cleanup-and-resync.php` to fix existing data inconsistencies
+- **Tier Level Logic**: Corrected tier level determination for base vs. key ingredients
+
+### UI/UX Enhancements
+- **Full-Screen Modal**: Product creation modal is now full-screen for better usability
+- **Progress Indicators**: Visual progress tracking through product creation steps
+- **Better Error Messages**: Improved validation and error display
+- **Loading States**: Clear feedback during save operations

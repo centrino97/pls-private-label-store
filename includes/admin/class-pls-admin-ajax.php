@@ -158,20 +158,29 @@ final class PLS_Admin_Ajax {
         $payload = array();
 
         foreach ( $terms as $term ) {
-            // Get min_tier_level from corresponding attribute value (ingredients are T3+)
-            $min_tier_level = 3; // Default to T3+ for ingredients
+            // Determine tier level: Base ingredients (INCI) = tier 1 (always available)
+            // Key/active ingredients = tier 3+ (unlockable, price affecting)
+            $min_tier_level = 1; // Default to tier 1 for base/INCI ingredients
+            
+            // Check if ingredient is marked as "active" (key ingredient)
+            $is_active = get_term_meta( $term->term_id, 'pls_ingredient_is_active', true );
+            if ( $is_active ) {
+                $min_tier_level = 3; // Active/key ingredients = tier 3+
+            }
+            
+            // Check term meta directly (can override default)
+            $term_meta_tier = get_term_meta( $term->term_id, '_pls_ingredient_min_tier_level', true );
+            if ( '' !== $term_meta_tier && false !== $term_meta_tier ) {
+                $min_tier_level = absint( $term_meta_tier );
+            }
+            
+            // Check attribute value as final fallback
             $attr_value_id = get_term_meta( $term->term_id, '_pls_attribute_value_id', true );
             if ( $attr_value_id ) {
                 $value_obj = PLS_Repo_Attributes::get_value( $attr_value_id );
-                if ( $value_obj && isset( $value_obj->min_tier_level ) ) {
+                if ( $value_obj && isset( $value_obj->min_tier_level ) && $value_obj->min_tier_level > 0 ) {
                     $min_tier_level = absint( $value_obj->min_tier_level );
                 }
-            }
-            
-            // Also check term meta directly as fallback
-            $term_meta_tier = get_term_meta( $term->term_id, '_pls_ingredient_min_tier_level', true );
-            if ( $term_meta_tier ) {
-                $min_tier_level = absint( $term_meta_tier );
             }
             
             $payload[] = array(
@@ -584,6 +593,7 @@ final class PLS_Admin_Ajax {
             'long_description'    => $profile ? $profile->long_description : '',
             'directions_text'     => $profile ? $profile->directions_text : '',
             'ingredients_list'    => $ingredient_ids,
+            'ingredient_price_impacts' => $ingredient_price_impacts,
             'featured_image_id'   => $profile ? absint( $profile->featured_image_id ) : 0,
             'gallery_ids'         => $gallery_ids,
             'featured_image_thumb'=> $featured_thumb && isset( $featured_thumb[0] ) ? $featured_thumb[0] : '',
@@ -1187,6 +1197,7 @@ final class PLS_Admin_Ajax {
 
         $selected_ingredients = isset( $data['ingredient_ids'] ) && is_array( $data['ingredient_ids'] ) ? array_map( 'absint', $data['ingredient_ids'] ) : array();
         $key_ingredients      = isset( $data['key_ingredient_ids'] ) && is_array( $data['key_ingredient_ids'] ) ? array_map( 'absint', $data['key_ingredient_ids'] ) : array();
+        $ingredient_price_impacts = isset( $data['ingredient_price_impact'] ) && is_array( $data['ingredient_price_impact'] ) ? $data['ingredient_price_impact'] : array();
 
         $selected_ingredients = array_unique( array_filter( $selected_ingredients ) );
         $key_ingredients      = array_unique( array_filter( $key_ingredients ) );
@@ -1194,7 +1205,20 @@ final class PLS_Admin_Ajax {
         $key_ingredients      = array_slice( $key_ingredients, 0, 5 );
 
         $payload['ingredients'] = $selected_ingredients;
+        $payload['ingredient_price_impacts'] = array(); // Store price impacts per ingredient
         $payload['key_ingredients'] = array();
+
+        // Process ingredient price impacts (only for T3+ ingredients)
+        foreach ( $ingredient_price_impacts as $term_id => $price_impact ) {
+            $term_id = absint( $term_id );
+            if ( $term_id && in_array( $term_id, $selected_ingredients, true ) ) {
+                $price_impact = round( floatval( $price_impact ), 2 );
+                if ( $price_impact < 0 ) {
+                    $price_impact = 0; // Ensure non-negative
+                }
+                $payload['ingredient_price_impacts'][ $term_id ] = $price_impact;
+            }
+        }
 
         foreach ( $key_ingredients as $term_id ) {
             $term = get_term( $term_id );
@@ -1601,6 +1625,29 @@ final class PLS_Admin_Ajax {
         );
 
         PLS_Repo_Product_Profile::upsert( $base_id, $profile_data );
+
+        // Store ingredient price impacts as term meta (product-specific)
+        // Clear existing price impacts for this product first
+        if ( ! $created ) {
+            // Get all ingredients that were previously associated with this product
+            $existing_profile = PLS_Repo_Product_Profile::get_for_base( $base_id );
+            if ( $existing_profile && $existing_profile->ingredients_list ) {
+                $existing_ingredients = array_filter( array_map( 'absint', explode( ',', $existing_profile->ingredients_list ) ) );
+                foreach ( $existing_ingredients as $term_id ) {
+                    delete_term_meta( $term_id, '_pls_product_ingredient_price_impact_' . $base_id );
+                }
+            }
+        }
+
+        // Save new price impacts
+        if ( ! empty( $payload['ingredient_price_impacts'] ) && is_array( $payload['ingredient_price_impacts'] ) ) {
+            foreach ( $payload['ingredient_price_impacts'] as $term_id => $price_impact ) {
+                $term_id = absint( $term_id );
+                if ( $term_id && in_array( $term_id, $payload['ingredients'], true ) ) {
+                    update_term_meta( $term_id, '_pls_product_ingredient_price_impact_' . $base_id, $price_impact );
+                }
+            }
+        }
 
         // Stock management fields
         PLS_Repo_Base_Product::update_stock( $base_id, array(
