@@ -1714,7 +1714,8 @@
         ingredients: [{
           name: name,
           short_description: ($('#pls-new-ingredient-short').val() || '').trim(),
-          icon_id: parseInt($('#pls-new-ingredient-icon').val(), 10) || 0
+          icon_id: parseInt($('#pls-new-ingredient-icon').val(), 10) || 0,
+          is_active: $('#pls-new-ingredient-is-active').is(':checked') ? 1 : 0
         }]
       };
       var submitBtn = $('#pls-save-ingredient-create');
@@ -1746,6 +1747,7 @@
         $('#pls-new-ingredient-short').val('');
         $('#pls-new-ingredient-icon').val('');
         $('#pls-new-ingredient-icon-preview').empty();
+        $('#pls-new-ingredient-is-active').prop('checked', false);
         var newId = resp.data.ingredients.length ? (resp.data.ingredients[0].id || resp.data.ingredients[0].term_id) : 0;
         if (newId){
           $('#pls-ingredient-chips input[value="'+newId+'"]').prop('checked', true);

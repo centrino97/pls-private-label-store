@@ -85,6 +85,7 @@ final class PLS_Admin_Ajax {
             $short = isset( $item['short_description'] ) ? sanitize_text_field( wp_unslash( $item['short_description'] ) ) : '';
             $icon_id = isset( $item['icon_id'] ) ? absint( $item['icon_id'] ) : 0;
             $icon    = $icon_id ? wp_get_attachment_url( $icon_id ) : '';
+            $is_active = isset( $item['is_active'] ) ? absint( $item['is_active'] ) : 0;
 
             if ( '' === $name ) {
                 continue;
@@ -118,6 +119,9 @@ final class PLS_Admin_Ajax {
                 update_term_meta( $term_id, 'pls_ingredient_icon', $icon );
             }
 
+            // Save active/inactive status
+            update_term_meta( $term_id, 'pls_ingredient_is_active', $is_active );
+
             $term_obj = get_term( $term_id );
             $created[] = array(
                 'id'                 => $term_id,
@@ -126,6 +130,7 @@ final class PLS_Admin_Ajax {
                 'label'              => $term_obj ? $term_obj->name : $name,
                 'short_description'  => sanitize_text_field( (string) get_term_meta( $term_id, 'pls_ingredient_short_desc', true ) ),
                 'icon'               => PLS_Taxonomies::icon_for_term( $term_id ),
+                'is_active'          => $is_active,
             );
         }
 

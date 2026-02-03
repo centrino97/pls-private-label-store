@@ -1149,6 +1149,12 @@ wp_localize_script(
           <label><?php esc_html_e( 'Short description (optional)', 'pls-private-label-store' ); ?>
             <input type="text" id="pls-new-ingredient-short" placeholder="<?php esc_attr_e( 'Antioxidant brightener', 'pls-private-label-store' ); ?>" />
           </label>
+          <label class="pls-inline-checkbox" style="margin-top: 12px;">
+            <input type="checkbox" id="pls-new-ingredient-is-active" value="1" />
+            <?php esc_html_e( 'Active Ingredient (customer selectable at Tier 3+)', 'pls-private-label-store' ); ?>
+            <span class="pls-help-icon" title="<?php esc_attr_e( 'When checked, this ingredient becomes a selectable option for Tier 3+ customers in the product configurator. Base ingredients are always included.', 'pls-private-label-store' ); ?>" style="cursor: help; margin-left: 4px; font-size: 12px;">ⓘ</span>
+          </label>
+          <p class="description" style="margin-top: 4px;"><?php esc_html_e( 'Uncheck for base/INCI ingredients that are not customer-selectable.', 'pls-private-label-store' ); ?></p>
         </div>
         <div class="pls-field-stack">
           <span class="pls-micro"><?php esc_html_e( 'Icon (optional)', 'pls-private-label-store' ); ?></span>

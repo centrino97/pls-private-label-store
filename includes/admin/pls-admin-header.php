@@ -27,6 +27,7 @@ $current_page = isset( $_GET['page'] ) ? sanitize_text_field( wp_unslash( $_GET[
             'pls-custom-orders'  => __( 'Custom Orders', 'pls-private-label-store' ),
             'pls-orders'         => __( 'Orders', 'pls-private-label-store' ),
             'pls-categories'     => __( 'Categories', 'pls-private-label-store' ),
+            'pls-ingredients'    => __( 'Ingredients', 'pls-private-label-store' ),
             'pls-attributes'     => __( 'Product Options', 'pls-private-label-store' ),
             'pls-bi'             => __( 'Analytics', 'pls-private-label-store' ),
             'pls-commission'     => __( 'Commission', 'pls-private-label-store' ),

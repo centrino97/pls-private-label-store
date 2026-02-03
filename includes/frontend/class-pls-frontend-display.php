@@ -1136,10 +1136,15 @@ final class PLS_Frontend_Display {
         foreach ( $ingredient_ids as $term_id ) {
             $term = get_term( $term_id, 'pls_ingredient' );
             if ( $term && ! is_wp_error( $term ) ) {
+                // Get short description from meta, fallback to term description
+                $short_desc = get_term_meta( $term_id, 'pls_ingredient_short_desc', true );
+                if ( empty( $short_desc ) ) {
+                    $short_desc = $term->description;
+                }
                 $all_ingredients[] = array(
                     'id'     => $term_id,
                     'name'   => $term->name,
-                    'desc'   => $term->description,
+                    'desc'   => $short_desc,
                     'is_key' => in_array( $term_id, $key_ingredient_ids, true ),
                 );
             }
@@ -1161,18 +1166,17 @@ final class PLS_Frontend_Display {
                     <h2 class="pls-section-title"><?php esc_html_e( 'Key Ingredients', 'pls-private-label-store' ); ?></h2>
                     <div class="pls-ingredients-key-grid">
                         <?php foreach ( $key_ingredients as $ingredient ) : 
-                            // Get ingredient image from taxonomy meta
-                            $ingredient_image_id = get_term_meta( $ingredient['id'], '_pls_ingredient_image', true );
-                            $ingredient_image_url = '';
-                            if ( $ingredient_image_id ) {
-                                $image = wp_get_attachment_image_src( $ingredient_image_id, 'medium' );
-                                $ingredient_image_url = $image ? $image[0] : '';
-                            }
+                            // Get ingredient icon using the standard method
+                            $ingredient_icon_url = PLS_Taxonomies::icon_for_term( $ingredient['id'] );
                             ?>
                             <div class="pls-ingredient-card pls-ingredient-card--key">
-                                <?php if ( $ingredient_image_url ) : ?>
+                                <?php if ( $ingredient_icon_url && $ingredient_icon_url !== PLS_Taxonomies::default_icon() ) : ?>
                                     <div class="pls-ingredient-image">
-                                        <img src="<?php echo esc_url( $ingredient_image_url ); ?>" alt="<?php echo esc_attr( $ingredient['name'] ); ?>" />
+                                        <img src="<?php echo esc_url( $ingredient_icon_url ); ?>" alt="<?php echo esc_attr( $ingredient['name'] ); ?>" />
+                                    </div>
+                                <?php elseif ( $ingredient_icon_url === PLS_Taxonomies::default_icon() ) : ?>
+                                    <div class="pls-ingredient-image pls-ingredient-image--placeholder">
+                                        <img src="<?php echo esc_url( $ingredient_icon_url ); ?>" alt="<?php echo esc_attr( $ingredient['name'] ); ?>" />
                                     </div>
                                 <?php else : ?>
                                     <div class="pls-ingredient-image pls-ingredient-image--placeholder">

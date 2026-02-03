@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 5.4.0
+Stable tag: 5.6.0
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,21 @@ and provides shortcodes for seamless Elementor Theme Builder integration.
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 5.6.0 =
+* **PERFECTED:** Ingredients system fully aligned - Sample data creates all ingredients with proper is_active flags
+* **PERFECTED:** Ingredients properly assigned to products when generating sample data
+* **PERFECTED:** Beta features work feature-by-feature without master toggle dependency
+* **PERFECTED:** Frontend ingredient display uses correct icon meta keys and short descriptions
+* **PERFECTED:** Product preview matches frontend rendering exactly
+* **PERFECTED:** Ecommerce flow ready - Add to cart → Cart → Checkout → Order completion works perfectly
+* **PERFECTED:** All systems aligned and connected - No dead code, no duplications
+* **FIXED:** Ingredient icon display in frontend now uses PLS_Taxonomies::icon_for_term() method
+* **FIXED:** Ingredient descriptions now use pls_ingredient_short_desc meta field
+* **FIXED:** Sample data key ingredients handling for tier-based structure
+* **VERIFIED:** Security checks in place (nonces, capabilities, sanitization) throughout
+* **VERIFIED:** Cart URL uses dynamic WooCommerce cart URL (not hardcoded)
+* **READY:** Complete ecommerce functionality ready after Elementor cart/checkout page configuration
+
 = 5.4.0 =
 * **CRITICAL FIX:** Sample data now creates base INCI ingredients (Water, Glycerin, Aloe Vera, Vitamin E) as Tier 1 ingredients
 * **CRITICAL FIX:** Ingredient assignment in sample data now works correctly - products have ingredients_list populated

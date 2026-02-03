@@ -1637,16 +1637,44 @@ final class PLS_Sample_Data {
             
             // Build key ingredients JSON
             $key_ingredients_array = array();
+            $all_key_ingredient_names = array();
             if ( ! empty( $product_data['key_ingredients'] ) ) {
-                foreach ( $product_data['key_ingredients'] as $ing_name ) {
-                    $ing_term = get_term_by( 'name', $ing_name, 'pls_ingredient' );
-                    if ( $ing_term ) {
-                        $key_ingredients_array[] = array(
-                            'label' => $ing_name,
-                            'icon' => '',
-                            'term_id' => $ing_term->term_id,
-                            'short_description' => get_term_meta( $ing_term->term_id, 'description', true ) ?: '',
-                        );
+                // Handle tier-based structure (new format)
+                if ( isset( $product_data['key_ingredients']['tier_1'] ) || isset( $product_data['key_ingredients']['tier_3'] ) ) {
+                    // Tier-based structure: array( 'tier_1' => array( 'Ingredient1' ), 'tier_3' => array( 'Ingredient2' ) )
+                    foreach ( $product_data['key_ingredients'] as $tier => $ingredients ) {
+                        if ( is_array( $ingredients ) ) {
+                            foreach ( $ingredients as $ing_name ) {
+                                if ( ! in_array( $ing_name, $all_key_ingredient_names, true ) ) {
+                                    $all_key_ingredient_names[] = $ing_name;
+                                }
+                                $ing_term = get_term_by( 'name', $ing_name, 'pls_ingredient' );
+                                if ( $ing_term ) {
+                                    $key_ingredients_array[] = array(
+                                        'label' => $ing_name,
+                                        'icon' => '',
+                                        'term_id' => $ing_term->term_id,
+                                        'short_description' => get_term_meta( $ing_term->term_id, 'pls_ingredient_short_desc', true ) ?: ( get_term_meta( $ing_term->term_id, 'description', true ) ?: '' ),
+                                    );
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // Old flat structure (backward compatibility)
+                    foreach ( $product_data['key_ingredients'] as $ing_name ) {
+                        if ( ! in_array( $ing_name, $all_key_ingredient_names, true ) ) {
+                            $all_key_ingredient_names[] = $ing_name;
+                        }
+                        $ing_term = get_term_by( 'name', $ing_name, 'pls_ingredient' );
+                        if ( $ing_term ) {
+                            $key_ingredients_array[] = array(
+                                'label' => $ing_name,
+                                'icon' => '',
+                                'term_id' => $ing_term->term_id,
+                                'short_description' => get_term_meta( $ing_term->term_id, 'pls_ingredient_short_desc', true ) ?: ( get_term_meta( $ing_term->term_id, 'description', true ) ?: '' ),
+                            );
+                        }
                     }
                 }
             }
@@ -1657,10 +1685,8 @@ final class PLS_Sample_Data {
             $all_ingredient_names = array();
             
             // Add key ingredients first
-            if ( ! empty( $product_data['key_ingredients'] ) ) {
-                foreach ( $product_data['key_ingredients'] as $ing_name ) {
-                    $all_ingredient_names[] = $ing_name;
-                }
+            foreach ( $all_key_ingredient_names as $ing_name ) {
+                $all_ingredient_names[] = $ing_name;
             }
             
             // Add additional common ingredients based on product type
