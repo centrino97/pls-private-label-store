@@ -3,7 +3,7 @@ name: Build plugin ZIP and attach to release
 on:
   push:
     tags:
-      - 'v*'   # runs when you push a tag like v2.3.0
+      - '*'   # runs when you push any tag (e.g., v5.6.2 or 5.6.2)
 
 jobs:
   build-and-release:
@@ -21,9 +21,11 @@ jobs:
         id: tag_version
         run: |
           TAG_NAME=${GITHUB_REF#refs/tags/}
+          # Remove 'v' prefix if present, otherwise use tag as-is
+          VERSION=${TAG_NAME#v}
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
-          echo "version=${TAG_NAME#v}" >> $GITHUB_OUTPUT
-          echo "Tag: $TAG_NAME, Version: ${TAG_NAME#v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Tag: $TAG_NAME, Version: $VERSION"
 
       - name: Build plugin ZIP
         run: |

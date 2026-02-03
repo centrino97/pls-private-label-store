@@ -624,3 +624,104 @@ When running commands, check the workspace path:
 - **Linux:** `/home/...` or `/root/...`
 
 **Always use semicolon (`;`) for chaining to ensure compatibility!**
+
+---
+
+## 🔄 GitHub Actions Release Workflow
+
+### Workflow File Location
+`.github/workflows/build-release-zip.yml`
+
+### Workflow Trigger
+The workflow triggers on **ANY tag push** (with or without `v` prefix):
+- Tags like `v5.6.2` ✅
+- Tags like `5.6.2` ✅
+- Both formats work automatically
+
+### Workflow Steps
+1. **Checkout code** - Full git history for release notes
+2. **Extract version** - Removes `v` prefix if present, uses tag name as-is otherwise
+3. **Build plugin ZIP** - Creates ZIP with all plugin files
+4. **Create GitHub Release** - Creates release with ZIP attached
+
+### Workflow Configuration
+```yaml
+name: Build plugin ZIP and attach to release
+
+on:
+  push:
+    tags:
+      - '*'   # runs when you push any tag (e.g., v5.6.2 or 5.6.2)
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed to create release and upload asset
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full history for release notes
+
+      - name: Extract version from tag
+        id: tag_version
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          # Remove 'v' prefix if present, otherwise use tag as-is
+          VERSION=${TAG_NAME#v}
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Tag: $TAG_NAME, Version: $VERSION"
+
+      - name: Build plugin ZIP
+        run: |
+          PLUGIN_SLUG="pls-private-label-store"
+          
+          # Create build directory and copy only plugin files
+          mkdir -p build/"$PLUGIN_SLUG"
+          cp -R assets docs includes uupd pls-private-label-store.php readme.txt build/"$PLUGIN_SLUG"/
+          
+          # Verify files were copied
+          echo "Files in build directory:"
+          ls -la build/"$PLUGIN_SLUG"/
+          
+          cd build
+          zip -r "../${PLUGIN_SLUG}.zip" "$PLUGIN_SLUG"
+          
+          # Verify ZIP was created
+          ls -lh "../${PLUGIN_SLUG}.zip"
+          unzip -l "../${PLUGIN_SLUG}.zip" | head -20
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.tag_version.outputs.tag_name }}
+          name: Release ${{ steps.tag_version.outputs.tag_name }}
+          body: |
+            ## Release ${{ steps.tag_version.outputs.tag_name }}
+            
+            See [changelog](https://raw.githubusercontent.com/${{ github.repository }}/main/uupd/index.json) for details.
+            
+            **Download:** [pls-private-label-store.zip](https://github.com/${{ github.repository }}/releases/download/${{ steps.tag_version.outputs.tag_name }}/pls-private-label-store.zip)
+          files: |
+            pls-private-label-store.zip
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+```
+
+### Important Notes
+- **Tag format:** Use `v5.6.2` format (with `v` prefix) for consistency
+- **Workflow triggers automatically** when tag is pushed: `git push origin v5.6.2`
+- **ZIP file** is automatically attached to the GitHub release
+- **Release notes** are auto-generated from git commits
+- **UUPD updates** use the release ZIP file for downloads
+
+### Troubleshooting
+- **Workflow not triggering:** Check that tag was pushed (`git push origin v5.6.2`)
+- **ZIP not created:** Check GitHub Actions logs for build errors
+- **Release not created:** Verify `contents: write` permission is set

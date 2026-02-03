@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 5.6.0
+Stable tag: 5.6.2
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,11 @@ and provides shortcodes for seamless Elementor Theme Builder integration.
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 5.6.2 =
+* **FIXED:** GitHub Actions workflow now triggers on any tag format (with or without `v` prefix)
+* **IMPROVED:** Simplified workflow to work 100% of the time
+* **IMPROVED:** Added GitHub Actions workflow documentation to cursor rules
+
 = 5.6.0 =
 * **PERFECTED:** Ingredients system fully aligned - Sample data creates all ingredients with proper is_active flags
 * **PERFECTED:** Ingredients properly assigned to products when generating sample data
