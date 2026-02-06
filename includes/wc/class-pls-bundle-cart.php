@@ -171,15 +171,15 @@ final class PLS_Bundle_Cart {
                     }
                 }
 
-                // Add bundle notice (only once)
-                if ( ! wc_has_notice( sprintf( __( 'Bundle pricing applied: %s', 'pls-private-label-store' ), $bundle->name ), 'success' ) ) {
-                    wc_add_notice(
-                        sprintf(
-                            __( 'Bundle pricing applied: %s', 'pls-private-label-store' ),
-                            $bundle->name
-                        ),
-                        'success'
-                    );
+                // v5.7.0: Enhanced bundle notice with savings info
+                $notice_msg = sprintf(
+                    /* translators: 1: bundle name, 2: price per unit */
+                    __( 'Bundle pricing applied: %1$s at %2$s per unit', 'pls-private-label-store' ),
+                    '<strong>' . esc_html( $bundle->name ) . '</strong>',
+                    wc_price( $bundle_price_per_unit )
+                );
+                if ( ! wc_has_notice( $notice_msg, 'success' ) ) {
+                    wc_add_notice( $notice_msg, 'success' );
                 }
 
                 // Only apply one bundle at a time (best match - highest priority)
@@ -313,17 +313,53 @@ final class PLS_Bundle_Cart {
                 }
             }
 
-            // If close but not quite qualified, show upsell message
+            // v5.7.0: Enhanced near-qualifying messages with specific savings info
             if ( $qualified_products > 0 && $qualified_products < $required_sku_count ) {
                 $needed = $required_sku_count - $qualified_products;
+
+                // Calculate potential savings based on the first qualifying product's current price
+                $potential_savings_text = '';
+                foreach ( $pls_items as $item ) {
+                    if ( $item['total_units'] >= $required_units_per_sku ) {
+                        // Estimate current per-unit cost from cart item price
+                        foreach ( $cart->get_cart() as $ci ) {
+                            if ( $ci['product_id'] === $item['product_id'] ?? 0 ) {
+                                $item_price = floatval( $ci['data']->get_price() );
+                                $units_in_item = 0;
+                                if ( isset( $ci['variation_id'] ) && $ci['variation_id'] ) {
+                                    $units_in_item = (int) get_post_meta( $ci['variation_id'], '_pls_units', true );
+                                }
+                                if ( $units_in_item > 0 && $item_price > 0 ) {
+                                    $current_per_unit = $item_price / $units_in_item;
+                                    if ( $current_per_unit > $bundle_price_per_unit ) {
+                                        $savings = $current_per_unit - $bundle_price_per_unit;
+                                        $potential_savings_text = sprintf(
+                                            /* translators: %s: savings per unit amount */
+                                            __( 'Save %s per unit!', 'pls-private-label-store' ),
+                                            wc_price( $savings )
+                                        );
+                                    }
+                                }
+                                break;
+                            }
+                        }
+                        break;
+                    }
+                }
+
                 $message = sprintf(
-                    __( 'Add %d more product%s to qualify for bundle pricing: %s (Save up to %s per unit)', 'pls-private-label-store' ),
+                    /* translators: 1: number of products needed, 2: plural suffix, 3: bundle name, 4: bundle price per unit */
+                    __( 'Almost there! Add %1$d more product%2$s to unlock %3$s bundle pricing at %4$s per unit.', 'pls-private-label-store' ),
                     $needed,
                     $needed > 1 ? 's' : '',
-                    $bundle->name,
+                    '<strong>' . esc_html( $bundle->name ) . '</strong>',
                     wc_price( $bundle_price_per_unit )
                 );
-                
+
+                if ( $potential_savings_text ) {
+                    $message .= ' <span style="color: #10b981; font-weight: 600;">' . $potential_savings_text . '</span>';
+                }
+
                 if ( ! wc_has_notice( $message, 'info' ) ) {
                     wc_add_notice( $message, 'info' );
                 }

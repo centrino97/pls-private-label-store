@@ -1,4 +1,10 @@
 (function($){
+  // v5.7.0: Module-level state for configurator
+  var selectedTier = null;
+  var selectedOptions = {};
+  var selectedIngredients = {};
+  var quantity = 1;
+
   function loadOffers($root){
     $.post(plsOffers.ajaxUrl, { action:'pls_get_offers', nonce: plsOffers.nonce }, function(res){
       if(!res || !res.success) return;
@@ -193,18 +199,8 @@
     });
   }
 
-  // Price calculator
-  function initPriceCalculator() {
-    let selectedTier = null;
-    let selectedOptions = {};
-    let selectedIngredients = {}; // Track selected active ingredients (Tier 3+ only)
-    // Quantity is always 1 (one pack selected)
-    const quantity = 1;
-    
-    // Track selected active ingredients (Tier 3+ only)
-    let selectedIngredients = {};
-
-    function calculatePrice() {
+  // v5.7.0: Module-level price functions (extracted for multi-step modal access)
+  function calculatePrice() {
       if (!selectedTier) {
         updatePriceDisplay(0, 0, 0, 0);
         updateUnitsDisplay(0);
@@ -270,9 +266,16 @@
 
       updatePriceDisplay(baseTotalForOrder, optionsIngredientsTotalForOrder, totalForOrder, totalPerUnit);
       updateUnitsDisplay(units);
-    }
 
-    function updatePriceDisplay(base, optionsIngredients, total, perUnit) {
+      // v5.7.0: Also update modal footer price
+      if (selectedTier) {
+        var totalPerUnitFinal = basePricePerUnit + optionsTotalPerUnit + ingredientsTotalPerUnit;
+        var totalOrderFinal = totalPerUnitFinal * units * quantity;
+        updateModalFooterPriceGlobal(totalPerUnitFinal, totalOrderFinal);
+      }
+  }
+
+  function updatePriceDisplay(base, optionsIngredients, total, perUnit) {
       $('#pls-price-base').html(formatPrice(base));
       if (optionsIngredients > 0) {
         $('#pls-price-options-row').show();
@@ -282,13 +285,13 @@
       }
       $('#pls-price-total').html(formatPrice(total));
       $('#pls-price-per-unit').html(formatPrice(perUnit));
-    }
+  }
 
-    function updateUnitsDisplay(units) {
+  function updateUnitsDisplay(units) {
       $('#pls-selected-units').text(units.toLocaleString());
-    }
+  }
 
-    function formatPrice(amount) {
+  function formatPrice(amount) {
       const numAmount = parseFloat(amount) || 0;
       
       // Try to use WooCommerce formatting if available
@@ -305,8 +308,16 @@
       
       // Fallback to simple formatting
       return '$' + numAmount.toFixed(2);
-    }
+  }
 
+  // v5.7.0: Update modal footer price (called from multiple places)
+  function updateModalFooterPriceGlobal(perUnit, total) {
+      $('#pls-footer-per-unit').text(formatPrice(perUnit) + '/unit');
+      $('#pls-footer-total').text('Total: ' + formatPrice(total));
+  }
+
+  // Price calculator event handlers
+  function initPriceCalculator() {
     // Tier selection handler
     $(document).on('click', '.pls-tier-card__select', function() {
       const $card = $(this).closest('.pls-tier-card');
@@ -522,7 +533,7 @@
     });
   }
 
-  // Tab switching
+  // Tab switching (legacy, kept for backward compat)
   function initTabs() {
     $('.pls-tab-button').on('click', function() {
       const tabName = $(this).data('tab');
@@ -537,28 +548,383 @@
     });
   }
 
-  // Configurator Modal
+  // v5.7.0: Page accordion toggle (Benefits, Description, Directions, Ingredients)
+  function initPageAccordions() {
+    $(document).on('click', '.pls-page-accordion__header', function(e) {
+      e.preventDefault();
+      var $header = $(this);
+      var $accordion = $header.closest('.pls-page-accordion');
+      var $content = $accordion.find('.pls-page-accordion__content');
+      var isExpanded = $header.attr('aria-expanded') === 'true';
+
+      // Toggle state
+      $header.attr('aria-expanded', !isExpanded);
+      $accordion.toggleClass('is-open', !isExpanded);
+
+      // Animate content visibility
+      if (!isExpanded) {
+        $content.slideDown(250);
+      } else {
+        $content.slideUp(250);
+      }
+    });
+  }
+
+  // v5.7.0: Video gallery support
+  function initVideoGallery() {
+    $(document).on('click', '.pls-gallery-thumb--video', function() {
+      var $thumb = $(this);
+      var videoUrl = $thumb.data('video-url');
+      var mime = $thumb.data('mime') || 'video/mp4';
+
+      if (!videoUrl) return;
+
+      var $mainArea = $('.pls-product-image-main');
+      if (!$mainArea.length) return;
+
+      // Replace main image with video
+      $mainArea.html(
+        '<video controls autoplay muted playsinline style="width:100%;height:100%;object-fit:cover;border-radius:var(--pls-radius-lg);">' +
+        '<source src="' + videoUrl + '" type="' + mime + '">' +
+        'Your browser does not support the video tag.' +
+        '</video>'
+      );
+
+      // Update active state
+      $('.pls-gallery-thumb').removeClass('is-active');
+      $thumb.addClass('is-active');
+    });
+
+    // When clicking a regular image thumb after video, restore image display
+    $(document).on('click', '.pls-gallery-thumb:not(.pls-gallery-thumb--video)', function() {
+      var $thumb = $(this);
+      var imageUrl = $thumb.data('image-url');
+      var imageId = $thumb.data('image-id');
+
+      if (!imageUrl) return;
+
+      var $mainArea = $('.pls-product-image-main');
+      if (!$mainArea.length) return;
+
+      // Check if video is currently playing (main area has video)
+      if ($mainArea.find('video').length) {
+        // Replace video with image
+        $mainArea.html(
+          '<img src="' + imageUrl + '" alt="" class="pls-product-image-main__img" data-image-id="' + (imageId || '') + '" />'
+        );
+      }
+
+      // Update active state
+      $('.pls-gallery-thumb').removeClass('is-active');
+      $thumb.addClass('is-active');
+    });
+  }
+
+  // v5.7.0: Multi-step Configurator Modal
   function initConfiguratorModal() {
+    var currentStep = 1;
+    var totalSteps = 6;
+
     // Open modal
     $(document).on('click', '#pls-open-configurator', function() {
       $('#pls-configurator-modal').addClass('is-visible');
       $('body').addClass('pls-modal-open');
+      goToStep(1);
     });
 
     // Close modal
     $(document).on('click', '.pls-configurator-modal__close, .pls-configurator-modal__overlay', function(e) {
       if ($(e.target).hasClass('pls-configurator-modal__overlay') || $(e.target).hasClass('pls-configurator-modal__close')) {
-        $('#pls-configurator-modal').removeClass('is-visible');
-        $('body').removeClass('pls-modal-open');
+        closeModal();
       }
     });
 
     // Close on ESC key
     $(document).on('keydown', function(e) {
       if (e.key === 'Escape' && $('#pls-configurator-modal').hasClass('is-visible')) {
-        $('#pls-configurator-modal').removeClass('is-visible');
-        $('body').removeClass('pls-modal-open');
+        closeModal();
       }
+    });
+
+    function closeModal() {
+      $('#pls-configurator-modal').removeClass('is-visible');
+      $('body').removeClass('pls-modal-open');
+    }
+
+    // Step navigation
+    $(document).on('click', '#pls-next-step', function() {
+      if (currentStep < totalSteps) {
+        goToStep(currentStep + 1);
+      }
+    });
+
+    $(document).on('click', '#pls-prev-step', function() {
+      if (currentStep > 1) {
+        goToStep(currentStep - 1);
+      }
+    });
+
+    // Click on step dot
+    $(document).on('click', '.pls-step-dot', function() {
+      var targetStep = parseInt($(this).data('step'));
+      if (targetStep && targetStep <= totalSteps) {
+        goToStep(targetStep);
+      }
+    });
+
+    function goToStep(step) {
+      currentStep = step;
+
+      // Update step panels
+      $('.pls-step-panel').removeClass('is-active');
+      $('.pls-step-panel[data-step="' + step + '"]').addClass('is-active');
+
+      // Update step indicator dots
+      $('.pls-step-dot').each(function() {
+        var dotStep = parseInt($(this).data('step'));
+        $(this).removeClass('is-active is-completed');
+        if (dotStep === step) {
+          $(this).addClass('is-active');
+        } else if (dotStep < step) {
+          $(this).addClass('is-completed');
+        }
+      });
+
+      // Show/hide prev/next buttons
+      if (step === 1) {
+        $('#pls-prev-step').hide();
+      } else {
+        $('#pls-prev-step').show();
+      }
+
+      if (step === totalSteps) {
+        $('#pls-next-step').text('Add to Cart').off('click.finalstep').on('click.finalstep', function() {
+          // Trigger the add to cart form submission
+          var $form = $('.pls-step-panel[data-step="6"] .pls-cart-form');
+          if ($form.length) {
+            $form.trigger('submit');
+          }
+        });
+      } else {
+        $('#pls-next-step').html('Next &rarr;').off('click.finalstep');
+      }
+
+      // Update tier-dependent content (steps 3, 4)
+      updateTierDependentSteps();
+
+      // Build review summary on step 6
+      if (step === 6) {
+        buildReviewSummary();
+      }
+
+      // Scroll content to top
+      $('#pls-step-content').scrollTop(0);
+    }
+
+    // Pack size dropdown (Step 1)
+    $(document).on('change', '#pls-pack-select', function() {
+      var $selected = $(this).find(':selected');
+      var tierSlug = $(this).val();
+
+      if (!tierSlug) {
+        selectedTier = null;
+        updateModalFooterPrice(0, 0);
+        $('#pls-modal-pack-info').text('');
+        return;
+      }
+
+      var variationId = $selected.data('variation-id');
+      var units = parseInt($selected.data('units')) || 0;
+      var pricePerUnit = parseFloat($selected.data('price-per-unit')) || 0;
+      var totalPrice = parseFloat($selected.data('total-price')) || 0;
+      var tierKey = $selected.data('tier-key') || 'tier_1';
+
+      selectedTier = {
+        slug: tierSlug,
+        variationId: variationId,
+        units: units,
+        pricePerUnit: pricePerUnit,
+        totalPrice: totalPrice,
+        tierKey: tierKey
+      };
+
+      // Update hidden variation input
+      $('.pls-variation-id').val(variationId);
+
+      // Enable add to cart
+      var $addToCartBtn = $('.pls-add-to-cart-button');
+      if ($addToCartBtn.length) {
+        $addToCartBtn.prop('disabled', false);
+        $addToCartBtn.find('.pls-add-to-cart-text').text('Add to Cart');
+      }
+
+      // Update modal header
+      $('#pls-modal-pack-info').text(units.toLocaleString() + ' units');
+
+      // Update footer price
+      calculatePrice();
+      updateModalFooterPrice(pricePerUnit, totalPrice);
+
+      // Update tier-dependent steps
+      updateTierDependentSteps();
+
+      // v5.7.0: Check for bundle nudge
+      checkBundleNudge(units, pricePerUnit);
+    });
+
+    // v5.7.0: Bundle nudge logic
+    function checkBundleNudge(selectedUnits, currentPricePerUnit) {
+      var $nudge = $('#pls-bundle-nudge');
+      var $reviewSavings = $('#pls-review-bundle-savings');
+      var bundles = (typeof plsOffers !== 'undefined' && plsOffers.bundles) ? plsOffers.bundles : [];
+      var i18n = (typeof plsOffers !== 'undefined' && plsOffers.i18n) ? plsOffers.i18n : {};
+
+      if (!bundles.length || !selectedUnits) {
+        $nudge.slideUp(200);
+        $reviewSavings.slideUp(200);
+        $('#pls-price-savings-row').hide();
+        return;
+      }
+
+      // Find the best matching bundle (lowest sku_count that this unit count qualifies for)
+      var bestBundle = null;
+      for (var i = 0; i < bundles.length; i++) {
+        var b = bundles[i];
+        if (b.units_per_sku > 0 && selectedUnits >= b.units_per_sku && b.price_per_unit > 0) {
+          if (!bestBundle || b.price_per_unit < bestBundle.price_per_unit) {
+            bestBundle = b;
+          }
+        }
+      }
+
+      if (bestBundle && currentPricePerUnit > bestBundle.price_per_unit) {
+        var savings = currentPricePerUnit - bestBundle.price_per_unit;
+        var totalSavings = savings * selectedUnits;
+        var savingsFormatted = '$' + savings.toFixed(2);
+        var totalSavingsFormatted = '$' + totalSavings.toFixed(2);
+        var bundlePriceFormatted = '$' + bestBundle.price_per_unit.toFixed(2);
+
+        // Show nudge in Step 1
+        var nudgeText = 'Configure ' + bestBundle.sku_count + ' products to unlock ' + bestBundle.name + ' pricing at ' + bundlePriceFormatted + '/unit';
+        if (i18n.bundleNudge) {
+          nudgeText = i18n.bundleNudge
+            .replace('%d', bestBundle.sku_count)
+            .replace('%s', bestBundle.name)
+            .replace('%s', bundlePriceFormatted);
+        }
+        $('#pls-bundle-nudge-text').text(nudgeText);
+        $('#pls-bundle-nudge-savings').html(
+          savingsFormatted + '<small>' + (i18n.perUnit || 'per unit') + '</small>'
+        );
+        $nudge.slideDown(300);
+
+        // Show in review step too
+        var reviewTitle = (i18n.bundleSavingsLabel || 'Bundle Savings Available');
+        var reviewText = 'Save up to ' + totalSavingsFormatted + ' total with ' + bestBundle.name;
+        $('#pls-review-bundle-title').text(reviewTitle);
+        $('#pls-review-bundle-text').text(reviewText);
+        $reviewSavings.slideDown(200);
+
+        // Show savings row in price breakdown
+        $('#pls-price-savings').html('-' + totalSavingsFormatted + ' <small>with bundle</small>');
+        $('#pls-price-savings-row').show();
+      } else {
+        $nudge.slideUp(200);
+        $reviewSavings.slideUp(200);
+        $('#pls-price-savings-row').hide();
+      }
+    }
+
+    function updateTierDependentSteps() {
+      if (!selectedTier) return;
+      var tierNum = parseInt((selectedTier.tierKey || 'tier_1').replace('tier_', '')) || 1;
+
+      // Steps 3 & 4: Show/hide tier-dependent content
+      if (tierNum >= 3) {
+        $('#pls-step3-teaser').hide();
+        $('#pls-step3-content').show();
+        $('#pls-step4-teaser').hide();
+        $('#pls-step4-content').show();
+      } else {
+        $('#pls-step3-teaser').show();
+        $('#pls-step3-content').hide();
+        $('#pls-step4-teaser').show();
+        $('#pls-step4-content').hide();
+      }
+    }
+
+    function updateModalFooterPrice(perUnit, total) {
+      var perUnitFormatted = formatPrice(perUnit);
+      var totalFormatted = formatPrice(total);
+      $('#pls-footer-per-unit').text(perUnitFormatted + '/unit');
+      $('#pls-footer-total').text('Total: ' + totalFormatted);
+    }
+
+    // Label option selection visual
+    $(document).on('change', '.pls-label-radio', function() {
+      $('.pls-label-option-card').removeClass('is-selected');
+      $(this).closest('.pls-label-option-card').addClass('is-selected');
+      calculatePrice();
+    });
+
+    function buildReviewSummary() {
+      var $summary = $('#pls-review-summary');
+      $summary.empty();
+
+      // Pack size
+      if (selectedTier) {
+        $summary.append(
+          '<div class="pls-review-item">' +
+          '<span class="pls-review-item__label">Pack Size</span>' +
+          '<span class="pls-review-item__value">' + (selectedTier.units || 0).toLocaleString() + ' units' +
+          '<a class="pls-review-item__edit" data-goto-step="1">Edit</a></span>' +
+          '</div>'
+        );
+      }
+
+      // Selected options
+      Object.keys(selectedOptions).forEach(function(key) {
+        var opt = selectedOptions[key];
+        if (opt) {
+          $summary.append(
+            '<div class="pls-review-item">' +
+            '<span class="pls-review-item__label">' + key + '</span>' +
+            '<span class="pls-review-item__value">Option #' + opt.valueId +
+            '<a class="pls-review-item__edit" data-goto-step="2">Edit</a></span>' +
+            '</div>'
+          );
+        }
+      });
+
+      // Selected ingredients
+      var ingredientCount = Object.keys(selectedIngredients).length;
+      if (ingredientCount > 0) {
+        $summary.append(
+          '<div class="pls-review-item">' +
+          '<span class="pls-review-item__label">Active Ingredients</span>' +
+          '<span class="pls-review-item__value">' + ingredientCount + ' selected' +
+          '<a class="pls-review-item__edit" data-goto-step="4">Edit</a></span>' +
+          '</div>'
+        );
+      }
+
+      // Label
+      var labelVal = $('input[name="pls_label_application"]:checked').val() || 'none';
+      var labelLabel = labelVal === 'none' ? 'No Labels' : (labelVal === 'professional' ? 'Professional Application' : 'DIY Labels');
+      $summary.append(
+        '<div class="pls-review-item">' +
+        '<span class="pls-review-item__label">Label Application</span>' +
+        '<span class="pls-review-item__value">' + labelLabel +
+        '<a class="pls-review-item__edit" data-goto-step="5">Edit</a></span>' +
+        '</div>'
+      );
+    }
+
+    // Edit links in review
+    $(document).on('click', '.pls-review-item__edit', function(e) {
+      e.preventDefault();
+      var step = parseInt($(this).data('goto-step'));
+      if (step) goToStep(step);
     });
   }
 
@@ -566,13 +932,15 @@
     // Auto-load offers for any offer widget present.
     $('.pls-offer').each(function(){ loadOffers($(this)); });
     
-    // Initialize all new features
+    // Initialize all features
     initTierCards();
     initImageGallery();
     initPriceCalculator();
     initAddToCart();
     initTabs();
     initConfiguratorModal();
+    initPageAccordions();   // v5.7.0
+    initVideoGallery();     // v5.7.0
     
     // Re-initialize if cards are loaded dynamically
     $(document).on('pls_tier_cards_loaded', function() {

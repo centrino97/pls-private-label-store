@@ -14,16 +14,91 @@ if ( is_wp_error( $ingredients ) ) {
 $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : ( ! empty( $product_options ) ? 'option-' . $product_options[0]->id : 'ingredients' );
 
 require_once PLS_PLS_DIR . 'includes/core/class-pls-tier-rules.php';
+
+// v5.7.0: Option category definitions for standardized grouping
+$option_categories = array(
+    'package-config' => array(
+        'label'       => __( 'Package Configuration', 'pls-private-label-store' ),
+        'icon'        => 'dashicons-archive',
+        'color'       => '#2271b1',
+        'description' => __( 'Container type, glass finish, and cap/applicator options. These define the physical package.', 'pls-private-label-store' ),
+        'keywords'    => array( 'package type', 'package color', 'package colour', 'package cap', 'container', 'applicator', 'bottle', 'jar' ),
+    ),
+    'premium'        => array(
+        'label'       => __( 'Premium Options', 'pls-private-label-store' ),
+        'icon'        => 'dashicons-star-filled',
+        'color'       => '#6366f1',
+        'description' => __( 'Value-add options like fragrance, custom printing, and luxury packaging. Often tier-restricted.', 'pls-private-label-store' ),
+        'keywords'    => array( 'fragrance', 'custom printed', 'external box', 'premium', 'luxury' ),
+    ),
+    'label'          => array(
+        'label'       => __( 'Label Application', 'pls-private-label-store' ),
+        'icon'        => 'dashicons-tag',
+        'color'       => '#0d9488',
+        'description' => __( 'Label options: No Labels, Professional Application, or DIY. Pricing controlled globally.', 'pls-private-label-store' ),
+        'keywords'    => array( 'label application', 'label' ),
+    ),
+    'other'          => array(
+        'label'       => __( 'Other', 'pls-private-label-store' ),
+        'icon'        => 'dashicons-admin-generic',
+        'color'       => '#64748b',
+        'description' => __( 'Additional product options that don\'t fit other categories.', 'pls-private-label-store' ),
+        'keywords'    => array(),
+    ),
+);
+
+/**
+ * Detect the category for a product option based on its label/key.
+ */
+function pls_detect_option_category( $option, $categories ) {
+    $label_lower = strtolower( $option->label );
+    $attr_key    = isset( $option->attr_key ) ? strtolower( $option->attr_key ) : '';
+
+    foreach ( $categories as $cat_key => $cat ) {
+        if ( 'other' === $cat_key ) {
+            continue;
+        }
+        foreach ( $cat['keywords'] as $keyword ) {
+            if ( false !== strpos( $label_lower, $keyword ) || false !== strpos( $attr_key, sanitize_title( $keyword ) ) ) {
+                return $cat_key;
+            }
+        }
+    }
+    return 'other';
+}
+
+// Group options by category
+$options_by_category = array();
+foreach ( $option_categories as $cat_key => $cat_def ) {
+    $options_by_category[ $cat_key ] = array();
+}
+foreach ( $product_options as $option ) {
+    $cat = pls_detect_option_category( $option, $option_categories );
+    $options_by_category[ $cat ][] = $option;
+}
 ?>
 <div class="wrap pls-wrap pls-product-options" id="pls-product-options-page">
-    <!-- Compact Header with all actions aligned -->
+    <!-- v5.7.0: Enhanced Header with description and stats -->
     <div class="pls-page-head" style="margin-bottom: 16px;">
         <div>
             <p class="pls-label"><?php esc_html_e( 'Configuration', 'pls-private-label-store' ); ?></p>
             <h1 style="margin: 4px 0;"><?php esc_html_e( 'Product Options', 'pls-private-label-store' ); ?></h1>
+            <p class="description" style="margin-top: 4px;">
+                <?php esc_html_e( 'Manage all product options from this central page. Options are grouped by category and referenced by products.', 'pls-private-label-store' ); ?>
+            </p>
         </div>
         <div style="display: flex; align-items: center; gap: 8px;">
-            <span class="pls-help-icon" title="<?php esc_attr_e( 'Product options define the attributes customers can select when ordering. Pack Tier is the primary option that controls pricing tiers.', 'pls-private-label-store' ); ?>" style="cursor: help;">ⓘ</span>
+            <?php
+            // Stats badges
+            $total_options = count( $product_options );
+            $total_values  = 0;
+            foreach ( $product_options as $_opt ) {
+                $total_values += count( PLS_Repo_Attributes::values_for_attr( $_opt->id ) );
+            }
+            ?>
+            <span class="pls-badge pls-badge--info" style="font-size: 11px;"><?php echo esc_html( $total_options ); ?> <?php esc_html_e( 'options', 'pls-private-label-store' ); ?></span>
+            <span class="pls-badge" style="font-size: 11px;"><?php echo esc_html( $total_values ); ?> <?php esc_html_e( 'values', 'pls-private-label-store' ); ?></span>
+            <span class="pls-help-icon" title="<?php esc_attr_e( 'Product options define the attributes customers can select when ordering. Pack Tier is the primary option that controls pricing tiers. Options created here are available to all products.', 'pls-private-label-store' ); ?>" style="cursor: help;">ⓘ</span>
             <button type="button" class="button pls-open-pack-tier-modal" style="display: flex; align-items: center; gap: 6px;">
                 <span class="dashicons dashicons-admin-settings" style="font-size: 16px; width: 16px; height: 16px;"></span>
                 <?php esc_html_e( 'Pack Tier Defaults', 'pls-private-label-store' ); ?>
@@ -37,22 +112,34 @@ require_once PLS_PLS_DIR . 'includes/core/class-pls-tier-rules.php';
 
     <div id="pls-notice-container"></div>
 
-    <!-- Tabs Navigation -->
-    <nav class="nav-tab-wrapper pls-options-tabs" style="margin: 20px 0 0; border-bottom: 2px solid var(--pls-accent);">
-        <?php foreach ( $product_options as $option ) : 
-            $option_min_tier = isset( $option->default_min_tier ) ? intval( $option->default_min_tier ) : 1;
-        ?>
-            <a href="<?php echo esc_url( add_query_arg( 'tab', 'option-' . $option->id, admin_url( 'admin.php?page=pls-attributes' ) ) ); ?>" 
-               class="nav-tab pls-option-tab <?php echo $active_tab === 'option-' . $option->id ? 'nav-tab-active' : ''; ?>"
-               data-option-id="<?php echo esc_attr( $option->id ); ?>"
-               style="border-bottom: 2px solid transparent; margin-bottom: -2px; transition: none;">
-                <?php if ( $option_min_tier > 1 ) : ?>
-                    <span class="pls-tier-badge" style="background: <?php echo $option_min_tier >= 4 ? '#ef4444' : '#6366f1'; ?>; color: #fff; padding: 2px 6px; border-radius: 2px; font-size: 9px; margin-right: 6px;">T<?php echo esc_html( $option_min_tier ); ?>+</span>
-                <?php endif; ?>
-                <?php echo esc_html( $option->label ); ?>
-            </a>
-        <?php endforeach; ?>
-        <!-- v5.5.2: Ingredients moved to separate menu -->
+    <!-- v5.7.0: Category-grouped Tabs Navigation -->
+    <nav class="nav-tab-wrapper pls-options-tabs" style="margin: 20px 0 0; border-bottom: 2px solid var(--pls-accent); display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0;">
+        <?php
+        $first_tab = true;
+        foreach ( $options_by_category as $cat_key => $cat_options ) :
+            if ( empty( $cat_options ) ) {
+                continue;
+            }
+            $cat_def = $option_categories[ $cat_key ];
+            if ( ! $first_tab ) : ?>
+                <span class="pls-tab-separator" style="display: inline-block; width: 1px; height: 20px; background: #e2e8f0; margin: 0 4px 8px;"></span>
+            <?php endif;
+            $first_tab = false;
+            foreach ( $cat_options as $option ) :
+                $option_min_tier = isset( $option->default_min_tier ) ? intval( $option->default_min_tier ) : 1;
+            ?>
+                <a href="<?php echo esc_url( add_query_arg( 'tab', 'option-' . $option->id, admin_url( 'admin.php?page=pls-attributes' ) ) ); ?>" 
+                   class="nav-tab pls-option-tab <?php echo $active_tab === 'option-' . $option->id ? 'nav-tab-active' : ''; ?>"
+                   data-option-id="<?php echo esc_attr( $option->id ); ?>"
+                   data-category="<?php echo esc_attr( $cat_key ); ?>"
+                   style="border-bottom: 2px solid transparent; margin-bottom: -2px; transition: none;">
+                    <?php if ( $option_min_tier > 1 ) : ?>
+                        <span class="pls-tier-badge" style="background: <?php echo $option_min_tier >= 4 ? '#ef4444' : '#6366f1'; ?>; color: #fff; padding: 2px 6px; border-radius: 2px; font-size: 9px; margin-right: 6px;">T<?php echo esc_html( $option_min_tier ); ?>+</span>
+                    <?php endif; ?>
+                    <?php echo esc_html( $option->label ); ?>
+                </a>
+            <?php endforeach;
+        endforeach; ?>
     </nav>
 
     <!-- Pack Tier Modal -->
@@ -244,6 +331,18 @@ require_once PLS_PLS_DIR . 'includes/core/class-pls-tier-rules.php';
                         <input type="text" id="pls-option-label" name="label" class="regular-text pls-input" required style="width: 100%;" placeholder="<?php esc_attr_e( 'e.g. Package Color, Cap Style, Fragrance', 'pls-private-label-store' ); ?>" />
                         <span class="pls-field-hint"><?php esc_html_e( 'Name displayed to customers during product configuration.', 'pls-private-label-store' ); ?></span>
                     </div>
+                    <!-- v5.7.0: Option Category -->
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600;"><?php esc_html_e( 'Category', 'pls-private-label-store' ); ?></label>
+                        <select id="pls-option-category" name="option_category" class="pls-select" style="width: 100%;">
+                            <?php foreach ( $option_categories as $cat_key => $cat_def ) : ?>
+                                <option value="<?php echo esc_attr( $cat_key ); ?>">
+                                    <?php echo esc_html( $cat_def['label'] ); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <span class="pls-field-hint"><?php esc_html_e( 'Helps organize options into logical groups. Auto-detected from name if left as "Other".', 'pls-private-label-store' ); ?></span>
+                    </div>
                     <div style="margin-bottom: 15px;">
                         <label style="display: block; margin-bottom: 5px; font-weight: 600;"><?php esc_html_e( 'Default Minimum Tier', 'pls-private-label-store' ); ?></label>
                         <select id="pls-option-default-tier" name="default_min_tier" class="pls-select" style="width: 100%;">
@@ -348,12 +447,25 @@ require_once PLS_PLS_DIR . 'includes/core/class-pls-tier-rules.php';
                 <?php 
                 // Get default_min_tier (with fallback to 1)
                 $default_min_tier = isset( $current_option->default_min_tier ) ? intval( $current_option->default_min_tier ) : 1;
+                // v5.7.0: Detect category for the current option
+                $current_cat_key = pls_detect_option_category( $current_option, $option_categories );
+                $current_cat_def = $option_categories[ $current_cat_key ];
                 ?>
+                <!-- v5.7.0: Category Info Banner -->
+                <div class="pls-category-banner" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: <?php echo esc_attr( $current_cat_def['color'] ); ?>0D; border-left: 3px solid <?php echo esc_attr( $current_cat_def['color'] ); ?>; border-radius: 4px; margin-bottom: 16px;">
+                    <span class="dashicons <?php echo esc_attr( $current_cat_def['icon'] ); ?>" style="color: <?php echo esc_attr( $current_cat_def['color'] ); ?>; font-size: 20px; width: 20px; height: 20px;"></span>
+                    <div>
+                        <strong style="color: <?php echo esc_attr( $current_cat_def['color'] ); ?>; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;"><?php echo esc_html( $current_cat_def['label'] ); ?></strong>
+                        <p style="margin: 2px 0 0; font-size: 13px; color: #64748b;"><?php echo esc_html( $current_cat_def['description'] ); ?></p>
+                    </div>
+                </div>
+
                 <div class="tab-content pls-tab-content" data-option-id="<?php echo esc_attr( $current_option->id ); ?>">
                     <div style="background: #fff; border: 1px solid #ccd0d4; border-radius: 4px; padding: 15px;">
                         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
                             <div style="display: flex; align-items: center; gap: 10px;">
                                 <h2 style="margin: 0;"><?php echo esc_html( $current_option->label ); ?></h2>
+                                <span class="pls-badge" style="background: <?php echo esc_attr( $current_cat_def['color'] ); ?>1A; color: <?php echo esc_attr( $current_cat_def['color'] ); ?>; font-size: 10px; padding: 2px 8px; border-radius: 10px;"><?php echo esc_html( $current_cat_def['label'] ); ?></span>
                                 <?php if ( $default_min_tier > 1 ) : ?>
                                     <span class="pls-tier-badge pls-tier-badge--<?php echo esc_attr( $default_min_tier ); ?>">T<?php echo esc_html( $default_min_tier ); ?>+</span>
                                 <?php endif; ?>

@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 5.6.2
+Stable tag: 5.7.0
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,20 @@ and provides shortcodes for seamless Elementor Theme Builder integration.
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 5.7.0 =
+* **MAJOR:** Product Page Redesign - Two-column sticky layout with teal color scheme and Playfair Display serif headings
+* **NEW:** Skin type pill badges, enhanced trust badges with SVG icons, starting price block
+* **NEW:** Collapsible accordions for Benefits, Description, Directions, Base Ingredients
+* **NEW:** Video gallery support with embedded player
+* **NEW:** 6-step configurator modal: Pack Size → Package Config → Premium Options → Active Ingredients → Label Application → Review
+* **NEW:** Step indicator with clickable dots, sticky footer with live pricing, tier-aware steps
+* **NEW:** Attributes page - option category grouping (Package Config, Premium, Label) with info banners
+* **NEW:** Ingredients page - INCI Name field, Price Impact and Min Tier for active ingredients
+* **IMPROVED:** Products page - removed inline creation, read-only references to management pages
+* **NEW:** In-configurator bundle nudge with animated savings banner
+* **IMPROVED:** Enhanced cart upsell messaging with specific savings calculations
+* **IMPROVED:** Bundle qualification notices with per-unit pricing details
+
 = 5.6.2 =
 * **FIXED:** GitHub Actions workflow now triggers on any tag format (with or without `v` prefix)
 * **IMPROVED:** Simplified workflow to work 100% of the time
