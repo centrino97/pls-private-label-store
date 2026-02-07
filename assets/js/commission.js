@@ -50,6 +50,7 @@
             const id = $btn.data('id');
             const type = $btn.data('type');
             
+            $btn.prop('disabled', true).text('Updating...');
             $.ajax({
                 url: PLS_Commission.ajax_url,
                 type: 'POST',
@@ -59,8 +60,17 @@
                     id: id,
                     type: type
                 },
-                success: function() {
-                    location.reload();
+                success: function(response) {
+                    if (response.success) {
+                        location.reload();
+                    } else {
+                        alert('Failed to mark as invoiced: ' + (response.data && response.data.message ? response.data.message : 'Unknown error'));
+                        $btn.prop('disabled', false).text('Mark Invoiced');
+                    }
+                },
+                error: function() {
+                    alert('Network error while marking as invoiced. Please try again.');
+                    $btn.prop('disabled', false).text('Mark Invoiced');
                 }
             });
         });
@@ -75,6 +85,7 @@
                 return;
             }
             
+            $btn.prop('disabled', true).text('Updating...');
             $.ajax({
                 url: PLS_Commission.ajax_url,
                 type: 'POST',
@@ -84,8 +95,17 @@
                     id: id,
                     type: type
                 },
-                success: function() {
-                    location.reload();
+                success: function(response) {
+                    if (response.success) {
+                        location.reload();
+                    } else {
+                        alert('Failed to mark as paid: ' + (response.data && response.data.message ? response.data.message : 'Unknown error'));
+                        $btn.prop('disabled', false).text('Mark Paid');
+                    }
+                },
+                error: function() {
+                    alert('Network error while marking as paid. Please try again.');
+                    $btn.prop('disabled', false).text('Mark Paid');
                 }
             });
         });
@@ -95,6 +115,7 @@
             const $btn = $(this);
             const month = $btn.data('month');
             
+            $btn.prop('disabled', true).text('Updating...');
             $.ajax({
                 url: PLS_Commission.ajax_url,
                 type: 'POST',
@@ -103,8 +124,17 @@
                     nonce: PLS_Commission.nonce,
                     month: month
                 },
-                success: function() {
-                    location.reload();
+                success: function(response) {
+                    if (response.success) {
+                        location.reload();
+                    } else {
+                        alert('Failed to mark month as invoiced: ' + (response.data && response.data.message ? response.data.message : 'Unknown error'));
+                        $btn.prop('disabled', false).text('Mark All Invoiced');
+                    }
+                },
+                error: function() {
+                    alert('Network error. Please try again.');
+                    $btn.prop('disabled', false).text('Mark All Invoiced');
                 }
             });
         });
@@ -118,6 +148,7 @@
                 return;
             }
             
+            $btn.prop('disabled', true).text('Updating...');
             $.ajax({
                 url: PLS_Commission.ajax_url,
                 type: 'POST',
@@ -126,8 +157,17 @@
                     nonce: PLS_Commission.nonce,
                     month: month
                 },
-                success: function() {
-                    location.reload();
+                success: function(response) {
+                    if (response.success) {
+                        location.reload();
+                    } else {
+                        alert('Failed to mark month as paid: ' + (response.data && response.data.message ? response.data.message : 'Unknown error'));
+                        $btn.prop('disabled', false).text('Mark All Paid');
+                    }
+                },
+                error: function() {
+                    alert('Network error. Please try again.');
+                    $btn.prop('disabled', false).text('Mark All Paid');
                 }
             });
         });
@@ -139,6 +179,7 @@
 
         // Bulk action
         $('#pls-apply-bulk-action').on('click', function() {
+            const $btn = $(this);
             const action = $('#pls-commission-bulk-action').val();
             const checked = $('.pls-commission-checkbox:checked');
             
@@ -160,6 +201,7 @@
                 return;
             }
             
+            $btn.prop('disabled', true).text('Processing...');
             $.ajax({
                 url: PLS_Commission.ajax_url,
                 type: 'POST',
@@ -169,8 +211,17 @@
                     ids: ids,
                     action_type: action
                 },
-                success: function() {
-                    location.reload();
+                success: function(response) {
+                    if (response.success) {
+                        location.reload();
+                    } else {
+                        alert('Bulk update failed: ' + (response.data && response.data.message ? response.data.message : 'Unknown error'));
+                        $btn.prop('disabled', false).text('Apply');
+                    }
+                },
+                error: function() {
+                    alert('Network error during bulk update. Please try again.');
+                    $btn.prop('disabled', false).text('Apply');
                 }
             });
         });

@@ -93,20 +93,10 @@ final class PLS_Admin_Menu {
     }
 
     /**
-     * Check if current user is a Bodoci user (restricted access).
-     * DEPRECATED: Use is_restricted_user() instead. Kept for backward compatibility.
-     *
-     * @return bool
-     */
-    public static function is_bodoci_user() {
-        return self::is_restricted_user();
-    }
-
-    /**
      * Restrict Bodoci users to PLS pages only.
      */
     public static function restrict_bodoci_users() {
-        if ( ! self::is_bodoci_user() ) {
+        if ( ! self::is_restricted_user() ) {
             return;
         }
 
@@ -200,7 +190,7 @@ final class PLS_Admin_Menu {
      * Hide WordPress admin menu for Bodoci users.
      */
     public static function hide_wp_admin_menu() {
-        if ( ! self::is_bodoci_user() ) {
+        if ( ! self::is_restricted_user() ) {
             return;
         }
 

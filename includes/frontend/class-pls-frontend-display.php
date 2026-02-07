@@ -1386,7 +1386,7 @@ final class PLS_Frontend_Display {
                     // Determine tier level for badge styling
                     $tier_level = self::get_tier_level( $tier_key );
                     ?>
-                    <div class="pls-tier-card" data-tier="<?php echo esc_attr( $tier_slug ); ?>" data-variation-id="<?php echo esc_attr( $variation_id ); ?>">
+                    <div class="pls-tier-card" data-tier="<?php echo esc_attr( $tier_slug ); ?>" data-variation-id="<?php echo esc_attr( $variation_id ); ?>" data-units="<?php echo esc_attr( $units ); ?>" data-price-per-unit="<?php echo esc_attr( $price_per_unit ); ?>" data-total-price="<?php echo esc_attr( $variation_price ); ?>" data-tier-key="<?php echo esc_attr( $tier_key ); ?>">
                         <?php if ( $tier_level ) : ?>
                             <span class="pls-tier-card__badge pls-tier-card__badge--<?php echo esc_attr( $tier_level ); ?>">
                                 <?php echo esc_html( self::get_tier_badge_label( $tier_level ) ); ?>

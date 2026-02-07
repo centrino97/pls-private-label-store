@@ -13,6 +13,33 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class PLS_SEO_Integration {
 
     /**
+     * Runtime cache for base product lookups by WC product ID.
+     *
+     * @var array
+     */
+    private static $base_product_cache = array();
+
+    /**
+     * Get base product by WooCommerce product ID (cached per request).
+     *
+     * @param int $wc_product_id WooCommerce product ID.
+     * @return object|null Base product row or null.
+     */
+    private static function get_base_by_wc_id( $wc_product_id ) {
+        $wc_product_id = absint( $wc_product_id );
+        if ( isset( self::$base_product_cache[ $wc_product_id ] ) ) {
+            return self::$base_product_cache[ $wc_product_id ];
+        }
+        global $wpdb;
+        $result = $wpdb->get_row( $wpdb->prepare(
+            "SELECT * FROM {$wpdb->prefix}pls_base_product WHERE wc_product_id = %d",
+            $wc_product_id
+        ), OBJECT );
+        self::$base_product_cache[ $wc_product_id ] = $result;
+        return $result;
+    }
+
+    /**
      * Initialize SEO integration.
      */
     public static function init() {
@@ -113,11 +140,7 @@ final class PLS_SEO_Integration {
             return '';
         }
 
-        global $wpdb;
-        $base_product = $wpdb->get_row( $wpdb->prepare(
-            "SELECT * FROM {$wpdb->prefix}pls_base_product WHERE wc_product_id = %d",
-            $product->get_id()
-        ), OBJECT );
+        $base_product = self::get_base_by_wc_id( $product->get_id() );
 
         if ( ! $base_product ) {
             return '';
@@ -150,11 +173,7 @@ final class PLS_SEO_Integration {
             return '';
         }
 
-        global $wpdb;
-        $base_product = $wpdb->get_row( $wpdb->prepare(
-            "SELECT * FROM {$wpdb->prefix}pls_base_product WHERE wc_product_id = %d",
-            $product->get_id()
-        ), OBJECT );
+        $base_product = self::get_base_by_wc_id( $product->get_id() );
 
         if ( ! $base_product ) {
             return '';
@@ -187,11 +206,7 @@ final class PLS_SEO_Integration {
             return $data;
         }
 
-        global $wpdb;
-        $base_product = $wpdb->get_row( $wpdb->prepare(
-            "SELECT * FROM {$wpdb->prefix}pls_base_product WHERE wc_product_id = %d",
-            $product->get_id()
-        ), OBJECT );
+        $base_product = self::get_base_by_wc_id( $product->get_id() );
 
         if ( ! $base_product ) {
             return $data;
@@ -237,11 +252,7 @@ final class PLS_SEO_Integration {
             return $links;
         }
 
-        global $wpdb;
-        $base_product = $wpdb->get_row( $wpdb->prepare(
-            "SELECT * FROM {$wpdb->prefix}pls_base_product WHERE wc_product_id = %d",
-            $product->get_id()
-        ), OBJECT );
+        $base_product = self::get_base_by_wc_id( $product->get_id() );
 
         if ( ! $base_product || ! $base_product->category_path ) {
             return $links;
@@ -289,11 +300,7 @@ final class PLS_SEO_Integration {
         }
 
         // Auto-generate from product data
-        global $wpdb;
-        $base_product = $wpdb->get_row( $wpdb->prepare(
-            "SELECT * FROM {$wpdb->prefix}pls_base_product WHERE wc_product_id = %d",
-            $product->get_id()
-        ), OBJECT );
+        $base_product = self::get_base_by_wc_id( $product->get_id() );
 
         if ( ! $base_product ) {
             return $title;
@@ -340,11 +347,7 @@ final class PLS_SEO_Integration {
         }
 
         // Auto-generate from product data
-        global $wpdb;
-        $base_product = $wpdb->get_row( $wpdb->prepare(
-            "SELECT * FROM {$wpdb->prefix}pls_base_product WHERE wc_product_id = %d",
-            $product->get_id()
-        ), OBJECT );
+        $base_product = self::get_base_by_wc_id( $product->get_id() );
 
         if ( ! $base_product ) {
             return $description;
@@ -389,11 +392,7 @@ final class PLS_SEO_Integration {
             return;
         }
 
-        global $wpdb;
-        $base_product = $wpdb->get_row( $wpdb->prepare(
-            "SELECT * FROM {$wpdb->prefix}pls_base_product WHERE wc_product_id = %d",
-            $product->get_id()
-        ), OBJECT );
+        $base_product = self::get_base_by_wc_id( $product->get_id() );
 
         if ( ! $base_product ) {
             return;
@@ -484,11 +483,7 @@ final class PLS_SEO_Integration {
             return;
         }
 
-        global $wpdb;
-        $base_product = $wpdb->get_row( $wpdb->prepare(
-            "SELECT * FROM {$wpdb->prefix}pls_base_product WHERE wc_product_id = %d",
-            $product->get_id()
-        ), OBJECT );
+        $base_product = self::get_base_by_wc_id( $product->get_id() );
 
         if ( ! $base_product ) {
             return;
@@ -539,7 +534,7 @@ final class PLS_SEO_Integration {
     /**
      * LiteSpeed Cache: Enable ESI for product configurator.
      */
-    public static function litespeed_esi_enabled( $enabled ) {
+    public static function litespeed_esi_products( $enabled ) {
         if ( is_product() && has_shortcode( get_post()->post_content, 'pls_configurator' ) ) {
             return true; // Enable ESI for configurator
         }

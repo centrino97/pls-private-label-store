@@ -847,15 +847,17 @@ final class PLS_Shortcodes {
                                 if ( ! empty( $faq['question'] ) && ! empty( $faq['answer'] ) ) {
                                     $faq_items[] = '{
                                         "@type": "Question",
-                                        "name": ' . wp_json_encode( $faq['question'] ) . ',
+                                        "name": ' . wp_json_encode( wp_strip_all_tags( $faq['question'] ) ) . ',
                                         "acceptedAnswer": {
                                             "@type": "Answer",
-                                            "text": ' . wp_json_encode( $faq['answer'] ) . '
+                                            "text": ' . wp_json_encode( wp_strip_all_tags( $faq['answer'] ) ) . '
                                         }
                                     }';
                                 }
                             }
-                            echo implode( ",\n", $faq_items );
+                            if ( ! empty( $faq_items ) ) {
+                                echo implode( ",\n", $faq_items );
+                            }
                             ?>
                         ]
                     }

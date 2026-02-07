@@ -636,12 +636,17 @@
         wrap.empty();
         gallerySelection.forEach(function(item, index){
           var cell = $('<div class="pls-media-thumb"></div>');
-          if (item.url){
+          if (item.type === 'video') {
+            if (item.url) {
+              cell.append($('<img/>').attr('src', item.url).attr('alt', 'Video thumbnail'));
+            }
+            cell.append($('<span class="pls-media-thumb__video-badge">&#9654; Video</span>'));
+          } else if (item.url) {
             cell.append($('<img/>').attr('src', item.url).attr('alt', ''));
           } else {
             cell.text('#'+item.id);
           }
-          var removeBtn = $('<button type="button" class="button-link-delete pls-media-thumb__remove pls-remove-gallery" data-gallery-index="'+index+'" aria-label="Remove gallery image">×</button>');
+          var removeBtn = $('<button type="button" class="button-link-delete pls-media-thumb__remove pls-remove-gallery" data-gallery-index="'+index+'" aria-label="Remove gallery media">×</button>');
           cell.append(removeBtn);
           wrap.append(cell);
         });
@@ -1100,9 +1105,12 @@
 
         renderFeaturedPreview(data.featured_image_id, data.featured_image_thumb || '');
         if (Array.isArray(data.gallery_media) && data.gallery_media.length){
-          gallerySelection = data.gallery_media.map(function(item){ return { id: item.id, url: item.url }; });
+          gallerySelection = data.gallery_media.map(function(item){
+            var isVideo = item.mime && item.mime.indexOf('video') === 0;
+            return { id: item.id, url: item.url, type: isVideo ? 'video' : 'image' };
+          });
         } else if (Array.isArray(data.gallery_ids)){
-          gallerySelection = data.gallery_ids.map(function(id){ return { id: id, url: '' }; });
+          gallerySelection = data.gallery_ids.map(function(id){ return { id: id, url: '', type: 'image' }; });
         }
         renderGalleryPreview();
 
@@ -1813,12 +1821,7 @@
       });
     }
 
-    // Removed: "Manage" button now opens Product Options page in new tab (handled by link in HTML)
-    // $('#pls-open-attribute-manage').on('click', function(e){
-    //   e.preventDefault();
-    //   openModalById('#pls-attribute-manage-modal');
-    //   renderManageAttrList();
-    // });
+
 
     $(document).on('click', '.pls-manage-attr-item', function(){
       var id = parseInt($(this).data('attr-id'), 10);
@@ -2105,12 +2108,7 @@
         renumberAttributeRows();
       });
 
-      // Removed: "Add custom value" button - users should create values in Product Options menu
-      // $(document).on('click', '.pls-attribute-value-add-custom', function(e){
-      //   e.preventDefault();
-      //   var attrRow = $(this).closest('.pls-attribute-row');
-      //   addCustomValueRow(attrRow, {});
-      // });
+
 
       $(document).on('click', '.pls-attribute-custom-remove', function(e){
         e.preventDefault();
@@ -2315,14 +2313,15 @@
         return errors;
       }
 
-    function pickImage(callback, multiple){
+    function pickMedia(callback, multiple){
       if (typeof wp === 'undefined' || typeof wp.media !== 'function') {
-        console.error('wp.media is not available.');
+        alert('WordPress media library is not available. Please reload the page.');
         return;
       }
       var frame = wp.media({
-        title: 'Select media',
-        multiple: !!multiple
+        title: multiple ? 'Select images & videos' : 'Select media',
+        multiple: !!multiple,
+        library: { type: ['image', 'video'] }
       });
       frame.on('select', function(){
         var selection = frame.state().get('selection');
@@ -2333,7 +2332,7 @@
 
     $('#pls-pick-featured').on('click', function(e){
       e.preventDefault();
-      pickImage(function(files){
+      pickMedia(function(files){
         if (!files || !files.length){ return; }
         var file = files[0];
         var thumbUrl = (file.sizes && file.sizes.thumbnail && file.sizes.thumbnail.url) ? file.sizes.thumbnail.url : file.url;
@@ -2343,10 +2342,16 @@
 
     $('#pls-pick-gallery').on('click', function(e){
       e.preventDefault();
-      pickImage(function(files){
+      pickMedia(function(files){
         gallerySelection = files.map(function(file){
-          var thumbUrl = (file.sizes && file.sizes.thumbnail && file.sizes.thumbnail.url) ? file.sizes.thumbnail.url : file.url;
-          return { id: file.id, url: thumbUrl };
+          var isVideo = file.type && file.type.indexOf('video') === 0;
+          var thumbUrl = '';
+          if (isVideo) {
+            thumbUrl = (file.image && file.image.src) ? file.image.src : '';
+          } else {
+            thumbUrl = (file.sizes && file.sizes.thumbnail && file.sizes.thumbnail.url) ? file.sizes.thumbnail.url : file.url;
+          }
+          return { id: file.id, url: thumbUrl, type: isVideo ? 'video' : 'image' };
         });
         renderGalleryPreview();
       }, true);

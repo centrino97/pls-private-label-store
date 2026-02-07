@@ -54,17 +54,15 @@ final class PLS_Plugin {
     }
 
     private function includes() {
+        require_once PLS_PLS_DIR . 'includes/core/class-pls-helpers.php';
+        require_once PLS_PLS_DIR . 'includes/core/class-pls-debug.php';
         require_once PLS_PLS_DIR . 'includes/core/class-pls-admin-notices.php';
         require_once PLS_PLS_DIR . 'includes/core/class-pls-logger.php';
         require_once PLS_PLS_DIR . 'includes/core/class-pls-capabilities.php';
         require_once PLS_PLS_DIR . 'includes/core/class-pls-taxonomies.php';
         require_once PLS_PLS_DIR . 'includes/core/class-pls-tier-rules.php';
         require_once PLS_PLS_DIR . 'includes/core/class-pls-default-attributes.php';
-        require_once PLS_PLS_DIR . 'includes/core/class-pls-migration-v080.php';
-        require_once PLS_PLS_DIR . 'includes/core/class-pls-migration-v083.php';
-        require_once PLS_PLS_DIR . 'includes/core/class-pls-migration-v090.php';
-        require_once PLS_PLS_DIR . 'includes/core/class-pls-migration-v100.php';
-        require_once PLS_PLS_DIR . 'includes/core/class-pls-migration-v110.php';
+        // Migrations are loaded on-demand by PLS_Activator when needed.
         require_once PLS_PLS_DIR . 'includes/core/class-pls-ingredient-sync.php';
         require_once PLS_PLS_DIR . 'includes/core/class-pls-admin-dashboard-filter.php';
         require_once PLS_PLS_DIR . 'includes/core/class-pls-commission-email.php';
@@ -153,58 +151,23 @@ final class PLS_Plugin {
     }
 
     /**
-     * Get tier key from term name.
-     * Helper function for commission calculation.
+     * Get tier key from term name (delegates to PLS_Helpers).
      *
-     * @param string $term_name Term name like "Trial Pack (50 units)".
+     * @param string $term_name Term name.
      * @return string|null Tier key like "tier_1" or null.
      */
     private function get_tier_key_from_term( $term_name ) {
-        // Extract units from term name like "Trial Pack (50 units)"
-        if ( preg_match( '/\((\d+)\s*units?\)/i', $term_name, $matches ) ) {
-            $units = (int) $matches[1];
-            // Map units to tier keys
-            $units_to_tier = array(
-                50   => 'tier_1',
-                100  => 'tier_2',
-                250  => 'tier_3',
-                500  => 'tier_4',
-                1000 => 'tier_5',
-            );
-            return isset( $units_to_tier[ $units ] ) ? $units_to_tier[ $units ] : null;
-        }
-        
-        // Try to match tier level from term name
-        if ( preg_match( '/tier[_\s-]*(\d+)/i', $term_name, $matches ) ) {
-            return 'tier_' . $matches[1];
-        }
-        
-        return null;
+        return PLS_Helpers::get_tier_key_from_term( $term_name );
     }
 
     /**
-     * Get bundle key from product ID.
-     * Helper function for commission calculation.
+     * Get bundle key from product ID (delegates to PLS_Helpers).
      *
      * @param int $product_id WooCommerce product ID.
      * @return string|null Bundle key or null.
      */
     private function get_bundle_key_from_product( $product_id ) {
-        $bundle_key = get_post_meta( $product_id, '_pls_bundle_key', true );
-        if ( $bundle_key ) {
-            return $bundle_key;
-        }
-        
-        // Check if it's a grouped product with PLS bundle ID
-        $bundle_id = get_post_meta( $product_id, '_pls_bundle_id', true );
-        if ( $bundle_id ) {
-            $bundle = PLS_Repo_Bundle::get( $bundle_id );
-            if ( $bundle ) {
-                return $bundle->bundle_key;
-            }
-        }
-        
-        return null;
+        return PLS_Helpers::get_bundle_key_from_product( $product_id );
     }
 
     /**

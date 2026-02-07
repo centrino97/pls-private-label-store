@@ -79,7 +79,7 @@ final class PLS_Commission_Email {
         $total_amount = $product_total + $custom_total;
 
         // Get recipient email
-        $recipients = get_option( 'pls_commission_email_recipients', array( 'n.nikolic97@gmail.com' ) );
+        $recipients = get_option( 'pls_commission_email_recipients', array( PLS_DEFAULT_COMMISSION_EMAIL ) );
         $to = is_array( $recipients ) ? $recipients[0] : $recipients;
 
         // Send email

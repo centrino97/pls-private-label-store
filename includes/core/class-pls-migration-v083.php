@@ -143,9 +143,6 @@ final class PLS_Migration_V083 {
         $pack_tier_attr_id = get_option( 'pls_pack_tier_attribute_id', false );
 
         // Set all non-primary attributes to 'product-option' (if not already set)
-        $where = array();
-        $where_format = array();
-
         if ( $pack_tier_attr_id ) {
             $where['id'] = $pack_tier_attr_id;
             $where_format[] = '%d';

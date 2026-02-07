@@ -25,10 +25,31 @@ if ( isset( $_POST['pls_category_edit'] ) && check_admin_referer( 'pls_category_
     $meta_title  = isset( $_POST['category_meta_title'] ) ? sanitize_text_field( wp_unslash( $_POST['category_meta_title'] ) ) : '';
     $meta_desc   = isset( $_POST['category_meta_desc'] ) ? sanitize_textarea_field( wp_unslash( $_POST['category_meta_desc'] ) ) : '';
     $parent_id   = isset( $_POST['category_parent'] ) ? absint( $_POST['category_parent'] ) : 0;
-    $faq_json    = isset( $_POST['category_faq'] ) ? wp_unslash( $_POST['category_faq'] ) : '';
+    $faq_raw      = isset( $_POST['category_faq'] ) ? wp_unslash( $_POST['category_faq'] ) : '';
     $custom_order = isset( $_POST['category_custom_order'] ) ? absint( $_POST['category_custom_order'] ) : 0;
 
-    if ( $term_id && $name ) {
+    // Validate FAQ JSON
+    $faq_json = '';
+    if ( ! empty( $faq_raw ) ) {
+        $decoded = json_decode( $faq_raw, true );
+        if ( json_last_error() !== JSON_ERROR_NONE ) {
+            $error = __( 'Invalid FAQ JSON format. Please check your FAQ entries.', 'pls-private-label-store' );
+        } elseif ( is_array( $decoded ) ) {
+            // Sanitize each FAQ item
+            $clean = array();
+            foreach ( $decoded as $item ) {
+                if ( isset( $item['question'], $item['answer'] ) && '' !== trim( $item['question'] ) ) {
+                    $clean[] = array(
+                        'question' => sanitize_text_field( $item['question'] ),
+                        'answer'   => wp_kses_post( $item['answer'] ),
+                    );
+                }
+            }
+            $faq_json = ! empty( $clean ) ? wp_json_encode( $clean, JSON_UNESCAPED_UNICODE ) : '';
+        }
+    }
+
+    if ( $term_id && $name && ! $error ) {
         $result = wp_update_term( $term_id, 'product_cat', array(
             'name'        => $name,
             'description' => $description,
@@ -54,10 +75,30 @@ if ( isset( $_POST['pls_category_add'] ) && check_admin_referer( 'pls_category_a
     $meta_desc   = isset( $_POST['category_meta_desc'] ) ? sanitize_textarea_field( wp_unslash( $_POST['category_meta_desc'] ) ) : '';
     $parent_id   = isset( $_POST['category_parent'] ) ? absint( $_POST['category_parent'] ) : 0;
     $is_parent   = isset( $_POST['is_parent_category'] ) && $_POST['is_parent_category'] === '1';
-    $faq_json    = isset( $_POST['category_faq'] ) ? wp_unslash( $_POST['category_faq'] ) : '';
+    $faq_raw      = isset( $_POST['category_faq'] ) ? wp_unslash( $_POST['category_faq'] ) : '';
     $custom_order = isset( $_POST['category_custom_order'] ) ? absint( $_POST['category_custom_order'] ) : 0;
 
-    if ( $name ) {
+    // Validate FAQ JSON
+    $faq_json = '';
+    if ( ! empty( $faq_raw ) ) {
+        $decoded = json_decode( $faq_raw, true );
+        if ( json_last_error() !== JSON_ERROR_NONE ) {
+            $error = __( 'Invalid FAQ JSON format. Please check your FAQ entries.', 'pls-private-label-store' );
+        } elseif ( is_array( $decoded ) ) {
+            $clean = array();
+            foreach ( $decoded as $item ) {
+                if ( isset( $item['question'], $item['answer'] ) && '' !== trim( $item['question'] ) ) {
+                    $clean[] = array(
+                        'question' => sanitize_text_field( $item['question'] ),
+                        'answer'   => wp_kses_post( $item['answer'] ),
+                    );
+                }
+            }
+            $faq_json = ! empty( $clean ) ? wp_json_encode( $clean, JSON_UNESCAPED_UNICODE ) : '';
+        }
+    }
+
+    if ( $name && ! $error ) {
         $slug  = sanitize_title( $name );
         $maybe = term_exists( $slug, 'product_cat' );
         if ( $maybe && is_array( $maybe ) ) {
@@ -208,10 +249,14 @@ $parent_categories = array_filter(
                     <label for="category_desc"><?php esc_html_e( 'Description', 'pls-private-label-store' ); ?></label>
                     <textarea id="category_desc" name="category_desc" rows="3" class="pls-rich-textarea" placeholder="Short marketing blurb for the category page..."></textarea>
                 </div>
-                <div class="pls-input-group">
-                    <label for="category_faq"><?php esc_html_e( 'FAQ (JSON-LD Schema)', 'pls-private-label-store' ); ?> <span class="pls-help-icon" title="<?php esc_attr_e( 'Add FAQ entries in JSON format. These will be injected into JSON-LD schema for SEO. Format: [{"question":"Q1","answer":"A1"}]', 'pls-private-label-store' ); ?>">ⓘ</span></label>
-                    <textarea id="category_faq" name="category_faq" rows="3" class="pls-rich-textarea" placeholder='[{"question":"What is private labeling?","answer":"Private labeling allows you to..."}]'></textarea>
-                    <span class="pls-field-hint"><?php esc_html_e( 'JSON array of FAQ items for rich snippets.', 'pls-private-label-store' ); ?></span>
+                <div class="pls-input-group pls-faq-builder-group">
+                    <label><?php esc_html_e( 'FAQ (Rich Snippets)', 'pls-private-label-store' ); ?> <span class="pls-help-icon" title="<?php esc_attr_e( 'Add FAQ entries that will appear as rich snippets in Google search results via JSON-LD schema.', 'pls-private-label-store' ); ?>">ⓘ</span></label>
+                    <div class="pls-faq-builder" id="pls-faq-builder-add">
+                        <div class="pls-faq-rows"></div>
+                        <button type="button" class="button pls-faq-add-row"><?php esc_html_e( '+ Add FAQ Item', 'pls-private-label-store' ); ?></button>
+                    </div>
+                    <input type="hidden" id="category_faq" name="category_faq" value="" />
+                    <span class="pls-field-hint"><?php esc_html_e( 'These FAQ entries generate JSON-LD schema for Google rich snippets.', 'pls-private-label-store' ); ?></span>
                 </div>
             </div>
             
@@ -474,13 +519,14 @@ $parent_categories = array_filter(
                             <?php esc_html_e( 'FAQ Schema (JSON-LD)', 'pls-private-label-store' ); ?>
                             <span class="pls-help-icon" title="<?php esc_attr_e( 'FAQ entries are injected into JSON-LD structured data for rich snippets in Google search results.', 'pls-private-label-store' ); ?>">ⓘ</span>
                         </h3>
-                        <div class="pls-input-group">
-                            <label for="edit_category_faq"><?php esc_html_e( 'FAQ JSON', 'pls-private-label-store' ); ?></label>
-                            <textarea id="edit_category_faq" name="category_faq" rows="6" class="pls-rich-textarea" style="width: 100%; font-family: monospace;" placeholder='[
-  {"question": "What is private label skincare?", "answer": "Private label skincare allows brands to sell products manufactured by another company under their own brand name."},
-  {"question": "What is the minimum order quantity?", "answer": "Our minimum order quantity starts at 50 units per product."}
-]'></textarea>
-                            <span class="pls-field-hint"><?php esc_html_e( 'Format: JSON array of objects with "question" and "answer" keys. These appear as FAQ rich snippets in search results.', 'pls-private-label-store' ); ?></span>
+                        <div class="pls-input-group pls-faq-builder-group">
+                            <label><?php esc_html_e( 'FAQ Entries', 'pls-private-label-store' ); ?></label>
+                            <div class="pls-faq-builder" id="pls-faq-builder-edit">
+                                <div class="pls-faq-rows"></div>
+                                <button type="button" class="button pls-faq-add-row"><?php esc_html_e( '+ Add FAQ Item', 'pls-private-label-store' ); ?></button>
+                            </div>
+                            <input type="hidden" id="edit_category_faq" name="category_faq" value="" />
+                            <span class="pls-field-hint"><?php esc_html_e( 'These FAQ entries appear as rich snippets in Google search results.', 'pls-private-label-store' ); ?></span>
                         </div>
                     </div>
                 </div>
@@ -548,6 +594,78 @@ jQuery(document).ready(function($) {
     }
     
     // ============================================
+    // FAQ Builder
+    // ============================================
+    function faqCreateRow($builder, q, a) {
+        var $row = $('<div class="pls-faq-row">' +
+            '<div class="pls-faq-row__fields">' +
+                '<input type="text" class="pls-faq-question" placeholder="Question..." value="" />' +
+                '<textarea class="pls-faq-answer" rows="2" placeholder="Answer..."></textarea>' +
+            '</div>' +
+            '<button type="button" class="button-link-delete pls-faq-remove-row" title="Remove">&times;</button>' +
+        '</div>');
+        $row.find('.pls-faq-question').val(q || '');
+        $row.find('.pls-faq-answer').val(a || '');
+        $builder.find('.pls-faq-rows').append($row);
+    }
+
+    function faqSyncHidden($builder) {
+        var items = [];
+        $builder.find('.pls-faq-row').each(function() {
+            var q = $(this).find('.pls-faq-question').val().trim();
+            var a = $(this).find('.pls-faq-answer').val().trim();
+            if (q && a) {
+                items.push({ question: q, answer: a });
+            }
+        });
+        $builder.closest('.pls-faq-builder-group').find('input[type=hidden]').val(
+            items.length ? JSON.stringify(items) : ''
+        );
+    }
+
+    function faqLoadFromJson($builder, jsonStr) {
+        $builder.find('.pls-faq-rows').empty();
+        if (!jsonStr) return;
+        try {
+            var items = JSON.parse(jsonStr);
+            if (Array.isArray(items)) {
+                items.forEach(function(item) {
+                    faqCreateRow($builder, item.question || '', item.answer || '');
+                });
+            }
+        } catch(e) {
+            // If invalid JSON, try to display as single item
+            faqCreateRow($builder, '', '');
+        }
+    }
+
+    // Add row buttons
+    $(document).on('click', '.pls-faq-add-row', function() {
+        var $builder = $(this).closest('.pls-faq-builder');
+        faqCreateRow($builder, '', '');
+    });
+
+    // Remove row
+    $(document).on('click', '.pls-faq-remove-row', function() {
+        var $builder = $(this).closest('.pls-faq-builder');
+        $(this).closest('.pls-faq-row').remove();
+        faqSyncHidden($builder);
+    });
+
+    // Sync hidden field on input change
+    $(document).on('input change', '.pls-faq-question, .pls-faq-answer', function() {
+        var $builder = $(this).closest('.pls-faq-builder');
+        faqSyncHidden($builder);
+    });
+
+    // Sync hidden fields before form submit
+    $('form').on('submit', function() {
+        $(this).find('.pls-faq-builder').each(function() {
+            faqSyncHidden($(this));
+        });
+    });
+
+    // ============================================
     // Edit Modal
     // ============================================
     $('.pls-edit-category').on('click', function() {
@@ -558,8 +676,13 @@ jQuery(document).ready(function($) {
         $('#edit_category_meta_title').val($btn.data('meta-title') || '');
         $('#edit_category_meta_desc').val($btn.data('meta-desc') || '');
         $('#edit_category_parent').val($btn.data('parent') || 0);
-        $('#edit_category_faq').val($btn.data('faq') || '');
         $('#edit_category_custom_order').val($btn.data('custom-order') || 0);
+
+        // Load FAQ into builder
+        var faqJson = $btn.data('faq') || '';
+        var $editBuilder = $('#pls-faq-builder-edit');
+        faqLoadFromJson($editBuilder, typeof faqJson === 'string' ? faqJson : JSON.stringify(faqJson));
+        faqSyncHidden($editBuilder);
         
         // Update character counters
         updateCharCount($('#edit_category_meta_title')[0]);
@@ -632,4 +755,45 @@ jQuery(document).ready(function($) {
     color: var(--pls-error);
     font-weight: bold;
 }
+
+/* FAQ Builder */
+.pls-faq-builder { margin-top: 8px; }
+.pls-faq-rows { display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; }
+.pls-faq-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    background: var(--pls-gray-50, #f9fafb);
+    border: 1px solid var(--pls-gray-200, #e5e7eb);
+    border-radius: 6px;
+    padding: 10px 12px;
+}
+.pls-faq-row__fields { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.pls-faq-row__fields input,
+.pls-faq-row__fields textarea {
+    width: 100%;
+    padding: 6px 10px;
+    border: 1px solid var(--pls-gray-300, #d1d5db);
+    border-radius: 4px;
+    font-size: 13px;
+}
+.pls-faq-row__fields input:focus,
+.pls-faq-row__fields textarea:focus {
+    border-color: var(--pls-accent, #3b82f6);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(59,130,246,0.15);
+}
+.pls-faq-remove-row {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: var(--pls-error, #ef4444);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px 6px;
+    line-height: 1;
+    margin-top: 2px;
+}
+.pls-faq-remove-row:hover { color: #dc2626; }
+.pls-faq-add-row { margin-top: 4px; }
 </style>

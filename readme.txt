@@ -4,7 +4,7 @@ Tags: woocommerce, elementor, bundles, swatches
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 5.7.0
+Stable tag: 5.7.1
 License: GPLv2 or later
 
 A scaffold plugin for a private-label WooCommerce store built with Hello Elementor + Elementor Pro.
@@ -23,6 +23,18 @@ and provides shortcodes for seamless Elementor Theme Builder integration.
 * Provides modal ingredient search/creation, attribute/value creation modals, and media pickers with live thumbnails and remove controls.
 
 == Changelog ==
+= 5.7.1 =
+* **FIXED:** Missing AJAX handlers registered - Product draft save/load now works
+* **FIXED:** WP Media uploader now supports video files with preview badges
+* **FIXED:** WooCommerce image/gallery sync - Featured images and galleries now sync correctly
+* **FIXED:** Custom order field mismatch causing commission calculation errors
+* **FIXED:** Kanban drag-drop stage tracking
+* **FIXED:** Commission AJAX calls now have proper error handling
+* **NEW:** Shared helper utilities class - Consolidated duplicate tier key functions
+* **IMPROVED:** FAQ schema builder - User-friendly repeatable Q&A builder instead of raw JSON
+* **IMPROVED:** Code cleanup - Removed dead code, extracted constants, deduplicated queries
+* **IMPROVED:** Migration classes lazy-loaded for better performance
+
 = 5.7.0 =
 * **MAJOR:** Product Page Redesign - Two-column sticky layout with teal color scheme and Playfair Display serif headings
 * **NEW:** Skin type pill badges, enhanced trust badges with SVG icons, starting price block

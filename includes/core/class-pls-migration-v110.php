@@ -83,7 +83,7 @@ final class PLS_Migration_V110 {
 
         // Set default commission email recipients
         if ( ! get_option( 'pls_commission_email_recipients' ) ) {
-            update_option( 'pls_commission_email_recipients', array( 'n.nikolic97@gmail.com' ) );
+            update_option( 'pls_commission_email_recipients', array( PLS_DEFAULT_COMMISSION_EMAIL ) );
         }
 
         // Schedule monthly email cron

@@ -9,7 +9,7 @@ if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
 }
 
 $notice                = '';
-$label_guide_constant  = 'https://bodocibiophysics.com/label-guide/';
+$label_guide_constant  = PLS_LABEL_GUIDE_URL;
 
 $message = isset( $_GET['message'] ) ? sanitize_text_field( wp_unslash( $_GET['message'] ) ) : '';
 

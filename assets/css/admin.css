@@ -978,6 +978,20 @@ body.pls-modal-open {
   position: static;
 }
 
+.pls-media-thumb__video-badge {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  background: rgba(0,0,0,0.7);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 3px;
+  line-height: 1.4;
+  pointer-events: none;
+}
+
 .pls-thumb-wrap {
   position: relative;
 }

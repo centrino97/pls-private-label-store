@@ -327,8 +327,8 @@
       const pricePerUnit = parseFloat($card.data('price-per-unit')) || 0;
       const totalPrice = parseFloat($card.data('total-price')) || 0;
       
-      // Get tier key for option pricing
-      const tierKey = $card.find('.pls-tier-card__badge').attr('class')?.match(/tier_\d+/)?.[0] || 'tier_1';
+      // Get tier key from data attribute (reliable)
+      const tierKey = $card.data('tier-key') || 'tier_1';
 
       selectedTier = {
         slug: tierSlug,

@@ -17,6 +17,8 @@
                 tolerance: 'pointer',
                 start: function(e, ui) {
                     ui.placeholder.height(ui.item.height());
+                    // Store the original stage before the drag
+                    ui.item.data('old-stage', ui.item.closest('.pls-kanban-column').data('stage'));
                 },
                 update: function(e, ui) {
                     if ( ! ui.sender ) {
@@ -26,7 +28,7 @@
                     const $card = ui.item;
                     const orderId = $card.data('order-id');
                     const newStage = $card.closest('.pls-kanban-column').data('stage');
-                    const oldStage = $card.closest('.pls-kanban-column').data('stage-old') || $card.data('old-stage');
+                    const oldStage = $card.data('old-stage') || '';
 
                     // Update status via AJAX
                     $.ajax({

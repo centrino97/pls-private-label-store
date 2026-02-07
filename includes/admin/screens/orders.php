@@ -245,42 +245,17 @@ $bundle_rates     = isset( $commission_rates['bundles'] ) ? $commission_rates['b
 </div>
 <?php
 /**
- * Helper function to get tier key from term name.
+ * Helper functions — delegated to PLS_Helpers.
  */
-function pls_get_tier_key_from_term( $term_name ) {
-    $mapping = array(
-        'Trial Pack'      => 'tier_1',
-        'Starter Pack'    => 'tier_2',
-        'Brand Entry'    => 'tier_3',
-        'Growth Brand'    => 'tier_4',
-        'Wholesale Launch' => 'tier_5',
-    );
-    
-    foreach ( $mapping as $name => $key ) {
-        if ( stripos( $term_name, $name ) !== false ) {
-            return $key;
-        }
+if ( ! function_exists( 'pls_get_tier_key_from_term' ) ) {
+    function pls_get_tier_key_from_term( $term_name ) {
+        return PLS_Helpers::get_tier_key_from_term( $term_name );
     }
-    
-    return null;
 }
 
-/**
- * Helper function to get bundle key from product.
- */
-function pls_get_bundle_key_from_product( $product_id ) {
-    global $wpdb;
-    $table = $wpdb->prefix . 'pls_bundle';
-    
-    $bundle = $wpdb->get_row(
-        $wpdb->prepare( "SELECT bundle_key FROM {$table} WHERE wc_product_id = %d", $product_id ),
-        OBJECT
-    );
-    
-    if ( $bundle ) {
-        return $bundle->bundle_key;
+if ( ! function_exists( 'pls_get_bundle_key_from_product' ) ) {
+    function pls_get_bundle_key_from_product( $product_id ) {
+        return PLS_Helpers::get_bundle_key_from_product( $product_id );
     }
-    
-    return null;
 }
 ?>

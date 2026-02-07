@@ -59,6 +59,10 @@ final class PLS_Admin_Ajax {
         add_action( 'wp_ajax_pls_save_marketing_cost', array( __CLASS__, 'save_marketing_cost' ) );
         add_action( 'wp_ajax_pls_get_product_performance', array( __CLASS__, 'get_product_performance' ) );
 
+        // Product draft AJAX handlers
+        add_action( 'wp_ajax_pls_save_product_draft', array( __CLASS__, 'save_product_draft' ) );
+        add_action( 'wp_ajax_pls_get_product_draft', array( __CLASS__, 'get_product_draft' ) );
+
         // System Test AJAX handlers
         add_action( 'wp_ajax_pls_run_test_category', array( __CLASS__, 'run_test_category' ) );
         add_action( 'wp_ajax_pls_run_all_tests', array( __CLASS__, 'run_all_tests' ) );
@@ -535,9 +539,17 @@ final class PLS_Admin_Ajax {
 
         foreach ( $gallery_ids as $gid ) {
             $thumb = wp_get_attachment_image_src( $gid, 'thumbnail' );
+            $mime  = get_post_mime_type( $gid );
+            $url   = $thumb ? $thumb[0] : '';
+            // For video attachments, try to get the poster/thumbnail
+            if ( ! $url && $mime && 0 === strpos( $mime, 'video' ) ) {
+                $video_thumb = get_post_meta( $gid, '_wp_attached_file', true );
+                $url = $video_thumb ? wp_get_attachment_url( $gid ) : '';
+            }
             $gallery_media[] = array(
-                'id'  => $gid,
-                'url' => $thumb ? $thumb[0] : '',
+                'id'   => $gid,
+                'url'  => $url,
+                'mime' => $mime ? $mime : 'image/jpeg',
             );
         }
 
@@ -1006,7 +1018,7 @@ final class PLS_Admin_Ajax {
             self::record_sync_status( $persisted['id'], $sync_result, true );
         }
         
-        $product_payload = self::format_product_payload( PLS_Repo_Base_Product::get( $persisted['id'] ), 'https://bodocibiophysics.com/label-guide/' );
+        $product_payload = self::format_product_payload( PLS_Repo_Base_Product::get( $persisted['id'] ), PLS_LABEL_GUIDE_URL );
 
         // v4.9.99: Always synced - clarify messaging
         $sync_msg = $sync_result 
@@ -1098,7 +1110,7 @@ final class PLS_Admin_Ajax {
             wp_cache_delete( $base->wc_product_id, 'post_meta' );
         }
         
-        $product_payload = self::format_product_payload( PLS_Repo_Base_Product::get( $id ), 'https://bodocibiophysics.com/label-guide/' );
+        $product_payload = self::format_product_payload( PLS_Repo_Base_Product::get( $id ), PLS_LABEL_GUIDE_URL );
 
         wp_send_json_success(
             array(
@@ -1140,7 +1152,7 @@ final class PLS_Admin_Ajax {
         }
 
         self::record_sync_status( $id, __( 'Product activated and synced.', 'pls-private-label-store' ), true );
-        $product_payload = self::format_product_payload( PLS_Repo_Base_Product::get( $id ), 'https://bodocibiophysics.com/label-guide/' );
+        $product_payload = self::format_product_payload( PLS_Repo_Base_Product::get( $id ), PLS_LABEL_GUIDE_URL );
 
         wp_send_json_success(
             array(
@@ -1182,7 +1194,7 @@ final class PLS_Admin_Ajax {
         }
 
         self::record_sync_status( $id, __( 'Product deactivated and synced.', 'pls-private-label-store' ), true );
-        $product_payload = self::format_product_payload( PLS_Repo_Base_Product::get( $id ), 'https://bodocibiophysics.com/label-guide/' );
+        $product_payload = self::format_product_payload( PLS_Repo_Base_Product::get( $id ), PLS_LABEL_GUIDE_URL );
 
         wp_send_json_success(
             array(
@@ -1670,7 +1682,7 @@ final class PLS_Admin_Ajax {
             'label_price_per_unit' => $payload['label_price_per_unit'],
             'label_requires_file'  => $payload['label_requires_file'],
             'label_helper_text'    => '',
-            'label_guide_url'      => 'https://bodocibiophysics.com/label-guide/',
+            'label_guide_url'      => PLS_LABEL_GUIDE_URL,
             'basics_json'          => $attr_rows,
             'skin_types_json'      => array_map(
                 function( $label ) {
@@ -2567,7 +2579,7 @@ final class PLS_Admin_Ajax {
                 PLS_Repo_Custom_Order::update_financials(
                     $order_id,
                     $order->production_cost,
-                    $order->final_value,
+                    $order->total_value,
                     $rate_to_use,
                     $calculated_commission
                 );
@@ -3185,7 +3197,7 @@ final class PLS_Admin_Ajax {
                 PLS_Repo_Custom_Order::update_financials(
                     $order_id,
                     $order->production_cost,
-                    $order->final_value,
+                    $order->total_value,
                     $rate_to_use,
                     $calculated_commission
                 );
@@ -3208,7 +3220,7 @@ final class PLS_Admin_Ajax {
                 PLS_Repo_Custom_Order::mark_paid( $order_id );
                 
                 // Send notification email
-                $recipients = get_option( 'pls_commission_email_recipients', array( 'n.nikolic97@gmail.com' ) );
+                $recipients = get_option( 'pls_commission_email_recipients', array( PLS_DEFAULT_COMMISSION_EMAIL ) );
                 $to = is_array( $recipients ) ? $recipients[0] : $recipients;
                 $user = wp_get_current_user();
                 $subject = __( 'PLS Commission Payment Confirmed', 'pls-private-label-store' );
@@ -3334,7 +3346,7 @@ final class PLS_Admin_Ajax {
 
         if ( $result ) {
             // Send notification email to Nikola
-            $recipients = get_option( 'pls_commission_email_recipients', array( 'n.nikolic97@gmail.com' ) );
+            $recipients = get_option( 'pls_commission_email_recipients', array( PLS_DEFAULT_COMMISSION_EMAIL ) );
             $to = is_array( $recipients ) ? $recipients[0] : $recipients;
             
             $subject = __( 'PLS Commission Payment Confirmed', 'pls-private-label-store' );
@@ -3469,7 +3481,7 @@ final class PLS_Admin_Ajax {
         PLS_Repo_Commission_Report::mark_paid( $month, $user_id );
 
         // Send notification email to Nikola
-        $recipients = get_option( 'pls_commission_email_recipients', array( 'n.nikolic97@gmail.com' ) );
+        $recipients = get_option( 'pls_commission_email_recipients', array( PLS_DEFAULT_COMMISSION_EMAIL ) );
         $to = is_array( $recipients ) ? $recipients[0] : $recipients;
         
         $user = wp_get_current_user();
@@ -3530,7 +3542,7 @@ final class PLS_Admin_Ajax {
             }
 
             // Send notification email
-            $recipients = get_option( 'pls_commission_email_recipients', array( 'n.nikolic97@gmail.com' ) );
+            $recipients = get_option( 'pls_commission_email_recipients', array( PLS_DEFAULT_COMMISSION_EMAIL ) );
             $to = is_array( $recipients ) ? $recipients[0] : $recipients;
             $user = wp_get_current_user();
             $subject = __( 'PLS Commission Payment Confirmed', 'pls-private-label-store' );

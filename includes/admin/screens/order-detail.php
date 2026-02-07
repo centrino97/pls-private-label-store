@@ -125,42 +125,16 @@ foreach ( $order_items as $item_id => $item ) {
     }
 }
 
-// Helper functions (same as orders.php)
+// Helper functions — delegated to PLS_Helpers.
 if ( ! function_exists( 'pls_get_tier_key_from_term' ) ) {
     function pls_get_tier_key_from_term( $term_name ) {
-        $mapping = array(
-            'Trial Pack'      => 'tier_1',
-            'Starter Pack'    => 'tier_2',
-            'Brand Entry'    => 'tier_3',
-            'Growth Brand'    => 'tier_4',
-            'Wholesale Launch' => 'tier_5',
-        );
-        
-        foreach ( $mapping as $name => $key ) {
-            if ( stripos( $term_name, $name ) !== false ) {
-                return $key;
-            }
-        }
-        
-        return null;
+        return PLS_Helpers::get_tier_key_from_term( $term_name );
     }
 }
 
 if ( ! function_exists( 'pls_get_bundle_key_from_product' ) ) {
     function pls_get_bundle_key_from_product( $product_id ) {
-        global $wpdb;
-        $table = $wpdb->prefix . 'pls_bundle';
-        
-        $bundle = $wpdb->get_row(
-            $wpdb->prepare( "SELECT bundle_key FROM {$table} WHERE wc_product_id = %d", $product_id ),
-            OBJECT
-        );
-        
-        if ( $bundle ) {
-            return $bundle->bundle_key;
-        }
-        
-        return null;
+        return PLS_Helpers::get_bundle_key_from_product( $product_id );
     }
 }
 ?>

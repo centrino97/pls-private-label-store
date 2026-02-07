@@ -2,7 +2,7 @@
 /**
  * Plugin Name: PLS – Private Label Store Manager (Woo + Elementor)
  * Description: Internal data model + WooCommerce sync + Elementor shortcodes for pack tiers, swatches, and bundles (Hello Elementor ready).
- * Version: 5.7.0
+ * Version: 5.7.1
  * Author: Z2HB team
  * Author URI: https://zerotoherobusiness.com
  * Requires at least: 6.5
@@ -17,10 +17,12 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'PLS_PLS_VERSION', '5.7.0' );
+define( 'PLS_PLS_VERSION', '5.7.1' );
 define( 'PLS_PLS_FILE', __FILE__ );
 define( 'PLS_PLS_DIR', plugin_dir_path( __FILE__ ) );
 define( 'PLS_PLS_URL', plugin_dir_url( __FILE__ ) );
+define( 'PLS_LABEL_GUIDE_URL', 'https://bodocibiophysics.com/label-guide/' );
+define( 'PLS_DEFAULT_COMMISSION_EMAIL', 'n.nikolic97@gmail.com' );
 
 // UUPD: Self-hosted updates from GitHub.
 if ( ! class_exists( '\UUPD\V1\UUPD_Updater_V1' ) ) {
@@ -35,11 +37,6 @@ add_action( 'plugins_loaded', function() {
         'version'     => PLS_PLS_VERSION,
         'server'      => 'https://raw.githubusercontent.com/centrino97/pls-private-label-store/main/uupd/index.json',
     ] );
-    
-    // Override remote URL to fetch JSON directly (bypass GitHub API detection)
-    add_filter( 'uupd/remote_url/pls-private-label-store', function( $url, $slug ) {
-        return 'https://raw.githubusercontent.com/centrino97/pls-private-label-store/main/uupd/index.json';
-    }, 10, 2 );
 }, 20 );
 
 require_once PLS_PLS_DIR . 'includes/class-pls-plugin.php';

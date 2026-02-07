@@ -132,15 +132,6 @@ final class PLS_Bundle_Cart {
             }
 
             // Count distinct products with matching units
-            $matching_products = 0;
-            foreach ( $pls_items as $item ) {
-                // Check if this product has the required units per SKU
-                if ( $item['total_units'] >= $required_units_per_sku ) {
-                    $matching_products++;
-                }
-            }
-
-            // Check if cart qualifies for this bundle
             // Qualification: At least N distinct products, each with at least M units
             $qualified_products = 0;
             foreach ( $pls_items as $item ) {

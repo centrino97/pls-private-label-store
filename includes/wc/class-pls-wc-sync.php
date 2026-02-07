@@ -612,6 +612,27 @@ final class PLS_WC_Sync {
             ) );
         }
 
+        // Sync featured image and gallery from PLS product profile.
+        $profile = PLS_Repo_Product_Profile::get_for_base( $base_product_id );
+        if ( $profile ) {
+            if ( ! empty( $profile->featured_image_id ) ) {
+                $product->set_image_id( absint( $profile->featured_image_id ) );
+            }
+            if ( ! empty( $profile->gallery_ids ) ) {
+                $gallery_id_arr = array_filter( array_map( 'absint', explode( ',', $profile->gallery_ids ) ) );
+                $product->set_gallery_image_ids( $gallery_id_arr );
+            }
+
+            if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {
+                PLS_Debug::log_sync( 'sync_product_images', array(
+                    'base_product_id' => $base_product_id,
+                    'wc_product_id'   => $product->get_id(),
+                    'featured_image'  => $profile->featured_image_id,
+                    'gallery_ids'     => $profile->gallery_ids,
+                ) );
+            }
+        }
+
         $product->save();
 
         if ( class_exists( 'PLS_Debug' ) && PLS_Debug::is_enabled() ) {

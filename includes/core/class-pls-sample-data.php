@@ -243,7 +243,7 @@ final class PLS_Sample_Data {
 
         // Ensure commission email settings are configured
         if ( ! get_option( 'pls_commission_email_recipients' ) ) {
-            update_option( 'pls_commission_email_recipients', array( 'n.nikolic97@gmail.com' ) );
+            update_option( 'pls_commission_email_recipients', array( PLS_DEFAULT_COMMISSION_EMAIL ) );
         }
 
             $action_log[] = array( 'message' => '==========================================', 'type' => 'info' );
@@ -1758,7 +1758,7 @@ final class PLS_Sample_Data {
                 'label_price_per_unit' => 0.50,
                 'label_requires_file' => 1,
                 'label_helper_text' => 'Upload your label design',
-                'label_guide_url' => 'https://bodocibiophysics.com/label-guide/',
+                'label_guide_url' => PLS_LABEL_GUIDE_URL,
             ) );
 
             // Add key ingredients (already handled above, but keeping for compatibility)
